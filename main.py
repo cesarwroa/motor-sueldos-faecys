@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, Any, List
-import escalas
-from models import DatosEmpleado
+from typing import Any, Dict, List, Optional
 
-app = FastAPI()
+from models import DatosEmpleado
+import escalas
+
+app = FastAPI(title="Motor de Sueldos CCT 130/75")
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,136 +15,190 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def _norm(s: str) -> str:
+    return " ".join((s or "").strip().upper().split())
+
 def r2(x: float) -> float:
-    return round(float(x or 0), 2)
+    # redondeo a 2 decimales consistente
+    try:
+        return float(f"{float(x):.2f}")
+    except Exception:
+        return 0.0
+
+def _get_float(v: Any) -> float:
+    try:
+        if v is None:
+            return 0.0
+        return float(v)
+    except Exception:
+        return 0.0
+
+def _is_call_center(rama: str) -> bool:
+    return "CALL CENTER" in _norm(rama)
+
+def _is_menores(categoria: str) -> bool:
+    return "MENOR" in _norm(categoria)
+
+def _jornada_prop(d: DatosEmpleado) -> float:
+    """
+    Regla del sistema (idéntica a tu HTML histórico):
+    - Call Center: NO prorratea por hs (la escala ya viene por jornada en la categoría)
+    - Menores: NO prorratea
+    - Resto: prorratea hs/48
+    """
+    if _is_call_center(d.rama) or _is_menores(d.categoria):
+        return 1.0
+    hs = float(d.hs or 48)
+    if hs <= 0:
+        hs = 48.0
+    return hs / 48.0
+
+def _antig_tasa(d: DatosEmpleado) -> float:
+    # Agua Potable: 2% acumulativo por año
+    if _norm(d.rama) == "AGUA POTABLE":
+        anios = int(d.anios or 0)
+        if anios <= 0:
+            return 0.0
+        return (1.02 ** anios) - 1.0
+    # Resto: 1% lineal por año
+    return (float(d.anios or 0) * 0.01)
+
+def _zona_factor(d: DatosEmpleado) -> float:
+    # d.zona viene como porcentaje (0, 10, 20, etc.)
+    z = _get_float(d.zona)
+    if z <= 0:
+        return 0.0
+    return z / 100.0
 
 @app.post("/calcular")
-def calcular_sueldo(d: DatosEmpleado) -> Dict[str, Any]:
-    escala = escalas.buscar_escala(d.rama, d.agrup, d.categoria, d.mes)
+def calcular(d: DatosEmpleado) -> Dict[str, Any]:
+    """
+    Endpoint principal de cálculo.
 
-    basico_escala = float(escala.get("Basico") or 0) if escala else float(d.basico or 0)
-    nr_var_escala = float(escala.get("No Remunerativo") or 0) if escala else float(d.nrVar or 0)
-    nr_sf_escala  = float(escala.get("Suma Fija") or 0) if escala else float(d.nrSF or 0)
+    IMPORTANTE:
+    - Si el frontend manda basico=0 (HTML limpio), el backend SIEMPRE toma el básico desde escalas.
+    - Lo mismo para NR variable (No Remunerativo) y NR fija (Suma Fija) cuando vengan en 0.
+    """
+    # --- Buscar escala ---
+    row = escalas.buscar_escala(d.rama, d.agrup, d.categoria, d.mes)
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sin escala para Rama={d.rama} / Agrup={d.agrup} / Cat={d.categoria} / Mes={d.mes}",
+        )
 
-    rama_u = (d.rama or "").upper()
-    cat_u = (d.categoria or "").upper()
+    basico_escala = _get_float(row.get("Basico"))
+    nr_var_escala = _get_float(row.get("No Remunerativo"))
+    nr_sf_escala  = _get_float(row.get("Suma Fija"))
 
-    # Proporcional jornada
-    prop = 1.0
-    if "CALL CENTER" not in rama_u and "MENOR" not in cat_u:
-        prop = (d.hs or 48) / 48.0
+    # --- Resolver bases (si vienen en 0 desde el HTML limpio) ---
+    basico_base = _get_float(d.basico) if _get_float(d.basico) > 0 else basico_escala
+    nr_var_base = _get_float(getattr(d, "nrVar", 0)) if _get_float(getattr(d, "nrVar", 0)) > 0 else nr_var_escala
+    nr_sf_base  = _get_float(getattr(d, "nrSF", 0))  if _get_float(getattr(d, "nrSF", 0))  > 0 else nr_sf_escala
 
-    basico_calc = basico_escala * prop
-    nr_var_calc = nr_var_escala * prop
-    nr_sf_calc  = nr_sf_escala * prop
+    # --- Jornada ---
+    prop = _jornada_prop(d)
+    basico_calc = basico_base * prop
+    nr_var_calc = nr_var_base * prop
+    nr_sf_calc  = nr_sf_base * prop
 
-    # Antigüedad
-    tasa_antig = 0.01 * (d.anios or 0)
-    if "AGUA" in rama_u:
-        tasa_antig = (1.02 ** (d.anios or 0)) - 1
-
+    # --- Antigüedad ---
+    tasa_antig = _antig_tasa(d)
     antig_rem = basico_calc * tasa_antig
-    antig_nr_var = nr_var_calc * tasa_antig
-    antig_nr_sf  = nr_sf_calc * tasa_antig
+    antig_nr  = (nr_var_calc + nr_sf_calc) * tasa_antig
 
-    # Zona (porcentaje)
-    zona_pct = float(d.zona or 0) / 100.0
-    zona_rem = basico_calc * zona_pct
-    zona_nr_var = nr_var_calc * zona_pct
-    zona_nr_sf  = nr_sf_calc * zona_pct
+    # --- Zona ---
+    zona_factor = _zona_factor(d)
+    zona_rem = (basico_calc + antig_rem) * zona_factor
+    # (si alguna vez necesitás zona NR, se puede agregar; hoy mantenemos 0)
+    zona_nr = 0.0
 
-    # Presentismo (backend manda el definitivo por coAus)
-    presentismo_ok = (d.coAus or 0) <= 1
-    pres_rem = (basico_calc + antig_rem + zona_rem) / 12.0 if presentismo_ok else 0.0
-    pres_nr_var = (nr_var_calc + antig_nr_var + zona_nr_var) / 12.0 if presentismo_ok else 0.0
-    pres_nr_sf  = (nr_sf_calc  + antig_nr_sf  + zona_nr_sf ) / 12.0 if presentismo_ok else 0.0
+    # --- Presentismo ---
+    # Si no viene, inferir con coAus<=1
+    pres_flag = d.presentismo
+    if pres_flag is None:
+        pres_flag = (int(d.coAus or 0) <= 1)
 
-    # Agua potable - conexiones (usa tabla de adicionales del maestro)
-    adic_conex_pct = 0.0
-    if "AGUA" in rama_u and d.aguaConex:
-        adics = escalas.obtener_adicionales()
-        # estructura esperada: adics["AGUA POTABLE"]["CONEXIONES"]["A"]=0.07 etc
-        try:
-            adic_conex_pct = float(adics.get("AGUA POTABLE",{}).get("CONEXIONES",{}).get(str(d.aguaConex).upper(),0) or 0)
-        except Exception:
-            adic_conex_pct = 0.0
+    pres_rem = 0.0
+    pres_nr = 0.0
+    if pres_flag:
+        pres_base_rem = basico_calc + antig_rem + zona_rem
+        pres_base_nr  = (nr_var_calc + nr_sf_calc + antig_nr + zona_nr)
+        pres_rem = pres_base_rem / 12.0
+        pres_nr  = pres_base_nr  / 12.0
 
-    adic_conex_rem = (basico_calc + zona_rem + antig_rem + pres_rem) * adic_conex_pct
-    # tu regla pedida: “aplica 7% encadenado a Básico + Suma Fija” (NR) -> aplico sobre NR SF también:
-    adic_conex_nr = (nr_sf_calc + zona_nr_sf + antig_nr_sf + pres_nr_sf) * adic_conex_pct
+    # --- Totales remunerativos / NR ---
+    total_rem = basico_calc + antig_rem + zona_rem + pres_rem
+    total_nr  = nr_var_calc + nr_sf_calc + antig_nr + pres_nr
 
-    # Fúnebres - adicionales por tareas (desde maestro)
-    fun = escalas.obtener_adicionales().get("FUNEBRES", {})
-    fun_total_rem = 0.0
-    if "FUN" in rama_u:
-        # Esperamos porcentajes o importes fijos en el maestro:
-        def add_if(flag: bool, key: str):
-            nonlocal fun_total_rem
-            if not flag: return
-            v = float(fun.get(key, 0) or 0)
-            # si es porcentaje (>0 y <1), aplico sobre básico+antig+zona+pres; si es importe fijo, lo sumo
-            if 0 < v < 1:
-                fun_total_rem += (basico_calc + antig_rem + zona_rem + pres_rem) * v
-            else:
-                fun_total_rem += v * prop
-        add_if(d.funAdic1, "ADIC1")
-        add_if(d.funAdic2, "ADIC2")
-        add_if(d.funAdic3, "ADIC3")
-        add_if(d.funAdic4, "ADIC4")
+    # --- Deducciones (reglas CO) ---
+    jubilado = bool(d.coJub)
 
-    # Totales remunerativos / no remunerativos
-    total_rem = basico_calc + antig_rem + zona_rem + pres_rem + adic_conex_rem + fun_total_rem
-    total_nr_var = nr_var_calc + antig_nr_var + zona_nr_var + pres_nr_var
-    total_nr_sf  = nr_sf_calc  + antig_nr_sf  + zona_nr_sf  + pres_nr_sf + adic_conex_nr
-    total_nr = total_nr_var + total_nr_sf + float(d.aCuentaNR or 0) + float(d.viaticosNR or 0)
+    base_jub = total_rem
+    jubilacion = 0.0 if jubilado else (base_jub * 0.11)
+    pami      = 0.0 if jubilado else (base_jub * 0.03)
 
-    # Bases aportes
-    base_aportes_rem = total_rem  # jubil/pami sobre rem
-    base_aportes_all = total_rem + total_nr  # faecys/sind/osecac sobre todo segun tu política
+    # Base sindical: Rem + todo lo NR del mes (criterio CO)
+    base_sind = total_rem + total_nr
 
-    # Deducciones
-    jubilacion = base_aportes_rem * 0.11 if not d.coJub else 0.0
-    pami = base_aportes_rem * 0.03 if not d.coJub else 0.0
+    # Si no afiliado, no cobra sindicato ni faecys (ajustable)
+    if bool(d.afiliado):
+        faecys = base_sind * 0.005
+        sindicato = base_sind * 0.02
+    else:
+        faecys = 0.0
+        sindicato = 0.0
 
-    # Obra social: si osecac=si aplica 3% sobre (rem + NR) + $100
-    obra_social = (base_aportes_all * 0.03) if d.osecac == "si" and not d.coJub else 0.0
-    osecac_100 = 100.0 if d.osecac == "si" and not d.coJub else 0.0
+    # Obra social:
+    # - si osecac == "si": 3% sobre Rem + NR
+    # - si osecac == "no": 3% solo sobre Rem (y sin $100 fijo)
+    osecac_si = _norm(d.osecac) in ("SI", "SÍ")
+    base_os = total_rem + (total_nr if osecac_si else 0.0)
+    obra_social = base_os * 0.03
 
-    faecys = base_aportes_all * 0.005 if d.afiliado else base_aportes_all * 0.005
-    sindicato = base_aportes_all * 0.02 if d.afiliado else base_aportes_all * 0.02
+    osecac_fijo = 100.0 if osecac_si else 0.0
 
-    total_deducciones = jubilacion + pami + obra_social + osecac_100 + faecys + sindicato
+    total_deducciones = jubilacion + pami + faecys + sindicato + obra_social + osecac_fijo
     neto = (total_rem + total_nr) - total_deducciones
 
+    # --- Items para UI ---
     items: List[Dict[str, Any]] = []
-    items.append({"concepto":"Básico","base":r2(basico_escala),"remunerativo":r2(basico_calc),"no_remunerativo":0,"deduccion":0})
-    if antig_rem or antig_nr_var or antig_nr_sf:
-        items.append({"concepto":"Antigüedad","base":None,"remunerativo":r2(antig_rem),"no_remunerativo":r2(antig_nr_var+antig_nr_sf),"deduccion":0})
-    if zona_rem or zona_nr_var or zona_nr_sf:
-        items.append({"concepto":"Zona Desfavorable","base":r2(basico_escala),"remunerativo":r2(zona_rem),"no_remunerativo":r2(zona_nr_var+zona_nr_sf),"deduccion":0})
-    if pres_rem or pres_nr_var or pres_nr_sf:
-        items.append({"concepto":"Presentismo (8,33%)","base":r2(basico_calc+antig_rem+zona_rem),"remunerativo":r2(pres_rem),"no_remunerativo":r2(pres_nr_var+pres_nr_sf),"deduccion":0})
 
-    # NR explícitos (para que el frontend los muestre)
-    if nr_var_calc:
-        items.append({"concepto":"No Rem (variable)","base":r2(nr_var_escala),"remunerativo":0,"no_remunerativo":r2(nr_var_calc),"deduccion":0})
-    if nr_sf_calc:
-        items.append({"concepto":"Suma Fija (NR)","base":r2(nr_sf_escala),"remunerativo":0,"no_remunerativo":r2(nr_sf_calc),"deduccion":0})
-    if fun_total_rem:
-        items.append({"concepto":"Adicionales Fúnebres","base":None,"remunerativo":r2(fun_total_rem),"no_remunerativo":0,"deduccion":0})
-    if adic_conex_rem or adic_conex_nr:
-        items.append({"concepto":f"Adicional por conexiones ({(d.aguaConex or '').upper()})","base":None,"remunerativo":r2(adic_conex_rem),"no_remunerativo":r2(adic_conex_nr),"deduccion":0})
+    def add(concepto: str, rem: float = 0.0, nr: float = 0.0, ded: float = 0.0, base: Optional[float] = None):
+        items.append({
+            "concepto": concepto,
+            "base": (r2(base) if base is not None else None),
+            "remunerativo": r2(rem),
+            "no_remunerativo": r2(nr),
+            "deduccion": r2(ded),
+        })
+
+    add("Básico", rem=basico_calc, base=basico_base)
+    if antig_rem or antig_nr:
+        add("Antigüedad", rem=antig_rem, nr=antig_nr, base=float(d.anios or 0))
+    if zona_rem:
+        add("Zona Desfavorable", rem=zona_rem, base=float(d.zona or 0))
+    if (nr_var_calc + nr_sf_calc) > 0:
+        add("No Remunerativo (Acuerdo)", nr=(nr_var_calc + nr_sf_calc))
+
+    if pres_rem or pres_nr:
+        add("Presentismo (8.33%)", rem=pres_rem, nr=pres_nr)
 
     # Deducciones
-    if jubilacion: items.append({"concepto":"Jubilación 11%","base":r2(base_aportes_rem),"remunerativo":0,"no_remunerativo":0,"deduccion":r2(jubilacion)})
-    if pami: items.append({"concepto":"Ley 19.032 (PAMI) 3%","base":r2(base_aportes_rem),"remunerativo":0,"no_remunerativo":0,"deduccion":r2(pami)})
-    if faecys: items.append({"concepto":"FAECYS 0,5%","base":r2(base_aportes_all),"remunerativo":0,"no_remunerativo":0,"deduccion":r2(faecys)})
-    if sindicato: items.append({"concepto":"Sindicato 2%","base":r2(base_aportes_all),"remunerativo":0,"no_remunerativo":0,"deduccion":r2(sindicato)})
-    if obra_social: items.append({"concepto":"Obra Social 3%","base":r2(base_aportes_all),"remunerativo":0,"no_remunerativo":0,"deduccion":r2(obra_social)})
-    if osecac_100: items.append({"concepto":"OSECAC $100","base":None,"remunerativo":0,"no_remunerativo":0,"deduccion":r2(osecac_100)})
+    add("Jubilación 11%", ded=jubilacion, base=total_rem)
+    add("Ley 19.032 (PAMI) 3%", ded=pami, base=total_rem)
+    if faecys:
+        add("FAECYS 0,5%", ded=faecys, base=base_sind)
+    if sindicato:
+        add("Sindicato 2%", ded=sindicato, base=base_sind)
+    add("Obra Social 3%", ded=obra_social, base=base_os)
+    if osecac_fijo:
+        add("OSECAC $100", ded=osecac_fijo)
 
+    # --- Respuesta ---
     return {
         "auto": {
+            # IMPORTANTE: devolvemos CALCULADO (no crudo de escala) para no filtrar tu maestro
             "basico": r2(basico_calc),
             "nrVar": r2(nr_var_calc),
             "nrSF": r2(nr_sf_calc),
