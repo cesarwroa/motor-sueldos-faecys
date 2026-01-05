@@ -1,58 +1,49 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Literal, List
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Literal
 
 class DatosEmpleado(BaseModel):
-    # Claves exactas esperadas por el frontend
+    # permitir campos extra (para evolución sin romper)
+    model_config = ConfigDict(extra="ignore")
+
     rama: str
     agrup: str
     categoria: str
-    mes: str = Field(..., description="YYYY-MM")
+    mes: str  # YYYY-MM
+    hs: int = Field(default=48, ge=1, le=48)
+    anios: int = Field(default=0, ge=0)
 
-    hs: float = Field(default=48, ge=1, le=48)
-    anios: float = Field(default=0, ge=0)
-    presentismo: Optional[bool] = None  # si no viene, se infiere con coAus<=1
-
-    # Estos campos NO son necesarios desde el HTML limpio, pero se aceptan por compatibilidad
+    # flags principales
+    presentismo: bool = True
     basico: float = 0
-    zona: float = 0
-
+    zona: float = 0  # porcentaje (0/10/20/...)
     afiliado: bool = False
-    osecac: Literal["si", "no", "SI", "NO", "sí", "SÍ"] = "no"
-
-    ferNoTrab: float = 0
-    ferTrab: float = 0
-    hex50: float = 0
-    hex100: float = 0
-    hsNoct: float = 0
-
-    coAus: float = 0
+    osecac: Literal["si","no"] = "no"
+    ferNoTrab: int = 0
+    ferTrab: int = 0
+    hex50: int = 0
+    hex100: int = 0
+    hsNoct: int = 0
+    coAus: int = 0
     coJub: bool = False
 
-    # Compatibilidad con tu modelo anterior (si alguna UI manda esto)
+    # Liquidación final (si mensual: NINGUNA/null)
+    lf_tipo: str = "NINGUNA"
+    lf_ingreso: Optional[str] = None  # YYYY-MM-DD
+    lf_egreso: Optional[str] = None   # YYYY-MM-DD
+
+    # Extras UI (opcional)
     nrVar: float = 0
     nrSF: float = 0
+    aCuentaNR: float = 0
+    viaticosNR: float = 0
 
-    # Liquidación final
-    lf_tipo: str = "NINGUNA"
-    lf_ingreso: Optional[str] = None  # "YYYY-MM-DD"
-    lf_egreso: Optional[str] = None   # "YYYY-MM-DD"
+    kmTipo: Optional[str] = None
+    kmMenos100: int = 0
+    kmMas100: int = 0
 
-    class Config:
-        extra = "ignore"
+    aguaConex: Optional[str] = None
 
-class Totales(BaseModel):
-    total_rem: float
-    total_nr: float
-    total_deducciones: float
-    neto: float
-
-class ItemRecibo(BaseModel):
-    concepto: str
-    base: Optional[float] = None
-    remunerativo: float = 0
-    no_remunerativo: float = 0
-    deduccion: float = 0
-
-class RespuestaCalculo(BaseModel):
-    totales: Totales
-    items: List[ItemRecibo]
+    funAdic1: bool = False
+    funAdic2: bool = False
+    funAdic3: bool = False
+    funAdic4: bool = False
