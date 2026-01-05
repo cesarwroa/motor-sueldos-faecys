@@ -17,10 +17,13 @@ def _norm(s: str) -> str:
 
 @lru_cache(maxsize=16384)
 def buscar_escala(rama: str, agrup: str, categoria: str, mes: str) -> Optional[Dict[str, Any]]:
-    """Replica la búsqueda del JS: match por Rama, Agrup, Categoria, Mes (YYYY-MM)."""
+    """Replica la búsqueda del JS: match por Rama, Agrupamiento, Categoria, Mes (YYYY-MM)."""
+    # Mantenemos 'agrup' aquí para coincidir con el argumento de entrada
     r = _norm(rama); a = _norm(agrup); c = _norm(categoria); m = (mes or "").strip()
+    
     for row in ESCALAS:
-        if _norm(row.get("Rama","")) == r and _norm(row.get("Agrup","")) == a and _norm(row.get("Categoria","")) == c and (row.get("Mes","").strip()==m):
+        # ACA ESTÁ LA MAGIA: Buscamos en la columna "Agrupamiento" del Excel
+        if _norm(row.get("Rama","")) == r and _norm(row.get("Agrupamiento","")) == a and _norm(row.get("Categoria","")) == c and (row.get("Mes","").strip()==m):
             return row
     return None
 
