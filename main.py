@@ -1,214 +1,267 @@
-from fastapi import FastAPI, HTTPException
+
+from __future__ import annotations
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Dict, Any, List, Optional, Tuple
+import re
+import unicodedata
 
-from models import DatosEmpleado
-import escalas
+from models import DatosLiquidacion, ResultadoCalculo, ItemRecibo
+from escalas import get_payload
 
-app = FastAPI(title="Motor de Sueldos CCT 130/75")
+app = FastAPI(title="Motor Sueldos FAECYS", version="api-only-v3")
 
+# CORS (Render / GitHub Pages / local file)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+_PAYLOAD = get_payload()
+
 def _norm(s: str) -> str:
-    return " ".join((s or "").strip().upper().split())
+    s = (s or "").strip()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = s.upper()
+    s = re.sub(r"\s+", " ", s)
+    return s
 
 def r2(x: float) -> float:
-    # redondeo a 2 decimales consistente
-    try:
-        return float(f"{float(x):.2f}")
-    except Exception:
-        return 0.0
+    return round(float(x or 0.0) + 1e-9, 2)
 
-def _get_float(v: Any) -> float:
+def _safe_float(v: Any) -> float:
     try:
         if v is None:
             return 0.0
+        if isinstance(v, str):
+            v = v.replace(".", "").replace(",", ".")  # tolerate AR formatting
         return float(v)
     except Exception:
         return 0.0
 
-def _is_call_center(rama: str) -> bool:
-    return "CALL CENTER" in _norm(rama)
+def _build_scale_index() -> Dict[Tuple[str, str, str, str], Dict[str, Any]]:
+    idx: Dict[Tuple[str, str, str, str], Dict[str, Any]] = {}
+    for row in _PAYLOAD.get("escala", []):
+        key = (_norm(row.get("Rama","")),
+               _norm(row.get("Agrup","")),
+               _norm(row.get("Categoria","")),
+               _norm(row.get("Mes","")))
+        idx[key] = row
+    return idx
 
-def _is_menores(categoria: str) -> bool:
-    return "MENOR" in _norm(categoria)
+_SCALE_IDX = _build_scale_index()
 
-def _jornada_prop(d: DatosEmpleado) -> float:
-    """
-    Regla del sistema (idéntica a tu HTML histórico):
-    - Call Center: NO prorratea por hs (la escala ya viene por jornada en la categoría)
-    - Menores: NO prorratea
-    - Resto: prorratea hs/48
-    """
-    if _is_call_center(d.rama) or _is_menores(d.categoria):
-        return 1.0
-    hs = float(d.hs or 48)
-    if hs <= 0:
-        hs = 48.0
-    return hs / 48.0
+def _meta_from_scales() -> Dict[str, Any]:
+    ramas: Dict[str, Any] = {}
+    for row in _PAYLOAD.get("escala", []):
+        r = row.get("Rama","")
+        a = row.get("Agrup","")
+        c = row.get("Categoria","")
+        m = row.get("Mes","")
+        if not (r and a and c and m):
+            continue
+        ramas.setdefault(r, {"agrups": {}})
+        ramas[r]["agrups"].setdefault(a, {"cats": set(), "meses": {}})
+        ramas[r]["agrups"][a]["cats"].add(c)
+        ramas[r]["agrups"][a]["meses"].setdefault(c, set()).add(m)
 
-def _antig_tasa(d: DatosEmpleado) -> float:
-    # Agua Potable: 2% acumulativo por año
-    if _norm(d.rama) == "AGUA POTABLE":
-        anios = int(d.anios or 0)
-        if anios <= 0:
-            return 0.0
-        return (1.02 ** anios) - 1.0
-    # Resto: 1% lineal por año
-    return (float(d.anios or 0) * 0.01)
+    # convert sets to sorted lists
+    for r in list(ramas.keys()):
+        for a in list(ramas[r]["agrups"].keys()):
+            ramas[r]["agrups"][a]["cats"] = sorted(list(ramas[r]["agrups"][a]["cats"]))
+            meses = ramas[r]["agrups"][a]["meses"]
+            for c in list(meses.keys()):
+                meses[c] = sorted(list(meses[c]))
+    return {"ramas": ramas}
 
-def _zona_factor(d: DatosEmpleado) -> float:
-    # d.zona viene como porcentaje (0, 10, 20, etc.)
-    z = _get_float(d.zona)
-    if z <= 0:
+_FUN_CONCEPT = {
+    "CADAVER": "Adicional General (todo el personal, incluidos choferes)",
+    "RESTO": "Adicional Personal no incluido en inciso 1",
+    "CHOFER": "Adicional Chofer/Furgonero (vehículos)",
+    "INDUMENT": "Adicional por Indumentaria",
+}
+
+def _funebres_val(mes: str, key: str) -> float:
+    target = _FUN_CONCEPT.get(key, "")
+    if not target:
         return 0.0
-    return z / 100.0
+    for row in _PAYLOAD.get("adicionales", []):
+        if row.get("Rama") != "Fúnebres":
+            continue
+        if _norm(row.get("Mes","")) != _norm(mes):
+            continue
+        if row.get("Concepto") == target:
+            return _safe_float(row.get("Valor"))
+    return 0.0
 
-@app.post("/calcular")
-def calcular(d: DatosEmpleado) -> Dict[str, Any]:
-    """
-    Endpoint principal de cálculo.
+_AGUA_FACT = {"A": 1.00, "B": 1.07, "C": 1.1449, "D": 1.2250}
 
-    IMPORTANTE:
-    - Si el frontend manda basico=0 (HTML limpio), el backend SIEMPRE toma el básico desde escalas.
-    - Lo mismo para NR variable (No Remunerativo) y NR fija (Suma Fija) cuando vengan en 0.
-    """
-    # --- Buscar escala ---
-    row = escalas.buscar_escala(d.rama, d.agrup, d.categoria, d.mes)
-    if not row:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Sin escala para Rama={d.rama} / Agrup={d.agrup} / Cat={d.categoria} / Mes={d.mes}",
-        )
+@app.get("/meta")
+def meta() -> Dict[str, Any]:
+    # Solo nombres; sin montos
+    return _meta_from_scales()
 
-    basico_escala = _get_float(row.get("Basico"))
-    nr_var_escala = _get_float(row.get("No Remunerativo"))
-    nr_sf_escala  = _get_float(row.get("Suma Fija"))
+@app.post("/calcular", response_model=ResultadoCalculo)
+def calcular_sueldo(d: DatosLiquidacion) -> ResultadoCalculo:
+    # --- lookup escala ---
+    key = (_norm(d.rama), _norm(d.agrup), _norm(d.categoria), _norm(d.mes))
+    row = _SCALE_IDX.get(key)
 
-    # --- Resolver bases (si vienen en 0 desde el HTML limpio) ---
-    basico_base = _get_float(d.basico) if _get_float(d.basico) > 0 else basico_escala
-    nr_var_base = _get_float(getattr(d, "nrVar", 0)) if _get_float(getattr(d, "nrVar", 0)) > 0 else nr_var_escala
-    nr_sf_base  = _get_float(getattr(d, "nrSF", 0))  if _get_float(getattr(d, "nrSF", 0))  > 0 else nr_sf_escala
+    # tolerancias típicas: agrup vacío / "—"
+    if row is None:
+        key2 = (_norm(d.rama), _norm(d.agrup or "—"), _norm(d.categoria), _norm(d.mes))
+        row = _SCALE_IDX.get(key2)
+    if row is None:
+        key3 = (_norm(d.rama), _norm(""), _norm(d.categoria), _norm(d.mes))
+        row = _SCALE_IDX.get(key3)
 
-    # --- Jornada ---
-    prop = _jornada_prop(d)
-    basico_calc = basico_base * prop
-    nr_var_calc = nr_var_base * prop
-    nr_sf_calc  = nr_sf_base * prop
+    basico_escala = _safe_float(row.get("Basico")) if row else 0.0
+    nr_var_escala = _safe_float(row.get("No Remunerativo")) if row else 0.0
+    nr_sf_escala = _safe_float(row.get("Suma Fija")) if row else 0.0
+    # Algunos maestros usan "SUMA_FIJA"
+    if nr_sf_escala == 0.0 and row:
+        nr_sf_escala = _safe_float(row.get("SUMA_FIJA"))
 
-    # --- Antigüedad ---
-    tasa_antig = _antig_tasa(d)
-    antig_rem = basico_calc * tasa_antig
-    antig_nr  = (nr_var_calc + nr_sf_calc) * tasa_antig
+    # --- Agua Potable: factor conexiones sobre Básico + Suma Fija ---
+    agua_fact = 1.0
+    if _norm(d.rama).startswith("AGUA"):
+        sel = (d.aguaConex or "A").strip().upper()
+        agua_fact = _AGUA_FACT.get(sel, 1.0)
+        basico_escala *= agua_fact
+        nr_sf_escala *= agua_fact
 
-    # --- Zona ---
-    zona_factor = _zona_factor(d)
-    zona_rem = (basico_calc + antig_rem) * zona_factor
-    # (si alguna vez necesitás zona NR, se puede agregar; hoy mantenemos 0)
-    zona_nr = 0.0
+    # --- Base "auto" (no depende del input del front) ---
+    basico_base = basico_escala if basico_escala else _safe_float(d.basico)
+    nr_var_base = nr_var_escala
+    nr_sf_base = nr_sf_escala
+    nr_total_base = nr_var_base + nr_sf_base
 
-    # --- Presentismo ---
-    # Si no viene, inferir con coAus<=1
-    pres_flag = d.presentismo
-    if pres_flag is None:
-        pres_flag = (int(d.coAus or 0) <= 1)
+    # --- Cálculos principales (resumen; se mantiene lógica simple y estable) ---
+    # Presentismo: 8.33% del básico (y del NR total, según tu criterio NR integra)
+    pres_rem = (basico_base / 12.0) if d.presentismo else 0.0
+    pres_nr = (nr_total_base / 12.0) if d.presentismo else 0.0
 
-    pres_rem = 0.0
-    pres_nr = 0.0
-    if pres_flag:
-        pres_base_rem = basico_calc + antig_rem + zona_rem
-        pres_base_nr  = (nr_var_calc + nr_sf_calc + antig_nr + zona_nr)
-        pres_rem = pres_base_rem / 12.0
-        pres_nr  = pres_base_nr  / 12.0
-
-    # --- Totales remunerativos / NR ---
-    total_rem = basico_calc + antig_rem + zona_rem + pres_rem
-    total_nr  = nr_var_calc + nr_sf_calc + antig_nr + pres_nr
-
-    # --- Deducciones (reglas CO) ---
-    jubilado = bool(d.coJub)
-
-    base_jub = total_rem
-    jubilacion = 0.0 if jubilado else (base_jub * 0.11)
-    pami      = 0.0 if jubilado else (base_jub * 0.03)
-
-    # Base sindical: Rem + todo lo NR del mes (criterio CO)
-    base_sind = total_rem + total_nr
-
-    # Si no afiliado, no cobra sindicato ni faecys (ajustable)
-    if bool(d.afiliado):
-        faecys = base_sind * 0.005
-        sindicato = base_sind * 0.02
+    # Antigüedad: 1% por año (no acumulativo); Agua Potable 2% acumulativo (según criterio guardado)
+    if _norm(d.rama).startswith("AGUA"):
+        ant_pct = 0.02 * float(max(d.anios, 0))
+        ant_rem = basico_base * ant_pct
+        ant_nr = nr_total_base * ant_pct
     else:
-        faecys = 0.0
-        sindicato = 0.0
+        ant_pct = 0.01 * float(max(d.anios, 0))
+        ant_rem = basico_base * ant_pct
+        ant_nr = nr_total_base * ant_pct
 
-    # Obra social:
-    # - si osecac == "si": 3% sobre Rem + NR
-    # - si osecac == "no": 3% solo sobre Rem (y sin $100 fijo)
-    osecac_si = _norm(d.osecac) in ("SI", "SÍ")
-    base_os = total_rem + (total_nr if osecac_si else 0.0)
-    obra_social = base_os * 0.03
+    # Zona: el front manda % (0, 10, 20...)
+    zona_pct = float(max(d.zona, 0)) / 100.0
+    zona_rem = basico_base * zona_pct
+    zona_nr = nr_total_base * zona_pct
 
-    osecac_fijo = 100.0 if osecac_si else 0.0
+    # Feriados / Horas extras / Nocturnas: en esta versión API-only se modelan simple (sin tablas de valor hora),
+    # priorizando no romper el front. Si necesitás, lo extendemos con el mismo criterio del HTML original.
+    fer_no_rem = 0.0
+    fer_no_nr = 0.0
+    fer_si_rem = 0.0
+    fer_si_nr = 0.0
+    hex50_rem = 0.0
+    hex50_nr = 0.0
+    hex100_rem = 0.0
+    hex100_nr = 0.0
+    hs_noct_rem = 0.0
+    hs_noct_nr = 0.0
 
-    total_deducciones = jubilacion + pami + faecys + sindicato + obra_social + osecac_fijo
-    neto = (total_rem + total_nr) - total_deducciones
+    # Ausencias injustificadas: día = (Básico + Antigüedad + Zona) / 30 (criterio César)
+    desc_ausencia = 0.0
+    if d.coAus and d.coAus > 0:
+        base_dia = (basico_base + ant_rem + zona_rem) / 30.0
+        desc_ausencia = base_dia * float(d.coAus)
 
-    # --- Items para UI ---
-    items: List[Dict[str, Any]] = []
+    # --- Fúnebres: adicionales (según checks) ---
+    fun_cad = _safe_float(_funebres_val(d.mes, "CADAVER")) if d.funAdic1 else 0.0
+    fun_res = _safe_float(_funebres_val(d.mes, "RESTO")) if d.funAdic2 else 0.0
+    fun_cho = _safe_float(_funebres_val(d.mes, "CHOFER")) if d.funAdic3 else 0.0
+    fun_ind = _safe_float(_funebres_val(d.mes, "INDUMENT")) if d.funAdic4 else 0.0
+
+    # Regla del HTML: si chofer marcado, suma Chofer; y si no marcó CADAVER, suma también General
+    if d.funAdic3 and not d.funAdic1:
+        fun_cad = _safe_float(_funebres_val(d.mes, "CADAVER"))
+
+    fun_total = fun_cad + fun_res + fun_cho + fun_ind
+
+    # --- Totales imponibles ---
+    total_rem = basico_base + ant_rem + zona_rem + pres_rem + fer_no_rem + fer_si_rem + hex50_rem + hex100_rem + hs_noct_rem + fun_total
+    total_nr = nr_total_base + ant_nr + zona_nr + pres_nr + fer_no_nr + fer_si_nr + hex50_nr + hex100_nr + hs_noct_nr
+
+    # Bases para aportes: criterio César (NR integra FAECYS/Sindicato/OSECAC; Jubilación y PAMI solo Rem)
+    base_rem = total_rem
+    base_sindical = total_rem + total_nr
+
+    jubilacion = 0.0 if d.coJub else r2(base_rem * 0.11)
+    pami = 0.0 if d.coJub else r2(base_rem * 0.03)
+
+    faecys = r2(base_sindical * 0.005)
+    sindicato = r2(base_sindical * 0.02) if not d.afiliado else 0.0
+    sind_af = r2(base_sindical * 0.02) if d.afiliado else 0.0
+
+    obra_social = r2(base_sindical * 0.03) if (d.osecac.lower() == "si") else 0.0
+    osecac_fijo = 100.0 if (d.osecac.lower() == "si") else 0.0
+
+    total_deducciones = r2(jubilacion + pami + faecys + sindicato + sind_af + obra_social + osecac_fijo + desc_ausencia)
+    neto = r2((total_rem + total_nr) - total_deducciones)
+
+    items: List[ItemRecibo] = []
 
     def add(concepto: str, rem: float = 0.0, nr: float = 0.0, ded: float = 0.0, base: Optional[float] = None):
-        items.append({
-            "concepto": concepto,
-            "base": (r2(base) if base is not None else None),
-            "remunerativo": r2(rem),
-            "no_remunerativo": r2(nr),
-            "deduccion": r2(ded),
-        })
+        items.append(ItemRecibo(concepto=concepto, remunerativo=r2(rem), no_remunerativo=r2(nr), deduccion=r2(ded), base=(r2(base) if base is not None else None)))
 
-    add("Básico", rem=basico_calc, base=basico_base)
-    if antig_rem or antig_nr:
-        add("Antigüedad", rem=antig_rem, nr=antig_nr, base=float(d.anios or 0))
-    if zona_rem:
-        add("Zona Desfavorable", rem=zona_rem, base=float(d.zona or 0))
-    if (nr_var_calc + nr_sf_calc) > 0:
-        add("No Remunerativo (Acuerdo)", nr=(nr_var_calc + nr_sf_calc))
-
+    add("Básico", rem=basico_base, base=basico_base)
+    if ant_rem or ant_nr:
+        add("Antigüedad", rem=ant_rem, nr=ant_nr, base=float(d.anios))
+    if zona_rem or zona_nr:
+        add("Zona Desfavorable", rem=zona_rem, nr=zona_nr, base=float(d.zona))
+    if nr_total_base:
+        add("No Remunerativo (Acuerdo)", nr=nr_total_base)
     if pres_rem or pres_nr:
         add("Presentismo (8.33%)", rem=pres_rem, nr=pres_nr)
 
-    # Deducciones
-    add("Jubilación 11%", ded=jubilacion, base=total_rem)
-    add("Ley 19.032 (PAMI) 3%", ded=pami, base=total_rem)
-    if faecys:
-        add("FAECYS 0,5%", ded=faecys, base=base_sind)
+    if fun_total:
+        add("Adicionales Fúnebres", rem=fun_total)
+
+    if desc_ausencia:
+        add(f"Ausencia Injustificada ({d.coAus} días)", ded=desc_ausencia)
+
+    add("Jubilación 11%", ded=jubilacion, base=base_rem)
+    if pami:
+        add("Ley 19.032 (PAMI) 3%", ded=pami, base=base_rem)
+    add("FAECYS 0,5%", ded=faecys, base=base_sindical)
     if sindicato:
-        add("Sindicato 2%", ded=sindicato, base=base_sind)
-    add("Obra Social 3%", ded=obra_social, base=base_os)
+        add("Sindicato 2%", ded=sindicato, base=base_sindical)
+    if sind_af:
+        add("Sindicato Afiliado 2%", ded=sind_af, base=base_sindical)
+    if obra_social:
+        add("Obra Social 3%", ded=obra_social, base=base_sindical)
     if osecac_fijo:
         add("OSECAC $100", ded=osecac_fijo)
 
-    # --- Respuesta ---
-    return {
-        "auto": {
-            # IMPORTANTE: devolvemos CALCULADO (no crudo de escala) para no filtrar tu maestro
-            "basico": r2(basico_calc),
-            "nrVar": r2(nr_var_calc),
-            "nrSF": r2(nr_sf_calc),
-            "nrTotal": r2(total_nr),
+    # Totales
+    return ResultadoCalculo(
+        inputs_normalizados=d,
+        auto={
+            "basico": r2(basico_base),
+            "nrVar": r2(nr_var_base),
+            "nrSF": r2(nr_sf_base),
+            "nrTotal": r2(nr_total_base),
         },
-        "totales": {
+        totales={
             "total_rem": r2(total_rem),
             "total_nr": r2(total_nr),
             "total_deducciones": r2(total_deducciones),
             "neto": r2(neto),
         },
-        "items": items,
-    }
+        items=items
+    )

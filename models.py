@@ -1,49 +1,55 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Literal
 
-class DatosEmpleado(BaseModel):
-    # permitir campos extra (para evolución sin romper)
-    model_config = ConfigDict(extra="ignore")
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 
-    rama: str
-    agrup: str
-    categoria: str
-    mes: str  # YYYY-MM
-    hs: int = Field(default=48, ge=1, le=48)
-    anios: int = Field(default=0, ge=0)
-
-    # flags principales
+class DatosLiquidacion(BaseModel):
+    rama: str = ""
+    agrup: str = ""
+    categoria: str = ""
+    mes: str = ""
+    hs: float = 48
+    anios: int = 0
     presentismo: bool = True
+
     basico: float = 0
-    zona: float = 0  # porcentaje (0/10/20/...)
+    zona: float = 0
+
     afiliado: bool = False
-    osecac: Literal["si","no"] = "no"
+    osecac: str = "si"  # "si" / "no"
+
     ferNoTrab: int = 0
     ferTrab: int = 0
-    hex50: int = 0
-    hex100: int = 0
-    hsNoct: int = 0
+    hex50: float = 0
+    hex100: float = 0
+    hsNoct: float = 0
+
     coAus: int = 0
     coJub: bool = False
 
-    # Liquidación final (si mensual: NINGUNA/null)
     lf_tipo: str = "NINGUNA"
-    lf_ingreso: Optional[str] = None  # YYYY-MM-DD
-    lf_egreso: Optional[str] = None   # YYYY-MM-DD
+    lf_ingreso: Optional[str] = None
+    lf_egreso: Optional[str] = None
 
-    # Extras UI (opcional)
-    nrVar: float = 0
-    nrSF: float = 0
-    aCuentaNR: float = 0
-    viaticosNR: float = 0
-
-    kmTipo: Optional[str] = None
-    kmMenos100: int = 0
-    kmMas100: int = 0
-
-    aguaConex: Optional[str] = None
-
+    # Extras para API-only (no rompen si el front no los manda)
+    aguaConex: Optional[str] = "A"   # A/B/C/D
     funAdic1: bool = False
     funAdic2: bool = False
     funAdic3: bool = False
     funAdic4: bool = False
+
+    class Config:
+        extra = "ignore"
+
+class ItemRecibo(BaseModel):
+    concepto: str
+    remunerativo: float = 0
+    no_remunerativo: float = 0
+    deduccion: float = 0
+    base: Optional[float] = None
+
+class ResultadoCalculo(BaseModel):
+    inputs_normalizados: DatosLiquidacion
+    auto: Dict[str, float]
+    totales: Dict[str, float]
+    items: List[ItemRecibo]
