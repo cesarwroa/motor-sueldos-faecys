@@ -32,3 +32,40 @@ def valor_funebres(desde: str, mes: str) -> float:
         if _norm(row.get("Tipo","")) == t and (row.get("Mes","").strip()==(mes or "").strip()):
             return float(row.get("Importe") or 0.0)
     return 0.0
+
+
+# --- Metadata (sin importes) para poblar selects en frontend ---
+from typing import Set
+
+@lru_cache(maxsize=1)
+def listar_ramas():
+    s: Set[str] = set()
+    for row in ESCALAS:
+        s.add((row.get("Rama") or "").strip().upper())
+    return sorted([x for x in s if x])
+
+@lru_cache(maxsize=256)
+def listar_agrups(rama: str):
+    r = _norm(rama)
+    s: Set[str] = set()
+    for row in ESCALAS:
+        if _norm(row.get("Rama","")) == r:
+            s.add((row.get("Agrup") or "").strip().upper())
+    return sorted([x for x in s if x])
+
+@lru_cache(maxsize=2048)
+def listar_categorias(rama: str, agrup: str):
+    r = _norm(rama); a = _norm(agrup)
+    s: Set[str] = set()
+    for row in ESCALAS:
+        if _norm(row.get("Rama","")) == r and _norm(row.get("Agrup","")) == a:
+            s.add((row.get("Categoria") or "").strip().upper())
+    return sorted([x for x in s if x])
+
+@lru_cache(maxsize=1)
+def listar_meses():
+    s: Set[str] = set()
+    for row in ESCALAS:
+        s.add((row.get("Mes") or "").strip())
+    # ordenar YYYY-MM
+    return sorted([x for x in s if x])
