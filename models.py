@@ -7,75 +7,35 @@ from pydantic import BaseModel, Field
 
 
 class DatosEmpleado(BaseModel):
-    # Selección de escala
+    # Selección
     rama: str
     agrup: str
     categoria: str
     mes: str = Field(..., description="YYYY-MM")
 
-    # Jornada / parámetros
-    hs: Optional[float] = Field(default=48, ge=1, le=48)
-    zona: float = Field(default=0, description="Porcentaje (ej: 20 para 20%)")
-    anios: float = Field(default=0, ge=0)
+    # Parámetros
+    hs: int = Field(48, ge=1, le=48)
+    anios: int = Field(0, ge=0)
+    presentismo: bool = True
 
-    # Rem/NR base (normalmente vienen del maestro; se aceptan por compatibilidad)
-    basico: Optional[float] = 0
-    nrVar: Optional[float] = 0
-    nrSF: Optional[float] = 0
-    aCuentaNR: float = 0
-    viaticosNR: float = 0
+    # Valores base (se aceptan desde el front, pero el motor puede revalidarlos)
+    basico: float = 0
+    zona: float = 0  # porcentaje (ej: 20 => 20%)
 
-    # Feriados / HE / nocturnidad
+    # Aportes / condiciones
+    afiliado: bool = False
+    osecac: Literal["si", "no"] = "no"
+    coJub: bool = False
+
+    # Novedades
+    ferNoTrab: int = 0
+    ferTrab: int = 0
     hex50: float = 0
     hex100: float = 0
-    ferNoTrab: float = 0
-    ferTrab: float = 0
     hsNoct: float = 0
+    coAus: int = 0
 
-    # OSECAC / Jubilado / aportes sindicales variables
-    osecac: Literal["si", "no"] = "si"
-    coJub: bool = False
-    afiliado: bool = False  # (UI) no afecta el cálculo en el JS actual
-    afiliado_selector: str = "NO"  # % adicional (ej: "2", "3", o "NO")
-    afiliado_fijo: float = 0
-
-    # Vacaciones / licencias (mensual)
-    coVacDias: float = 0
-    coLicP: int = 0
-    coLicS: int = 0
-    coSuspension: bool = False
-    coAus: float = 0  # ausencias injustificadas (días)
-
-    # Adicionales (UI)
-    manejoCaja: bool = False
-    cajero_tipo: str = ""  # A/B/C (si vacío, se infiere por categoría)
-    faltanteCajaInput: str = ""  # string; el JS lo parsea
-
-    armadoAuto: bool = False  # Vidrierista (Art. 23)
-    kmTipo: str = ""          # Chofer/Ayudante o Turismo
-    kmMenos100: float = 0
-    kmMas100: float = 0
-
-    # Fúnebres
-    funAdic1: bool = False  # CADAVER (General)
-    funAdic2: bool = False  # RESTO
-    funAdic3: bool = False  # CHOFER (+General si no marcado)
-    funAdic4: bool = False  # INDUMENT
-
-    # Agua potable
-    aguaConex: str = ""  # selector (categoría de conexiones)
-
-    # Liquidación final (inputs)
-    lf_tipo: str = "RENUNCIA"          # RENUNCIA / DESPIDO_SIN_CAUSA / DESPIDO_CON_CAUSA / FALLECIMIENTO
+    # Liquidación final
+    lf_tipo: Literal["NINGUNA", "DESPIDO_SC", "DESPIDO_CC", "RENUNCIA", "FALLECIMIENTO"] = "NINGUNA"
     lf_ingreso: Optional[date] = None
     lf_egreso: Optional[date] = None
-    lf_anios: float = 0
-    lf_dias_mes: float = 30
-    lf_integracion: bool = False
-    lf_preaviso: str = "NO"
-    lf_vac_anuales: float = 0
-    lf_vac_calc: float = 0
-    lf_mrmnh: float = 0
-    lf_sac_pre: bool = False
-    lf_sac_int: bool = False
-    lf_use_lastday: bool = False
