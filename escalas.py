@@ -17,38 +17,24 @@ def _norm(s: str) -> str:
 
 @lru_cache(maxsize=16384)
 def buscar_escala(rama: str, agrup: str, categoria: str, mes: str) -> Optional[Dict[str, Any]]:
-    """Match por Rama, Agrupamiento/Agrup, Categoria, Mes (YYYY-MM)."""
-    r = _norm(rama)
-    a = _norm(agrup)
-    c = _norm(categoria)
-    m = (mes or "").strip()
-
-    # Si en el frontend te llega algo tipo "— Todas —" no filtramos por agrupamiento.
-    agr_wildcard = a in {"", "—", "— TODAS —", "TODAS", "(TODAS)", "— TODAS"}
-
+    """Replica la búsqueda del JS: match por Rama, Agrup, Categoria, Mes (YYYY-MM)."""
+    r = _norm(rama); a = _norm(agrup); c = _norm(categoria); m = (mes or "").strip()
     for row in ESCALAS:
-        if _norm(row.get("Rama", "")) != r:
-            continue
-
-        row_agr = _norm(row.get("Agrupamiento", "") or row.get("Agrup", ""))
-        if not agr_wildcard and row_agr != a:
-            continue
-
-        if _norm(row.get("Categoria", "")) != c:
-            continue
-
-        if (row.get("Mes", "").strip() != m):
-            continue
-
-        return row
+        if _norm(row.get("Rama","")) == r and _norm(row.get("Agrup","")) == a and _norm(row.get("Categoria","")) == c and (row.get("Mes","").strip()==m):
+            return row
     return None
 
 @lru_cache(maxsize=4096)
 def valor_funebres(desde: str, mes: str) -> float:
-    """Busca en ADICIONALES por Concepto (texto) y Mes (YYYY-MM)."""
+    """Busca en ADICIONALES por Tipo (CADAVER/RESTO/CHOFER/INDUMENT) y Mes. """
     t = _norm(desde)
-    m = (mes or "").strip()
     for row in ADICIONALES:
-        if _norm(row.get("Concepto", "")) == t and (row.get("Mes", "").strip() == m):
+        if _norm(row.get("Tipo","")) == t and (row.get("Mes","").strip()==(mes or "").strip()):
             return float(row.get("Importe") or 0.0)
     return 0.0
+# API helper (imported by main.py)
+def get_payload():
+    """Devuelve el payload completo de escalas para exponer via API."""
+    return PAYLOAD
+
+__all__ = ["PAYLOAD", "buscar_escala", "valor_funebres", "get_payload"]
