@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-
-from fastapi import FastAPI, HTTPException
+from typing import Any, Dict, List, Tuple
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from models import DatosEmpleado
-from escalas import buscar_escala, valor_funebres, ESCALAS, _norm, get_payload
+# Compat: tu repo venía usando models.py
+try:
+    from models import DatosEmpleado  # noqa: F401
+except Exception:
+    DatosEmpleado = None  # type: ignore
 
+from escalas import get_payload  # payload completo (escala + adicionales, etc.)
 
-app = FastAPI(title="ComercioOnline - Cálculo CCT 130/75")
+app = FastAPI(title="Motor Sueldos FAECYS", version="0.2.0")
 
-# CORS abierto para que el HTML pueda consumir la API incluso desde file:// (Origin: null)
+# CORS: permitir consumo desde file:// (origin "null") y desde cualquier dominio
+# Nota: allow_origins=["*"] sirve para la mayoría de casos. También habilitamos headers/métodos.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,125 +24,87 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------- META / PAYLOAD ----------------
+
+def _uniq_sorted(values: List[str]) -> List[str]:
+    out = sorted({(v or "").strip() for v in values if (v or "").strip()})
+    return out
+
+def _build_meta(payload: Dict[str, Any]) -> Dict[str, Any]:
+    rows: List[Dict[str, Any]] = payload.get("escala", []) or []
+    ramas = _uniq_sorted([r.get("Rama","") for r in rows])
+
+    agrup_by_rama: Dict[str, List[str]] = {}
+    cats_by_rama_agrup: Dict[str, Dict[str, List[str]]] = {}
+    meses_by_key: Dict[Tuple[str,str,str], List[str]] = {}
+
+    for r in rows:
+        rama = (r.get("Rama") or "").strip()
+        agr = (r.get("Agrup") or "").strip()
+        cat = (r.get("Categoria") or "").strip()
+        mes = (r.get("Mes") or "").strip()
+
+        if not rama or not cat or not mes:
+            continue
+
+        agrup_by_rama.setdefault(rama, [])
+        if agr and agr not in agrup_by_rama[rama]:
+            agrup_by_rama[rama].append(agr)
+
+        cats_by_rama_agrup.setdefault(rama, {})
+        cats_by_rama_agrup[rama].setdefault(agr or "—", [])
+        if cat not in cats_by_rama_agrup[rama][agr or "—"]:
+            cats_by_rama_agrup[rama][agr or "—"].append(cat)
+
+        key = (rama, agr or "—", cat)
+        meses_by_key.setdefault(key, [])
+        if mes not in meses_by_key[key]:
+            meses_by_key[key].append(mes)
+
+    # ordenar listas
+    for rama in agrup_by_rama:
+        agrup_by_rama[rama] = sorted(agrup_by_rama[rama])
+    for rama in cats_by_rama_agrup:
+        for agr in cats_by_rama_agrup[rama]:
+            cats_by_rama_agrup[rama][agr] = sorted(cats_by_rama_agrup[rama][agr])
+
+    meses_all = _uniq_sorted([r.get("Mes","") for r in rows])
+
+    return {
+        "ramas": ramas,
+        "agrupamientos": agrup_by_rama,
+        "categorias": cats_by_rama_agrup,
+        "meses": meses_all,
+        # Opcional: meses específicos por (rama,agrup,categoria)
+        "meses_por_clave": {f"{k[0]}||{k[1]}||{k[2]}": sorted(v) for k,v in meses_by_key.items()},
+        "version_payload": payload.get("version") or None,
+    }
 
 @app.get("/")
 def root() -> Dict[str, Any]:
-    return {"ok": True, "service": "motor-sueldos-faecys"}
+    return {"ok": True, "service": "motor-sueldos-faecys", "endpoints": ["/meta","/api/meta","/payload","/api/payload","/health"]}
 
+@app.head("/")
+def head_root():
+    # Render hace HEAD /
+    return
 
-# Endpoints para que el HTML cargue el maestro
-@app.get("/maestro")
-def maestro() -> Dict[str, Any]:
-    return get_payload()
-
+@app.get("/health")
+def health() -> Dict[str, Any]:
+    return {"ok": True}
 
 @app.get("/payload")
 def payload() -> Dict[str, Any]:
     return get_payload()
 
+@app.get("/api/payload")
+def api_payload() -> Dict[str, Any]:
+    return get_payload()
 
-@dataclass
-class Item:
-    concepto: str
-    remunerativo: float = 0.0
-    no_rem: float = 0.0
-    descuentos: float = 0.0
+@app.get("/meta")
+def meta() -> Dict[str, Any]:
+    return _build_meta(get_payload())
 
-
-@app.post("/calcular")
-def calcular(d: DatosEmpleado) -> Dict[str, Any]:
-    """Calcula una liquidación mensual simple (demostrativa)."""
-
-    if not d.rama:
-        raise HTTPException(status_code=400, detail="Falta rama")
-    if not d.categoria:
-        raise HTTPException(status_code=400, detail="Falta categoría")
-    if not d.mes:
-        raise HTTPException(status_code=400, detail="Falta mes")
-
-    rama = _norm(d.rama)
-    cat = d.categoria
-    mes = d.mes
-
-    escala = buscar_escala(rama, d.agrupamiento, cat, mes)
-    if not escala:
-        raise HTTPException(status_code=404, detail="No se encontró escala para esos filtros")
-
-    # Básicos
-    basico = float(escala.get("basico_rem", 0.0) or 0.0)
-    nr_var = float(escala.get("nr_variable", 0.0) or 0.0)
-    suma_fija = float(escala.get("suma_fija_nr", 0.0) or 0.0)
-
-    items: List[Item] = []
-    items.append(Item("Básico", remunerativo=basico))
-
-    # Presentismo 8,33% sobre básico (REM)
-    presentismo = round(basico / 12, 2)
-    items.append(Item("Presentismo", remunerativo=presentismo))
-
-    # Antigüedad (regla general 1% no acumulativa; Agua Potable 2% acumulativa)
-    anios = int(d.anios_antiguedad or 0)
-    if rama == _norm("AGUA POTABLE"):
-        # 2% acumulativo
-        ant_pct = 0.02
-        antig = round((basico + nr_var + suma_fija) * (ant_pct * anios), 2)
-        items.append(Item("Antigüedad", remunerativo=round(basico * (ant_pct * anios), 2), no_rem=round((nr_var + suma_fija) * (ant_pct * anios), 2)))
-    else:
-        ant_pct = 0.01
-        antig = round((basico + nr_var + suma_fija) * (ant_pct * anios), 2)
-        items.append(Item("Antigüedad", remunerativo=round(basico * (ant_pct * anios), 2), no_rem=round((nr_var + suma_fija) * (ant_pct * anios), 2)))
-
-    # No remunerativos
-    if nr_var:
-        items.append(Item("No Rem (variable)", no_rem=nr_var))
-    if suma_fija:
-        items.append(Item("Suma fija (NR)", no_rem=suma_fija))
-
-    # Adicionales (ej. Fúnebres)
-    if rama == _norm("FUNEBRES"):
-        adic = valor_funebres(d, escala)
-        for it in adic:
-            items.append(Item(it["concepto"], remunerativo=it.get("rem", 0.0) or 0.0, no_rem=it.get("nr", 0.0) or 0.0))
-
-    # Totales
-    total_rem = round(sum(i.remunerativo for i in items), 2)
-    total_nr = round(sum(i.no_rem for i in items), 2)
-
-    # Descuentos (modelo simplificado)
-    # Jubilación 11% y PAMI 3% solo sobre REM
-    jub = round(total_rem * 0.11, 2)
-    pami = round(total_rem * 0.03, 2)
-
-    # OSECAC / FAECYS / Sindicato sobre (REM + NR total)
-    base_aportes_nr = total_rem + total_nr
-    osecac = round(base_aportes_nr * 0.03, 2)
-    faecys = round(base_aportes_nr * 0.005, 2)
-    sindicato = round(base_aportes_nr * 0.02, 2)
-
-    items.append(Item("Jubilación 11%", descuentos=jub))
-    items.append(Item("PAMI 3%", descuentos=pami))
-    items.append(Item("Obra Social 3%", descuentos=osecac))
-    items.append(Item("FAECYS 0,5%", descuentos=faecys))
-    items.append(Item("Sindicato 2%", descuentos=sindicato))
-
-    total_desc = round(jub + pami + osecac + faecys + sindicato, 2)
-    neto = round(total_rem + total_nr - total_desc, 2)
-
-    return {
-        "escala": escala,
-        "items": [
-            {
-                "concepto": i.concepto,
-                "rem": i.remunerativo,
-                "nr": i.no_rem,
-                "desc": i.descuentos,
-            }
-            for i in items
-        ],
-        "totales": {
-            "rem": total_rem,
-            "nr": total_nr,
-            "desc": total_desc,
-            "neto": neto,
-        },
-    }
+@app.get("/api/meta")
+def api_meta() -> Dict[str, Any]:
+    return _build_meta(get_payload())
