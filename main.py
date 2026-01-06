@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# Compat: tu repo venía usando models.py
-try:
-    from models import DatosEmpleado  # noqa: F401
-except Exception:
-    DatosEmpleado = None  # type: ignore
+from escalas import get_meta, get_payload
 
-from escalas import get_payload  # payload completo (escala + adicionales, etc.)
+app = FastAPI(title="Motor Sueldos FAECYS", version="v3")
 
-app = FastAPI(title="Motor Sueldos FAECYS", version="0.2.0")
-
-# CORS: permitir consumo desde file:// (origin "null") y desde cualquier dominio
-# Nota: allow_origins=["*"] sirve para la mayoría de casos. También habilitamos headers/métodos.
+# CORS (para que el HTML pueda llamar al backend desde cualquier dominio)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,87 +17,112 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------- META / PAYLOAD ----------------
+INDEX_HTML = """<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Motor Sueldos (Backend OK)</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px;line-height:1.35}
+    select,button{padding:10px 12px;font-size:16px;margin:6px 0;min-width:280px}
+    pre{background:#111;color:#eee;padding:12px;border-radius:10px;overflow:auto}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .card{border:1px solid #ddd;border-radius:12px;padding:16px;max-width:900px}
+  </style>
+</head>
+<body>
+  <h2>✅ Backend activo</h2>
+  <div class="card">
+    <p>Este es un <b>verificador</b>. Si acá ves las ramas/categorías, el problema ya no es Render ni el servidor.</p>
+    <div class="row">
+      <div>
+        <div><b>Rama</b></div>
+        <select id="rama"></select>
+      </div>
+      <div>
+        <div><b>Agrup</b></div>
+        <select id="agrup"></select>
+      </div>
+      <div>
+        <div><b>Categoría</b></div>
+        <select id="cat"></select>
+      </div>
+    </div>
+    <button id="btn">Probar /calcular</button>
+    <pre id="out">cargando…</pre>
+  </div>
 
-def _uniq_sorted(values: List[str]) -> List[str]:
-    out = sorted({(v or "").strip() for v in values if (v or "").strip()})
-    return out
+<script>
+(async function(){
+  const out = document.getElementById("out");
+  try{
+    const meta = await (await fetch("/meta")).json();
+    const ramaSel = document.getElementById("rama");
+    const agrupSel = document.getElementById("agrup");
+    const catSel = document.getElementById("cat");
 
-def _build_meta(payload: Dict[str, Any]) -> Dict[str, Any]:
-    rows: List[Dict[str, Any]] = payload.get("escala", []) or []
-    ramas = _uniq_sorted([r.get("Rama","") for r in rows])
-
-    agrup_by_rama: Dict[str, List[str]] = {}
-    cats_by_rama_agrup: Dict[str, Dict[str, List[str]]] = {}
-    meses_by_key: Dict[Tuple[str,str,str], List[str]] = {}
-
-    for r in rows:
-        rama = (r.get("Rama") or "").strip()
-        agr = (r.get("Agrup") or "").strip()
-        cat = (r.get("Categoria") or "").strip()
-        mes = (r.get("Mes") or "").strip()
-
-        if not rama or not cat or not mes:
-            continue
-
-        agrup_by_rama.setdefault(rama, [])
-        if agr and agr not in agrup_by_rama[rama]:
-            agrup_by_rama[rama].append(agr)
-
-        cats_by_rama_agrup.setdefault(rama, {})
-        cats_by_rama_agrup[rama].setdefault(agr or "—", [])
-        if cat not in cats_by_rama_agrup[rama][agr or "—"]:
-            cats_by_rama_agrup[rama][agr or "—"].append(cat)
-
-        key = (rama, agr or "—", cat)
-        meses_by_key.setdefault(key, [])
-        if mes not in meses_by_key[key]:
-            meses_by_key[key].append(mes)
-
-    # ordenar listas
-    for rama in agrup_by_rama:
-        agrup_by_rama[rama] = sorted(agrup_by_rama[rama])
-    for rama in cats_by_rama_agrup:
-        for agr in cats_by_rama_agrup[rama]:
-            cats_by_rama_agrup[rama][agr] = sorted(cats_by_rama_agrup[rama][agr])
-
-    meses_all = _uniq_sorted([r.get("Mes","") for r in rows])
-
-    return {
-        "ramas": ramas,
-        "agrupamientos": agrup_by_rama,
-        "categorias": cats_by_rama_agrup,
-        "meses": meses_all,
-        # Opcional: meses específicos por (rama,agrup,categoria)
-        "meses_por_clave": {f"{k[0]}||{k[1]}||{k[2]}": sorted(v) for k,v in meses_by_key.items()},
-        "version_payload": payload.get("version") or None,
+    function fillSelect(sel, items){
+      sel.innerHTML = "";
+      for(const it of items){
+        const o=document.createElement("option");
+        o.value=it; o.textContent=it;
+        sel.appendChild(o);
+      }
     }
 
-@app.get("/")
-def root() -> Dict[str, Any]:
-    return {"ok": True, "service": "motor-sueldos-faecys", "endpoints": ["/meta","/api/meta","/payload","/api/payload","/health"]}
+    fillSelect(ramaSel, meta.ramas || []);
+    function refreshAgrup(){
+      const r = ramaSel.value;
+      fillSelect(agrupSel, (meta.agrups && meta.agrups[r]) ? meta.agrups[r] : ["—"]);
+      refreshCat();
+    }
+    function refreshCat(){
+      const r = ramaSel.value;
+      const a = agrupSel.value;
+      const list = (meta.cats && meta.cats[r] && meta.cats[r][a]) ? meta.cats[r][a] : [];
+      fillSelect(catSel, list);
+    }
+    ramaSel.addEventListener("change", refreshAgrup);
+    agrupSel.addEventListener("change", refreshCat);
+    refreshAgrup();
 
-@app.head("/")
-def head_root():
-    # Render hace HEAD /
-    return
+    out.textContent = JSON.stringify({meta_preview: {ramas: meta.ramas}}, null, 2);
+
+    document.getElementById("btn").onclick = async () => {
+      const body = { rama: ramaSel.value, agrup: agrupSel.value, categoria: catSel.value };
+      const res = await fetch("/calcular", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+      const data = await res.json();
+      out.textContent = JSON.stringify(data, null, 2);
+    };
+  }catch(e){
+    out.textContent = "ERROR: " + (e && e.message ? e.message : String(e));
+  }
+})();
+</script>
+</body>
+</html>"""
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return INDEX_HTML
 
 @app.get("/health")
-def health() -> Dict[str, Any]:
+def health():
     return {"ok": True}
 
-@app.get("/payload")
-def payload() -> Dict[str, Any]:
-    return get_payload()
-
-@app.get("/api/payload")
-def api_payload() -> Dict[str, Any]:
-    return get_payload()
-
 @app.get("/meta")
-def meta() -> Dict[str, Any]:
-    return _build_meta(get_payload())
+def meta():
+    return get_meta()
 
-@app.get("/api/meta")
-def api_meta() -> Dict[str, Any]:
-    return _build_meta(get_payload())
+@app.get("/payload")
+def payload():
+    return get_payload()
+
+@app.post("/calcular")
+async def calcular(req: Request):
+    """
+    Placeholder: evita 404 y permite ir reemplazándolo por el motor real.
+    """
+    body = await req.json()
+    return {"ok": True, "received": body, "note": "Endpoint listo. Acá va el motor de cálculo real."}
