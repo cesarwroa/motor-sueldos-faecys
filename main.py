@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
-from escalas import get_meta, get_payload
+from escalas import get_meta, get_payload, find_row
 
-app = FastAPI(title="Motor Sueldos FAECYS", version="v3")
 
-# CORS (para que el HTML pueda llamar al backend desde cualquier dominio)
+app = FastAPI(title="Motor Sueldos FAECYS")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,112 +18,163 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-INDEX_HTML = """<!doctype html>
+
+class CalcularIn(BaseModel):
+    rama: str
+    agrup: str
+    categoria: str
+    mes: str
+
+
+@app.get("/", response_class=HTMLResponse)
+def home() -> str:
+    # Minimal UI to validate that meta/payload load OK in Render.
+    return """
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Motor Sueldos (Backend OK)</title>
+  <title>Motor Sueldos FAECYS</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px;line-height:1.35}
-    select,button{padding:10px 12px;font-size:16px;margin:6px 0;min-width:280px}
-    pre{background:#111;color:#eee;padding:12px;border-radius:10px;overflow:auto}
-    .row{display:flex;gap:16px;flex-wrap:wrap}
-    .card{border:1px solid #ddd;border-radius:12px;padding:16px;max-width:900px}
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;max-width:980px;margin:24px auto;padding:0 12px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    label{display:block;font-size:12px;margin:8px 0 4px;color:#333}
+    select,button{padding:10px 12px;font-size:14px}
+    pre{background:#f6f6f6;padding:12px;border-radius:8px;overflow:auto}
+    .card{border:1px solid #ddd;border-radius:10px;padding:12px;margin-top:12px}
   </style>
 </head>
 <body>
-  <h2>✅ Backend activo</h2>
-  <div class="card">
-    <p>Este es un <b>verificador</b>. Si acá ves las ramas/categorías, el problema ya no es Render ni el servidor.</p>
-    <div class="row">
-      <div>
-        <div><b>Rama</b></div>
-        <select id="rama"></select>
-      </div>
-      <div>
-        <div><b>Agrup</b></div>
-        <select id="agrup"></select>
-      </div>
-      <div>
-        <div><b>Categoría</b></div>
-        <select id="cat"></select>
-      </div>
+  <h1>Motor Sueldos FAECYS</h1>
+  <p>Si acá ves ramas/categorías, el servidor ya está trayendo el maestro correctamente.</p>
+
+  <div class="row">
+    <div>
+      <label>Rama</label>
+      <select id="rama"></select>
     </div>
+    <div>
+      <label>Agrupamiento</label>
+      <select id="agrup"></select>
+    </div>
+    <div>
+      <label>Categoría</label>
+      <select id="cat"></select>
+    </div>
+    <div>
+      <label>Mes</label>
+      <select id="mes"></select>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:12px">
     <button id="btn">Probar /calcular</button>
-    <pre id="out">cargando…</pre>
+  </div>
+
+  <div class="card">
+    <strong>Respuesta</strong>
+    <pre id="out">Cargando…</pre>
   </div>
 
 <script>
-(async function(){
+let META = null;
+
+function setOptions(sel, arr){
+  sel.innerHTML = "";
+  (arr || []).forEach(v => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+
+async function init(){
   const out = document.getElementById("out");
   try{
-    const meta = await (await fetch("/meta")).json();
+    META = await (await fetch("/meta")).json();
+
     const ramaSel = document.getElementById("rama");
-    const agrupSel = document.getElementById("agrup");
-    const catSel = document.getElementById("cat");
+    const agrSel  = document.getElementById("agrup");
+    const catSel  = document.getElementById("cat");
+    const mesSel  = document.getElementById("mes");
 
-    function fillSelect(sel, items){
-      sel.innerHTML = "";
-      for(const it of items){
-        const o=document.createElement("option");
-        o.value=it; o.textContent=it;
-        sel.appendChild(o);
-      }
-    }
+    setOptions(ramaSel, META.ramas);
+    setOptions(mesSel, META.meses);
 
-    fillSelect(ramaSel, meta.ramas || []);
-    function refreshAgrup(){
+    function refreshAgr(){
       const r = ramaSel.value;
-      fillSelect(agrupSel, (meta.agrups && meta.agrups[r]) ? meta.agrups[r] : ["—"]);
+      setOptions(agrSel, (META.agrupamientos && META.agrupamientos[r]) || ["—"]);
       refreshCat();
     }
+
     function refreshCat(){
       const r = ramaSel.value;
-      const a = agrupSel.value;
-      const list = (meta.cats && meta.cats[r] && meta.cats[r][a]) ? meta.cats[r][a] : [];
-      fillSelect(catSel, list);
+      const a = agrSel.value;
+      const key = `${r}||${a}`;
+      setOptions(catSel, (META.categorias && META.categorias[key]) || []);
     }
-    ramaSel.addEventListener("change", refreshAgrup);
-    agrupSel.addEventListener("change", refreshCat);
-    refreshAgrup();
 
-    out.textContent = JSON.stringify({meta_preview: {ramas: meta.ramas}}, null, 2);
+    ramaSel.addEventListener("change", refreshAgr);
+    agrSel.addEventListener("change", refreshCat);
 
-    document.getElementById("btn").onclick = async () => {
-      const body = { rama: ramaSel.value, agrup: agrupSel.value, categoria: catSel.value };
-      const res = await fetch("/calcular", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
-      const data = await res.json();
-      out.textContent = JSON.stringify(data, null, 2);
-    };
+    refreshAgr();
+
+    out.textContent = "Listo. Elegí valores y apretá Probar.";
   }catch(e){
-    out.textContent = "ERROR: " + (e && e.message ? e.message : String(e));
+    out.textContent = "Error cargando /meta: " + (e?.message || e);
   }
-})();
+}
+
+document.getElementById("btn").addEventListener("click", async ()=>{
+  const out = document.getElementById("out");
+  const payload = {
+    rama: document.getElementById("rama").value,
+    agrup: document.getElementById("agrup").value,
+    categoria: document.getElementById("cat").value,
+    mes: document.getElementById("mes").value
+  };
+  try{
+    const res = await fetch("/calcular", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    const data = await res.json();
+    out.textContent = JSON.stringify(data, null, 2);
+  }catch(e){
+    out.textContent = "Error llamando /calcular: " + (e?.message || e);
+  }
+});
+
+init();
 </script>
 </body>
-</html>"""
+</html>
+"""
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return INDEX_HTML
-
-@app.get("/health")
-def health():
-    return {"ok": True}
 
 @app.get("/meta")
 def meta():
     return get_meta()
 
+
 @app.get("/payload")
 def payload():
     return get_payload()
 
+
 @app.post("/calcular")
-async def calcular(req: Request):
-    """
-    Placeholder: evita 404 y permite ir reemplazándolo por el motor real.
-    """
-    body = await req.json()
-    return {"ok": True, "received": body, "note": "Endpoint listo. Acá va el motor de cálculo real."}
+def calcular(inp: CalcularIn):
+    row = find_row(inp.rama, inp.agrup, inp.categoria, inp.mes)
+    if not row:
+        raise HTTPException(status_code=404, detail="No se encontró combinación Rama/Agrup/Categoría/Mes en el maestro")
+    # Por ahora devolvemos base (esto te destraba el front: 200 OK y datos reales)
+    return {
+        "ok": True,
+        "rama": inp.rama,
+        "agrup": inp.agrup,
+        "categoria": inp.categoria,
+        "mes": inp.mes,
+        "basico": row["basico"],
+        "no_rem_1": row["no_rem_1"],
+        "no_rem_2": row["no_rem_2"],
+        "nota": "Este endpoint es el esqueleto. El cálculo completo del recibo se integra después.",
+    }
