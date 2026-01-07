@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>ComercioOnline — Recibo (Server-Side)</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:18px;max-width:1150px}
+    h1{margin:0 0 10px}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    label{font-size:12px;color:#333;display:block;margin:6px 0 4px}
+    select,input{width:100%;padding:10px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px}
+    .card{border:1px solid #ddd;border-radius:12px;padding:12px;margin-top:12px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    button{padding:10px 14px;border:0;border-radius:10px;background:#111;color:#fff;font-size:14px;cursor:pointer}
+    button.secondary{background:#444}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #eee;padding:8px 6px;text-align:right;font-size:13px}
+    th:first-child,td:first-child{text-align:left}
+    tfoot td{font-weight:700}
+    .muted{color:#666;font-size:12px}
+    .hide{display:none}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f2f2f2;font-size:12px}
+  </style>
+</head>
+<body>
+  <h1>Recibo de Sueldo — Online (Cálculo en Servidor)</h1>
+  <div class="muted">El HTML solo envía datos. El servidor devuelve el recibo completo.</div>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Rama</label>
+        <select id="rama"></select>
+      </div>
+      <div>
+        <label>Agrupamiento</label>
+        <select id="agrup"></select>
+      </div>
+      <div>
+        <label>Categoría</label>
+        <select id="categoria"></select>
+      </div>
+      <div>
+        <label>Mes</label>
+        <select id="mes"></select>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:6px">
+      <div>
+        <label>Horas semanales</label>
+        <input id="hs" type="number" min="1" max="48" value="48"/>
+      </div>
+      <div>
+        <label>Años de antigüedad</label>
+        <input id="anios" type="number" min="0" value="0"/>
+      </div>
+      <div>
+        <label>Zona desfavorable (%)</label>
+        <input id="zona_pct" type="number" step="0.01" value="0"/>
+      </div>
+      <div>
+        <label>Modo</label>
+        <select id="modo">
+          <option value="MENSUAL">Mensual</option>
+          <option value="FINAL">Liquidación Final</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="row">
+        <label><input type="checkbox" id="presentismo" checked/> Presentismo</label>
+        <label><input type="checkbox" id="afiliado"/> Afiliado sindicato</label>
+        <label><input type="checkbox" id="osecac" checked/> OSECAC</label>
+        <label><input type="checkbox" id="jubilado"/> Jubilado</label>
+      </div>
+      <div>
+        <label>A cuenta (Rem)</label>
+        <input id="a_cuenta" type="number" step="0.01" value="0"/>
+      </div>
+    </div>
+
+    <!-- Turismo -->
+    <div id="turismoBlock" class="card hide">
+      <div class="row">
+        <div style="flex:1">
+          <label>Adicional por Título (Turismo)</label>
+          <select id="tur_titulo_pct">
+            <option value="0">Sin título</option>
+            <option value="2.5">2,5% (Terciario)</option>
+            <option value="5">5% (Licenciatura)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agua Potable -->
+    <div id="aguaBlock" class="card hide">
+      <div class="row">
+        <div style="flex:1">
+          <label>Conexiones (Agua Potable)</label>
+          <input id="agua_conex" type="number" min="0" value="0"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fúnebres -->
+    <div id="funBlock" class="card hide">
+      <div class="row">
+        <label><input type="checkbox" id="funAdic1"/> Adic. 1</label>
+        <label><input type="checkbox" id="funAdic2"/> Adic. 2</label>
+        <label><input type="checkbox" id="funAdic3"/> Adic. 3</label>
+        <label><input type="checkbox" id="funAdic4"/> Adic. 4</label>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:6px">
+      <div>
+        <label>Viáticos (NR sin aportes)</label>
+        <input id="viaticos_nr" type="number" step="0.01" value="0"/>
+      </div>
+      <div>
+        <label>Horas extra 50%</label>
+        <input id="hex50" type="number" step="0.01" value="0"/>
+      </div>
+      <div>
+        <label>Horas extra 100%</label>
+        <input id="hex100" type="number" step="0.01" value="0"/>
+      </div>
+      <div>
+        <label>Horas nocturnas</label>
+        <input id="noct" type="number" step="0.01" value="0"/>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:6px">
+      <div>
+        <label>Feriados no trabajados</label>
+        <input id="fer_no" type="number" min="0" value="0"/>
+      </div>
+      <div>
+        <label>Feriados trabajados</label>
+        <input id="fer_si" type="number" min="0" value="0"/>
+      </div>
+      <div>
+        <label>Vacaciones gozadas (días)</label>
+        <input id="vac_goz" type="number" min="0" value="0"/>
+      </div>
+      <div>
+        <label>Licencia sin goce / suspensión (días)</label>
+        <input id="lic_sg" type="number" min="0" value="0"/>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:6px">
+      <div>
+        <label>Ausencias injustificadas (días)</label>
+        <input id="aus" type="number" min="0" value="0"/>
+      </div>
+      <div>
+        <label>Faltante de caja</label>
+        <input id="faltante" type="number" step="0.01" value="0"/>
+      </div>
+      <div>
+        <label>Embargo</label>
+        <input id="embargo" type="number" step="0.01" value="0"/>
+      </div>
+      <div class="row">
+        <button id="btnCalc">Calcular</button>
+        <button class="secondary" id="btnReload" title="Si cambiaste el Excel en el servidor">Recargar maestro</button>
+      </div>
+    </div>
+
+    <!-- Liquidación final -->
+    <div id="finalBlock" class="card hide">
+      <div class="grid">
+        <div>
+          <label>Tipo</label>
+          <select id="lf_tipo">
+            <option value="RENUNCIA">Renuncia</option>
+            <option value="DESPIDO_CON_CAUSA">Despido con causa</option>
+            <option value="DESPIDO_SIN_CAUSA">Despido sin causa</option>
+          </select>
+        </div>
+        <div>
+          <label>Fecha ingreso</label>
+          <input id="lf_ingreso" type="date"/>
+        </div>
+        <div>
+          <label>Fecha egreso</label>
+          <input id="lf_egreso" type="date"/>
+        </div>
+        <div>
+          <label>MRMNH (base indemnizatoria) opcional</label>
+          <input id="lf_mrmnh" type="number" step="0.01" value="0"/>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:6px">
+        <div>
+          <label>Preaviso (días)</label>
+          <input id="lf_preaviso" type="number" min="0" value="0"/>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="lf_integracion"/> Integración mes despido</label>
+          <label><input type="checkbox" id="lf_sac_pre"/> SAC s/ Preaviso</label>
+          <label><input type="checkbox" id="lf_sac_int"/> SAC s/ Integración</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><strong>Recibo</strong> <span class="pill" id="pillModo">—</span></div>
+      <div class="muted" id="status">Listo</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th>Base</th>
+          <th>Remunerativo</th>
+          <th>No Remunerativo</th>
+          <th>Deducciones</th>
+        </tr>
+      </thead>
+      <tbody id="tb"></tbody>
+      <tfoot>
+        <tr>
+          <td>Total</td>
+          <td></td>
+          <td id="tRem">0,00</td>
+          <td id="tNR">0,00</td>
+          <td id="tDed">0,00</td>
+        </tr>
+        <tr>
+          <td colspan="4">Neto a cobrar</td>
+          <td id="tNeto">0,00</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+<script>
+let META = null;
+
+const $ = (id) => document.getElementById(id);
+
+function fmt(n){
+  const x = Number(n || 0);
+  return x.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function num(id){ return Number(String($(id).value || "0").replace(",", ".")) || 0; }
+function val(id){ return $(id).value; }
+function chk(id){ return $(id).checked; }
+
+function setOptions(sel, arr){
+  sel.innerHTML = "";
+  (arr || []).forEach(v => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+
+function refreshBlocks(){
+  const rama = val("rama").toUpperCase();
+  $("turismoBlock").classList.toggle("hide", rama !== "TURISMO");
+  $("aguaBlock").classList.toggle("hide", rama !== "AGUA POTABLE");
+  $("funBlock").classList.toggle("hide", !(rama === "FUNEBRES" || rama === "FÚNEBRES"));
+  $("finalBlock").classList.toggle("hide", val("modo") !== "FINAL");
+}
+
+async function init(){
+  $("status").textContent = "Cargando /meta…";
+  META = await (await fetch("/meta")).json();
+
+  setOptions($("rama"), META.ramas);
+  setOptions($("mes"), META.meses);
+
+  function refreshAgr(){
+    const r = val("rama");
+    setOptions($("agrup"), (META.agrupamientos && META.agrupamientos[r]) || ["—"]);
+    refreshCat();
+    refreshBlocks();
+  }
+  function refreshCat(){
+    const r = val("rama");
+    const a = val("agrup");
+    const key = `${r}||${a}`;
+    setOptions($("categoria"), (META.categorias && META.categorias[key]) || []);
+  }
+
+  $("rama").addEventListener("change", refreshAgr);
+  $("agrup").addEventListener("change", refreshCat);
+  $("modo").addEventListener("change", refreshBlocks);
+
+  refreshAgr();
+  $("status").textContent = "Listo.";
+}
+
+function renderRecibo(data){
+  $("pillModo").textContent = data.modo || "—";
+  const tb = $("tb");
+  tb.innerHTML = "";
+
+  (data.items || []).forEach(it => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${it.concepto || ""}</td>
+      <td>${fmt(it.base)}</td>
+      <td>${fmt(it.remunerativo)}</td>
+      <td>${fmt(it.no_remunerativo)}</td>
+      <td>${fmt(it.deduccion)}</td>
+    `;
+    tb.appendChild(tr);
+  });
+
+  const t = data.totales || {};
+  $("tRem").textContent = fmt(t.remunerativo);
+  $("tNR").textContent  = fmt(t.no_remunerativo);
+  $("tDed").textContent = fmt(t.deducciones);
+  $("tNeto").textContent= fmt(t.neto);
+}
+
+$("btnCalc").addEventListener("click", async ()=>{
+  $("status").textContent = "Calculando…";
+  refreshBlocks();
+
+  const payload = {
+    rama: val("rama"),
+    agrup: val("agrup"),
+    categoria: val("categoria"),
+    mes: val("mes"),
+
+    modo: val("modo"),
+    hs: num("hs"),
+    anios: num("anios"),
+    zona_pct: num("zona_pct"),
+    presentismo: chk("presentismo"),
+    afiliado: chk("afiliado"),
+    osecac: chk("osecac"),
+    jubilado: chk("jubilado"),
+
+    a_cuenta: num("a_cuenta"),
+    viaticos_nr: num("viaticos_nr"),
+
+    tur_titulo_pct: Number(val("tur_titulo_pct") || 0),
+    agua_conex: num("agua_conex"),
+
+    funAdic1: chk("funAdic1"),
+    funAdic2: chk("funAdic2"),
+    funAdic3: chk("funAdic3"),
+    funAdic4: chk("funAdic4"),
+
+    hex50: num("hex50"),
+    hex100: num("hex100"),
+    noct: num("noct"),
+    fer_no: num("fer_no"),
+    fer_si: num("fer_si"),
+    vac_goz: num("vac_goz"),
+    lic_sg: num("lic_sg"),
+    aus: num("aus"),
+    faltante: num("faltante"),
+    embargo: num("embargo"),
+
+    lf_tipo: val("lf_tipo"),
+    lf_ingreso: val("lf_ingreso"),
+    lf_egreso: val("lf_egreso"),
+    lf_mrmnh: num("lf_mrmnh"),
+    lf_preaviso: num("lf_preaviso"),
+    lf_integracion: chk("lf_integracion"),
+    lf_sac_pre: chk("lf_sac_pre"),
+    lf_sac_int: chk("lf_sac_int")
+  };
+
+  try{
+    const res = await fetch("/calcular", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(!res.ok){
+      throw new Error((data && (data.detail || data.error)) || "Error");
+    }
+    renderRecibo(data);
+    $("status").textContent = "OK";
+  }catch(e){
+    $("status").textContent = "Error: " + (e?.message || e);
+  }
+});
+
+$("btnReload").addEventListener("click", async ()=>{
+  $("status").textContent = "Recargando…";
+  try{
+    await fetch("/reload", {method:"POST"});
+    await init();
+    $("status").textContent = "Recargado.";
+  }catch(e){
+    $("status").textContent = "Error: " + (e?.message || e);
+  }
+});
+
+init();
+</script>
+</body>
+</html>
