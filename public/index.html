@@ -110,7 +110,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 .co-masked{color:transparent !important; text-shadow:none !important;}
 </style>
 </head>
-<body><div style="position:fixed;top:35%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:44px;font-weight:700;color:rgba(0,0,0,0.06);white-space:nowrap;pointer-events:none;z-index:0;text-transform:uppercase;">SECRETARÍA DE ASUNTOS LABORALES – FAECYS</div><div style="background:#0a3a63;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #062135;"><div><div style="font-size:18px;font-weight:700;letter-spacing:0.04em">SECRETARÍA DE ASUNTOS LABORALES</div><div style="font-size:12px;opacity:0.9">FAECYS – Federación Argentina de Empleados de Comercio y Servicios</div></div></div>
+<body class="hide-base-col"><!-- watermark removed -->
 <style>
   .vbadge{position:sticky;top:0;z-index:999;background:#111;color:#fff;padding:6px 10px;font:12px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;border-bottom:1px solid #000}
   .vbadge small{opacity:.7}
@@ -778,9 +778,10 @@ function refreshSelectors() {
       }
 
       if (data && data.ok) {
-        const b = Number(data.basico ?? 0) || 0;
-        const nr1 = Number(data.no_rem_1 ?? 0) || 0;
-        const nr2 = Number(data.no_rem_2 ?? 0) || 0;
+        const A = data.auto || {};
+        const b = Number(A.basico ?? data.basico ?? 0) || 0;
+        const nr1 = Number(A.nr_var ?? data.no_rem_1 ?? 0) || 0;
+        const nr2 = Number(A.nr_sf ?? data.no_rem_2 ?? 0) || 0;
 
         setValue("basico", b);
         setValue("nrVar", nr1);
@@ -930,10 +931,16 @@ function toggleRamaBlocks() {
     (data.items || []).forEach(it => addRow(tbodyId, it));
 
     // totales
-    setText(totRemId, money(data.totales?.total_rem ?? 0));
-    setText(totNrId, money(data.totales?.total_nr ?? 0));
-    setText(totDedId, money(data.totales?.total_deducciones ?? 0));
-    setText(netoId, money(data.totales?.neto ?? 0));
+    const T = data.totales || {};
+    const totalRem = (T.total_rem ?? T.remunerativo ?? T.totalRem ?? 0);
+    const totalNr  = (T.total_nr  ?? T.no_remunerativo ?? T.totalNr ?? 0);
+    const totalDed = (T.total_deducciones ?? T.deducciones ?? T.totalDed ?? 0);
+    const neto     = (T.neto ?? 0);
+    setText(totRemId, money(totalRem));
+    setText(totNrId, money(totalNr));
+    setText(totDedId, money(totalDed));
+    setText(netoId, money(neto));
+
 
     // auto (mostrar en inputs sin exponer maestro)
     const auto = data.auto || (data && data.ok ? {
@@ -1011,6 +1018,15 @@ function toggleRamaBlocks() {
 
   document.addEventListener("DOMContentLoaded", boot);
 })();
+
+// toggle-base-num-init
+document.addEventListener("DOMContentLoaded", () => {
+  const cb = document.getElementById("co-toggle-base-num");
+  if (!cb) return;
+  const apply = () => document.body.classList.toggle("hide-base-col", !cb.checked);
+  cb.addEventListener("change", apply);
+  apply();
+});
 </script>
 
 </body>
