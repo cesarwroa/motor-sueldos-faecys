@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Recibo de Sueldo - Secretaría de Asuntos Laborales - FAECYS</title>
+<title>Recibo de Sueldo</title>
 <style>
 :root{ --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --grid:#e2e8f0; }
 *{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
@@ -110,25 +110,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 .co-masked{color:transparent !important; text-shadow:none !important;}
 </style>
 </head>
-<body class="hide-base-col"><!-- watermark removed -->
-<style>
-  .vbadge{position:sticky;top:0;z-index:999;background:#111;color:#fff;padding:6px 10px;font:12px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;border-bottom:1px solid #000}
-  .vbadge small{opacity:.7}
-  .co-watermark{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:.06;font-size:72px;font-weight:800;letter-spacing:2px;transform:rotate(-24deg)}
-  @media print{ .vbadge{display:none}; .co-watermark{display:flex} }
-  .co-logo-ctl{display:none;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px;border-bottom:1px dashed #e5e7eb;background:#fafafa}
-  .co-logo-ctl input{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
-  .co-logo-preview img{height:36px;max-width:220px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px;background:#fff}
-</style>
-
-<div class="co-logo-ctl">
-<input id="co_logo_url" oninput="(function(u){var img=document.getElementById('co_logo_img'); if(!img)return; if(u.value){img.src=u.value; img.style.display='inline-block';} else {img.style.display='none';}})(this)" placeholder="URL del logo (opcional)"/>
-<div class="co-logo-preview"><img alt="logo" id="co_logo_img" style="display:none"/></div>
-</div>
-
-
-<!-- Patch deshabilitado: evitaba doble proporcional pero inflaba el neto al recalcular múltiples veces -->
-
+<body>
 <div class="container">
 <h1>Sistema de Liquidación de Haberes</h1>
 <div class="tabs no-print">
@@ -173,7 +155,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="window.print()" type="button">Imprimir / PDF</button>
+<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="toggleBase"> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">
@@ -200,7 +182,7 @@ Recibo Mensual</div>
 <div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
+<thead><tr><th>Concepto</th><th class="right col-base-num">Base</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyMensual"></tbody>
 <tfoot>
 <tr>
@@ -250,7 +232,7 @@ Recibo Mensual</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
 <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
-<button onclick="window.print()" type="button">Imprimir / PDF</button>
+<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="toggleBase"> Ver base</label>
 <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
@@ -503,7 +485,7 @@ Recibo Mensual</div>
 
 <script>
 (() => {
-  const API_BASE = "";
+  const API_BASE = "https://motor-sueldos-faecys.onrender.com";
   const ENDPOINT_CALC = API_BASE + "/calcular";
   const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
@@ -778,10 +760,9 @@ function refreshSelectors() {
       }
 
       if (data && data.ok) {
-        const A = data.auto || {};
-        const b = Number(A.basico ?? data.basico ?? 0) || 0;
-        const nr1 = Number(A.nr_var ?? data.no_rem_1 ?? 0) || 0;
-        const nr2 = Number(A.nr_sf ?? data.no_rem_2 ?? 0) || 0;
+        const b = Number(data.basico ?? 0) || 0;
+        const nr1 = Number(data.no_rem_1 ?? 0) || 0;
+        const nr2 = Number(data.no_rem_2 ?? 0) || 0;
 
         setValue("basico", b);
         setValue("nrVar", nr1);
@@ -892,76 +873,64 @@ function toggleRamaBlocks() {
     };
   }
 
-  async function postCalculo(payload, tbodyId, totRemId, totNrId, totDedId, netoId) {
-    const data = await fetchJSON(ENDPOINT_CALC, payload);
-    // Si el backend aún devuelve solo base (esqueleto), armamos items/totales acá para que el botón "Calcular" muestre algo visible.
-    const ramaSel = String(payload?.rama || val("rama") || "").toUpperCase();
-    const pctTitulo = Number((document.getElementById("turTitulo")?.value ?? 0)) || 0;
-    const b0 = Number(data?.basico ?? 0) || 0;
-    const nr1 = Number(data?.no_rem_1 ?? 0) || 0;
-    const nr2 = Number(data?.no_rem_2 ?? 0) || 0;
+  
 
-    if ((!data.items || !Array.isArray(data.items)) && data && data.ok) {
-      const items = [];
-      items.push({ concepto: "Básico (REM)", base: b0, remunerativo: b0, no_remunerativo: 0, deduccion: 0 });
-      if (nr1) items.push({ concepto: "No Rem (variable)", base: nr1, remunerativo: 0, no_remunerativo: nr1, deduccion: 0 });
-      if (nr2) items.push({ concepto: "Suma Fija (NR)", base: nr2, remunerativo: 0, no_remunerativo: nr2, deduccion: 0 });
+async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
+  // Server-side: el backend devuelve "items" y "totales" listos.
+  const url = new URL(`${API_BASE}/calcular`, window.location.href);
+  url.searchParams.set("rama", payload.rama);
+  url.searchParams.set("agrup", payload.agrup || "—");
+  url.searchParams.set("categoria", payload.categoria || "—");
+  url.searchParams.set("mes", payload.mes);
 
-      // Turismo: Adicional por título (solo UI + cálculo simple)
-      if (ramaSel.includes("TURISMO") && pctTitulo > 0) {
-        const t = pctTitulo / 100.0;
-        const addRem = +(b0 * t);
-        const addNR = +((nr1 + nr2) * t);
-        if (addRem) items.push({ concepto: `Adicional por Título (REM) ${pctTitulo}%`, base: b0, remunerativo: addRem, no_remunerativo: 0, deduccion: 0 });
-        if (addNR) items.push({ concepto: `Adicional por Título (NR) ${pctTitulo}%`, base: (nr1 + nr2), remunerativo: 0, no_remunerativo: addNR, deduccion: 0 });
-      }
+  // Jornada y antigüedad (si no existen, usa 48 y 0)
+  const hs = num("hs", 48);
+  const anios = num("antig", 0);
+  url.searchParams.set("jornada", String(hs));
+  url.searchParams.set("anios_antig", String(anios));
 
-      const total_rem = items.reduce((s,it)=>s+(Number(it.remunerativo)||0),0);
-      const total_nr = items.reduce((s,it)=>s+(Number(it.no_remunerativo)||0),0);
-      const total_deducciones = 0;
-      const neto = total_rem + total_nr - total_deducciones;
+  // OSECAC
+  const osVal = (val("osecac") || "si").toLowerCase();
+  url.searchParams.set("osecac", String(osVal !== "no"));
 
-      data.items = items;
-      data.totales = { total_rem, total_nr, total_deducciones, neto };
-    }
+  // Sindicato
+  const afiliado = chk("afiliado");
+  const sindPct = afiliado ? num("afiliado_selector", 2) : 0;
+  url.searchParams.set("afiliado", String(afiliado));
+  url.searchParams.set("sind_pct", String(sindPct));
 
+  // Título (Turismo)
+  const titPct = num("pctTitulo", 0);
+  url.searchParams.set("titulo_pct", String(titPct));
 
-    // llenar tabla
-    clearTbody(tbodyId);
-    (data.items || []).forEach(it => addRow(tbodyId, it));
+  const data = await fetchJson(url.toString());
 
-    // totales
-    const T = data.totales || {};
-    const totalRem = (T.total_rem ?? T.remunerativo ?? T.totalRem ?? 0);
-    const totalNr  = (T.total_nr  ?? T.no_remunerativo ?? T.totalNr ?? 0);
-    const totalDed = (T.total_deducciones ?? T.deducciones ?? T.totalDed ?? 0);
-    const neto     = (T.neto ?? 0);
-    setText(totRemId, money(totalRem));
-    setText(totNrId, money(totalNr));
-    setText(totDedId, money(totalDed));
-    setText(netoId, money(neto));
+  // Encabezado informativo
+  document.getElementById("selInfo").textContent =
+    `Rama: ${data.rama} · Agrup: ${data.agrup} · Cat: ${data.categoria} · Escala ${data.mes}`;
 
+  // Tabla
+  const tbody = document.getElementById(tbodyId);
+  resetTabla(tbodyId);
+  (data.items || []).forEach(it => addRow(tbody, it));
 
-    // auto (mostrar en inputs sin exponer maestro)
-    const auto = data.auto || (data && data.ok ? {
-      basico: data.basico,
-      nrVar: data.no_rem_1,
-      nrSF: data.no_rem_2,
-      nrTotal: (Number(data.no_rem_1 ?? 0) || 0) + (Number(data.no_rem_2 ?? 0) || 0)
-    } : null);
+  // Totales
+  const tot = data.totales || {};
+  document.getElementById(totalsIds.rem).textContent = money(tot.rem || 0);
+  document.getElementById(totalsIds.nr).textContent  = money(tot.nr || 0);
+  document.getElementById(totalsIds.ded).textContent = money(tot.ded || 0);
+  document.getElementById(totalsIds.neto).textContent= money(tot.neto || 0);
 
-    if (auto) {
-      setValue("basico", auto.basico ?? 0);
-      setValue("nrVar", auto.nrVar ?? 0);
-      setValue("nrSF", auto.nrSF ?? 0);
-      setValue("nrTotal", auto.nrTotal ?? 0);
-    }
-
-    setText("status", "OK");
-    return data;
+  // Base total (informativa)
+  if(document.getElementById(totalsIds.base)){
+    document.getElementById(totalsIds.base).textContent = money(0);
   }
 
-  // -------- Handlers públicos (usan IDs existentes) --------
+  return data;
+}
+
+
+// -------- Handlers públicos (usan IDs existentes) --------
   window.calcularMensual = async function() {
     try {
       const payload = buildPayloadMensual();
@@ -1018,15 +987,6 @@ function toggleRamaBlocks() {
 
   document.addEventListener("DOMContentLoaded", boot);
 })();
-
-// toggle-base-num-init
-document.addEventListener("DOMContentLoaded", () => {
-  const cb = document.getElementById("co-toggle-base-num");
-  if (!cb) return;
-  const apply = () => document.body.classList.toggle("hide-base-col", !cb.checked);
-  cb.addEventListener("change", apply);
-  apply();
-});
 </script>
 
 </body>

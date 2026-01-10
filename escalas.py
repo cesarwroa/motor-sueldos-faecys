@@ -1,241 +1,217 @@
+
 from __future__ import annotations
 
+import datetime
+import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import os
-import re
-import datetime as dt
 
-import openpyxl
+from openpyxl import load_workbook
+
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_MAESTRO_PATH = BASE_DIR / "maestro.xlsx"
+
+# Ramas "oficiales" que queremos siempre presentes en /meta (aunque el Excel venga incompleto)
+FORCED_RAMAS = ["GENERAL", "TURISMO", "CEREALES", "CALL CENTER", "AGUA POTABLE", "FUNEBRES"]
+INVALID_RAMAS = {"MES - AÑO", "MES", "AÑO", "ANO"}
 
 
-# Permite override en Render / Docker:
-# export MAESTRO_PATH=/app/COMERCIOONLINE_MAESTRO.xlsx
-_DEFAULT = Path(__file__).with_name("maestro.xlsx")
-MAESTRO_PATH = Path(os.getenv("MAESTRO_PATH", str(_DEFAULT)))
+def _to_str(v: Any) -> str:
+    return "" if v is None else str(v).strip()
+
+
+def _looks_like_date_or_number(v: Any) -> bool:
+    # Filtra datetime/date y también strings que se parsean como fechas tipo "2025-12-01 00:00:00"
+    if v is None:
+        return True
+    if isinstance(v, (int, float)):
+        return True
+    if isinstance(v, (datetime.date, datetime.datetime)):
+        return True
+    s = _to_str(v)
+    if not s:
+        return True
+    # YYYY-MM o YYYY-MM-DD (con o sin hora)
+    if re.match(r"^\d{4}-\d{2}(-\d{2})?(\s+\d{2}:\d{2}:\d{2})?$", s):
+        return True
+    # dd/mm/aaaa
+    if re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", s):
+        return True
+    return False
+
+
+def _norm_rama(rama: str) -> str:
+    s = _to_str(rama).upper()
+    # Normalizaciones típicas
+    s = s.replace("CENTRO DE LLAMADAS", "CALL CENTER")
+    s = s.replace("CALLCENTER", "CALL CENTER")
+    s = s.replace("FÚNEBRES", "FUNEBRES")
+    s = s.replace("AGUA POTABLE", "AGUA POTABLE")
+    return s
 
 
 @dataclass(frozen=True)
-class Row:
+class ScaleRow:
     rama: str
     agrup: str
     categoria: str
-    mes: str  # "YYYY-MM"
+    mes: str  # YYYY-MM
     basico: float
-    no_rem_1: float
-    no_rem_2: float
+    no_rem: float
+    suma_fija: float
 
 
-_CACHE: Optional[Dict[str, Any]] = None
+@lru_cache(maxsize=2)
+def _load_rows(maestro_path: str) -> List[ScaleRow]:
+    path = Path(maestro_path) if maestro_path else DEFAULT_MAESTRO_PATH
+    wb = load_workbook(path, data_only=True)
 
-
-def _to_float(x: Any) -> float:
-    if x is None:
-        return 0.0
-    if isinstance(x, (int, float)) and not isinstance(x, bool):
-        return float(x)
-    s = str(x).strip()
-    if not s:
-        return 0.0
-    # allow "1.234.567,89"
-    s = s.replace(".", "").replace(",", ".")
-    try:
-        return float(s)
-    except Exception:
-        return 0.0
-
-
-def _norm_mes(x: Any) -> str:
-    """Devuelve 'YYYY-MM' o '' si no puede."""
-    if x is None:
-        return ""
-    if isinstance(x, (dt.datetime, dt.date)):
-        return x.strftime("%Y-%m")
-    if isinstance(x, (int, float)) and not isinstance(x, bool):
-        # Evitar '180000' u otros numéricos mal ubicados
-        return ""
-    s = str(x).strip()
-    if not s:
-        return ""
-    # allow "2026-01-01" -> "2026-01"
-    if len(s) >= 7 and s[4] == "-" and s[0:4].isdigit() and s[5:7].isdigit():
-        return s[:7]
-    # intentar parseo a datetime
-    try:
-        ts = openpyxl.utils.datetime.from_excel(x)  # type: ignore
-        if isinstance(ts, (dt.datetime, dt.date)):
-            return ts.strftime("%Y-%m")
-    except Exception:
-        pass
-    return ""
-
-
-def _norm_rama_from_sheet(sheet_name: str) -> str:
-    rama = sheet_name.replace("Categorias_", "").replace("_", " ").strip().upper()
-    # Normalizaciones frecuentes
-    rama = rama.replace("FÚNEBRES", "FUNEBRES")
-    return rama
-
-
-def _is_standard_tabular_sheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> bool:
-    a1 = str(ws.cell(1, 1).value or "").strip().lower()
-    b1 = str(ws.cell(1, 2).value or "").strip().lower()
-    c1 = str(ws.cell(1, 3).value or "").strip().lower()
-    d1 = str(ws.cell(1, 4).value or "").strip().lower()
-    # Formato esperado:
-    # Rama | Agrupamiento | Categoria | Mes | Basico | ...
-    return a1 == "rama" and "agrup" in b1 and "categ" in c1 and d1.startswith("mes")
-
-
-def _scan_meses_in_sheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> set[str]:
-    """Para hojas no tabulares (p.ej. Agua Potable), extrae meses detectando fechas."""
-    meses: set[str] = set()
-    # escanear la columna A primero (donde suelen estar las vigencias)
-    for r in range(1, ws.max_row + 1):
-        v = ws.cell(r, 1).value
-        if isinstance(v, (dt.datetime, dt.date)):
-            meses.add(v.strftime("%Y-%m"))
-        else:
-            s = str(v).strip() if v is not None else ""
-            m = re.match(r"^(\d{4})[-/](\d{2})", s)
-            if m:
-                meses.add(f"{m.group(1)}-{m.group(2)}")
-    return meses
-
-
-def _load_payload() -> Dict[str, Any]:
-    global _CACHE
-    if _CACHE is not None:
-        return _CACHE
-
-    if not MAESTRO_PATH.exists():
-        raise FileNotFoundError(f"No se encontró el maestro en {MAESTRO_PATH}")
-
-    wb = openpyxl.load_workbook(MAESTRO_PATH, data_only=True)
-
-    rows: List[Dict[str, Any]] = []
-    ramas: set[str] = set()
-    agrups_by_rama: Dict[str, set[str]] = {}
-    cats_by_rama_agrup: Dict[Tuple[str, str], set[str]] = {}
-    meses: set[str] = set()
+    rows: List[ScaleRow] = []
 
     for name in wb.sheetnames:
         if not name.startswith("Categorias_"):
             continue
-
         ws = wb[name]
-        rama_sheet = _norm_rama_from_sheet(name)
-        ramas.add(rama_sheet)
 
-        # Hojas no tabulares (p.ej. Agua Potable): NO parsear como Rama/Agrup/Cat/Mes.
-        if not _is_standard_tabular_sheet(ws):
-            meses |= _scan_meses_in_sheet(ws)
-            continue
-
+        # Cabecera esperada en fila 1:
+        # Rama | Agrupamiento | Categoria | Mes | Basico | No Remunerativo | SUMA_FIJA
+        # Pero Funebres viene sin "Categoria" y usa Agrupamiento como categoria.
         for r in range(2, ws.max_row + 1):
-            rama = rama_sheet  # siempre desde el nombre de hoja (robusto a celdas combinadas)
-
-            agrup = str(ws.cell(r, 2).value or "—").strip()
-            categoria = str(ws.cell(r, 3).value or "").strip()
-            mes = _norm_mes(ws.cell(r, 4).value)
-
-            basico = _to_float(ws.cell(r, 5).value)
-            nr1 = _to_float(ws.cell(r, 6).value)
-            nr2 = _to_float(ws.cell(r, 7).value)
-
-            # Fallback: si Categoria viene vacía, usar el texto del agrupamiento como categoría
-            if (not categoria) and agrup and agrup != "—":
-                categoria = agrup
-                agrup = "—"
-
-            if not categoria or not mes:
+            rama = ws.cell(r, 1).value
+            if rama is None:
                 continue
 
-            agrups_by_rama.setdefault(rama, set()).add(agrup)
-            cats_by_rama_agrup.setdefault((rama, agrup), set()).add(categoria)
-            meses.add(mes)
+            rama_s = _norm_rama(rama)
+            agrup = _to_str(ws.cell(r, 2).value)
+            cat = _to_str(ws.cell(r, 3).value)
+            mes = _to_str(ws.cell(r, 4).value)
+
+            basico = ws.cell(r, 5).value
+            no_rem = ws.cell(r, 6).value
+            suma_fija = ws.cell(r, 7).value
+
+            # Limpieza mínima
+            if not mes:
+                continue
+            # Si el mes viene como datetime, convertir a YYYY-MM
+            if isinstance(ws.cell(r, 4).value, (datetime.date, datetime.datetime)):
+                dt = ws.cell(r, 4).value
+                mes = f"{dt.year:04d}-{dt.month:02d}"
+
+            # Funebres: categoria vacía -> usar agrup como categoria y agrup = "—"
+            if not cat and rama_s in {"FUNEBRES", "FÚNEBRES"}:
+                cat = agrup or "—"
+                agrup = "—"
+
+            # Si la RAMA vino corrupta (fecha/número), la ignoramos.
+            if _looks_like_date_or_number(rama):
+                continue
+            if not rama_s:
+                continue
+            if rama_s in INVALID_RAMAS:
+                continue
+
+            def _num(x: Any) -> float:
+                try:
+                    return float(x or 0)
+                except Exception:
+                    return 0.0
 
             rows.append(
-                {
-                    "rama": rama,
-                    "agrup": agrup,
-                    "categoria": categoria,
-                    "mes": mes,
-                    "basico": basico,
-                    "no_rem_1": nr1,
-                    "no_rem_2": nr2,
-                }
+                ScaleRow(
+                    rama=rama_s,
+                    agrup=agrup or "—",
+                    categoria=cat or "—",
+                    mes=mes[:7],  # YYYY-MM
+                    basico=_num(basico),
+                    no_rem=_num(no_rem),
+                    suma_fija=_num(suma_fija),
+                )
             )
 
-    # Orden y “limpieza” de ramas
-    desired = ["GENERAL", "TURISMO", "CEREALES", "CALL CENTER", "AGUA POTABLE", "FUNEBRES"]
-    ramas_sorted: List[str] = [r for r in desired if r in ramas] + sorted(ramas - set(desired))
-    meses_sorted = sorted(meses)
+    return rows
 
-    # Compat (Object.keys)
-    ramas_dict = {r: True for r in ramas_sorted}
-    meses_dict = {m: True for m in meses_sorted}
 
-    # Estructuras para selects
-    agrupamientos: Dict[str, List[str]] = {}
-    categorias: Dict[str, List[str]] = {}
+def get_meta(maestro_path: str | None = None) -> Dict[str, Any]:
+    rows = _load_rows(maestro_path or str(DEFAULT_MAESTRO_PATH))
 
-    agrupamientos_dict: Dict[str, Dict[str, bool]] = {}
-    categorias_dict: Dict[str, Dict[str, bool]] = {}
+    ramas_set = {_norm_rama(r.rama) for r in rows if r.rama and not _looks_like_date_or_number(r.rama)}
+    for forced in FORCED_RAMAS:
+        ramas_set.add(forced)
 
-    for r in ramas_sorted:
-        agrups = sorted(list(agrups_by_rama.get(r, set()))) or ["—"]
-        agrupamientos[r] = agrups
-        agrupamientos_dict[r] = {a: True for a in agrups}
+    ramas = sorted(ramas_set)
 
-        for a in agrups:
-            cats = sorted(list(cats_by_rama_agrup.get((r, a), set())))
-            categorias[f"{r}||{a}"] = cats
-            categorias_dict[f"{r}||{a}"] = {c: True for c in cats}
+    meses = sorted({r.mes for r in rows if r.mes})
 
-    meta = {
-        # ✅ Listas limpias, sin fechas/números
-        "ramas": ramas_sorted,
-        "meses": meses_sorted,
+    # Agrupamientos por rama
+    agrup_por_rama: Dict[str, List[str]] = {}
+    cat_por_rama_agrup: Dict[str, Dict[str, List[str]]] = {}
 
-        # Para selects
-        "agrupamientos": agrupamientos,
-        "categorias": categorias,
+    for r in rows:
+        if not r.rama:
+            continue
+        agrup_por_rama.setdefault(r.rama, set()).add(r.agrup)
+        cat_por_rama_agrup.setdefault(r.rama, {}).setdefault(r.agrup, set()).add(r.categoria)
 
-        # Compat (Object.keys)
-        "ramas_dict": ramas_dict,
-        "meses_dict": meses_dict,
-        "agrupamientos_dict": agrupamientos_dict,
-        "categorias_dict": categorias_dict,
+    # Convert sets -> sorted lists
+    agrup_por_rama_out: Dict[str, List[str]] = {k: sorted(list(v)) for k, v in agrup_por_rama.items()}
+    cat_por_rama_agrup_out: Dict[str, Dict[str, List[str]]] = {}
+    for rama, d in cat_por_rama_agrup.items():
+        cat_por_rama_agrup_out[rama] = {agr: sorted(list(cats)) for agr, cats in d.items()}
 
-        # Debug
-        "filas": len(rows),
-        "fuente": str(MAESTRO_PATH.name),
+    return {
+        "ramas": ramas,
+        "meses": meses,
+        "agrupamientos": agrup_por_rama_out,
+        "categorias": cat_por_rama_agrup_out,
     }
 
-    _CACHE = {"meta": meta, "rows": rows}
-    return _CACHE
+
+def find_row(
+    rama: str,
+    agrup: str,
+    categoria: str,
+    mes: str,
+    maestro_path: str | None = None
+) -> Optional[ScaleRow]:
+    rows = _load_rows(maestro_path or str(DEFAULT_MAESTRO_PATH))
+    rama = _norm_rama(rama)
+    mes = (mes or "")[:7]
+    agrup = _to_str(agrup) or "—"
+    categoria = _to_str(categoria) or "—"
+
+    # Tomamos la ÚLTIMA ocurrencia en el Excel (por si hay duplicados).
+    found: Optional[ScaleRow] = None
+    for r in rows:
+        if r.rama == rama and r.mes == mes and r.agrup == agrup and r.categoria == categoria:
+            found = r
+    return found
 
 
-def get_meta() -> Dict[str, Any]:
+def get_payload(rama: str, agrup: str, categoria: str, mes: str, maestro_path: str | None = None) -> Dict[str, Any]:
+    row = find_row(rama=rama, agrup=agrup, categoria=categoria, mes=mes, maestro_path=maestro_path)
+    if not row:
+        return {
+            "ok": False,
+            "error": "No se encontró esa combinación en el maestro",
+            "rama": rama,
+            "agrup": agrup,
+            "categoria": categoria,
+            "mes": mes,
+        }
+    return {
+        "ok": True,
+        "rama": row.rama,
+        "agrup": row.agrup,
+        "categoria": row.categoria,
+        "mes": row.mes,
+        "basico": row.basico,
+        "no_rem": row.no_rem,
+        "suma_fija": row.suma_fija,
+    }
 
-    return _load_payload()["meta"]
 
-
-def get_payload() -> Dict[str, Any]:
-    data = _load_payload()
-    return {"rows": data["rows"]}
-
-
-def find_row(rama: str, agrup: str, categoria: str, mes: str) -> Optional[Dict[str, Any]]:
-    data = _load_payload()["rows"]
-    for row in data:
-        if (
-            row["rama"] == rama
-            and row["agrup"] == agrup
-            and row["categoria"] == categoria
-            and row["mes"] == mes
-        ):
-            return row
-    return None
+# Compatibilidad con nombres viejos (por si algún main.py importaba esto)
+load_meta = get_meta

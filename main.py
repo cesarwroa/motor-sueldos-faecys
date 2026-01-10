@@ -1,21 +1,22 @@
+
 from __future__ import annotations
 
-import os
-from typing import Any, Dict, List
+import math
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
-from escalas import load_meta, find_row
+from escalas import get_meta, get_payload, find_row, DEFAULT_MAESTRO_PATH
 
-APP_ROOT = os.path.dirname(__file__)
-PUBLIC_DIR = os.path.join(APP_ROOT, "public")
+BASE_DIR = Path(__file__).resolve().parent
+PUBLIC_DIR = BASE_DIR / "public"
+MAESTRO_PATH = str(DEFAULT_MAESTRO_PATH)
 
-app = FastAPI(title="Motor Sueldos FAECYS", version="1.1.0")
+app = FastAPI(title="ComercioOnline - Motor de Sueldos (server-side)")
 
-# CORS (para servir index.html y que pueda llamar al backend sin problemas)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,159 +25,184 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Servir frontend
-app.mount("/public", StaticFiles(directory=PUBLIC_DIR), name="public")
 
 @app.get("/")
-def root() -> FileResponse:
-    return FileResponse(os.path.join(PUBLIC_DIR, "index.html"))
+def index():
+    # Sirve el HTML desde el backend (Render)
+    index_path = PUBLIC_DIR / "index.html"
+    if not index_path.exists():
+        return JSONResponse({"ok": False, "error": "Falta public/index.html"}, status_code=500)
+    return FileResponse(index_path)
 
-@app.get("/health")
-def health() -> Dict[str, Any]:
-    return {"ok": True}
 
 @app.get("/meta")
-def meta() -> Dict[str, Any]:
-    return load_meta()
+def meta():
+    return get_meta(MAESTRO_PATH)
 
-def _to_float(x: Any) -> float:
-    try:
-        if x is None:
-            return 0.0
-        if isinstance(x, (int, float)):
-            return float(x)
-        s = str(x).strip().replace(".", "").replace(",", ".")
-        return float(s) if s else 0.0
-    except Exception:
-        return 0.0
 
-def _pct(base: float, p: float) -> float:
-    return round(base * (p / 100.0), 2)
+@app.get("/payload")
+def payload(
+    rama: str = Query(...),
+    agrup: str = Query("—"),
+    categoria: str = Query("—"),
+    mes: str = Query(...),
+):
+    return get_payload(rama=rama, agrup=agrup, categoria=categoria, mes=mes, maestro_path=MAESTRO_PATH)
 
-def _add(items: List[Dict[str, Any]], concepto: str, base: float, rem: float = 0.0, nr: float = 0.0, ded: float = 0.0) -> None:
-    items.append({
-        "concepto": concepto,
-        "base": round(base, 2),
-        "remunerativo": round(rem, 2),
-        "no_remunerativo": round(nr, 2),
-        "deduccion": round(ded, 2),
-    })
 
-@app.post("/calcular")
-async def calcular(payload: Request) -> Dict[str, Any]:
-    data = await payload.json()
+def _round2(x: float) -> float:
+    return float(f"{x:.2f}")
 
-    rama = (data.get("rama") or "").strip()
-    agrup = (data.get("agrup") or "").strip()
-    cat = (data.get("cat") or "").strip()
-    mes = (data.get("mes") or "").strip()
 
-    if not (rama and cat and mes):
-        raise HTTPException(status_code=400, detail="Faltan datos: rama / cat / mes")
+def _pct(x: float, p: float) -> float:
+    return x * p
 
-    # Datos principales desde Maestro
-    row = find_row(rama=rama, agrup=agrup, cat=cat, mes=mes)
+
+def _antig_factor(rama: str, years: float) -> float:
+    rama_u = (rama or "").upper()
+    if rama_u == "AGUA POTABLE":
+        # 2% acumulativo por año
+        y = max(0.0, float(years or 0.0))
+        return (1.02 ** y) - 1.0
+    # 1% por año (no acumulativo)
+    return max(0.0, float(years or 0.0)) * 0.01
+
+
+@app.get("/calcular")
+def calcular(
+    rama: str = Query(...),
+    agrup: str = Query("—"),
+    categoria: str = Query("—"),
+    mes: str = Query(...),
+    jornada: float = Query(48.0),
+    anios_antig: float = Query(0.0),
+    osecac: bool = Query(True),
+    afiliado: bool = Query(False),
+    sind_pct: float = Query(2.0),
+    titulo_pct: float = Query(0.0),
+):
+    """
+    Devuelve el recibo armado en JSON (para que el HTML NO haga cálculos).
+
+    Implementación mínima (pero coherente):
+    - Básico (REM) (prorratea por jornada vs 48)
+    - Antigüedad (REM) (1% anual o 2% acumulativo Agua Potable)
+    - Presentismo (REM) (8,33% = /12)
+    - No Rem (variable) + Suma fija (NR) (prorratea por jornada)
+    - Antigüedad NR + Presentismo NR (sobre NR total)
+    - Descuentos: Jubilación 11% (solo REM), PAMI 3% (solo REM),
+      Obra Social 3% (REM y, si OSECAC, también NR) + $100 (si OSECAC),
+      FAECYS 0,5% (REM+NR), Sindicato 2% (REM+NR si afiliado)
+    """
+    row = find_row(rama=rama, agrup=agrup, categoria=categoria, mes=mes, maestro_path=MAESTRO_PATH)
     if not row:
-        raise HTTPException(status_code=404, detail="No hay fila en Maestro para esa selección")
+        return JSONResponse({"ok": False, "error": "No se encontró esa combinación en el maestro"}, status_code=404)
 
-    basico = _to_float(row.get("basico"))
-    nr_var = _to_float(row.get("no_rem_1"))
-    nr_sf = _to_float(row.get("no_rem_2"))
+    # Prorrateo por jornada (base 48)
+    j = float(jornada or 48.0)
+    pr = j / 48.0 if j > 0 else 1.0
 
-    # Inputs del formulario (si no vienen, default)
-    anios = int(_to_float(data.get("anios", 0)))
-    zona_pct = _to_float(data.get("zona_pct", 0))  # 0 / 10 / 20 / ...
-    osecac_mode = (data.get("osecac") or "SI").upper()  # SI / NO
+    basico = float(row.basico or 0.0) * pr
+    nr_var = float(row.no_rem or 0.0) * pr
+    nr_sf = float(row.suma_fija or 0.0) * pr
+    nr_total = nr_var + nr_sf
 
-    afiliado_pct = _to_float(data.get("afiliado_selector", 0))  # ej: 2 = 2%
-    afiliado_fijo = _to_float(data.get("afiliado_fijo", 0))
+    # Adicional por Título (solo si el front lo envía; turismo suele usar 2.5% o 5%)
+    tit_p = max(0.0, float(titulo_pct or 0.0)) / 100.0
+    titulo_rem = basico * tit_p
+    titulo_nr = nr_total * tit_p
 
-    # --- Cálculos (mínimo estable: básico, presentismo, antigüedad, NR, deducciones) ---
+    fact_antig = _antig_factor(row.rama, anios_antig)
+    antig_rem = basico * fact_antig
+    base_pres_rem = basico + antig_rem
+    pres_rem = base_pres_rem / 12.0
+
+    antig_nr = nr_total * fact_antig
+    base_pres_nr = nr_total + antig_nr
+    pres_nr = base_pres_nr / 12.0
+
+    # Totales por columnas
+    total_rem = basico + antig_rem + pres_rem + titulo_rem
+    total_nr = nr_total + antig_nr + pres_nr + titulo_nr
+
+    # Descuentos
+    jub = _pct(total_rem, 0.11)
+    pami = _pct(total_rem, 0.03)
+
+    # Obra social: si no es OSECAC, no aplica $100 ni base NR
+    if osecac:
+        base_os = total_rem + total_nr
+        os_3 = _pct(base_os, 0.03)
+        os_100 = 100.0
+        obra_social = os_3 + os_100
+    else:
+        base_os = total_rem
+        obra_social = _pct(base_os, 0.03)
+
+    base_sind = total_rem + total_nr
+    faecys = _pct(base_sind, 0.005)
+    sind_p = max(0.0, float(sind_pct or 0.0)) / 100.0
+    sindicato = _pct(base_sind, sind_p) if afiliado and sind_p>0 else 0.0
+
+    total_desc = jub + pami + obra_social + faecys + sindicato
+    neto = total_rem + total_nr - total_desc
+
     items: List[Dict[str, Any]] = []
 
-    # Zona desfavorable (si se usa, suma sobre REM)
-    zona = _pct(basico, zona_pct) if zona_pct else 0.0
+    def add(concepto: str, base: float = 0.0, rem: float = 0.0, nr: float = 0.0, ded: float = 0.0):
+        items.append(
+            {
+                "concepto": concepto,
+                "base": _round2(base),
+                "rem": _round2(rem),
+                "nr": _round2(nr),
+                "ded": _round2(ded),
+            }
+        )
 
-    # Antigüedad (regla general 1% por año, no acumulativa) - si en el futuro querés: Agua Potable 2% acumulativo
-    antig_rem = _pct(basico + zona, float(anios)) if anios > 0 else 0.0
-
-    # Presentismo 8,33% (1/12) sobre REM (básico + zona + antig)
-    base_pres_rem = basico + zona + antig_rem
-    pres_rem = round(base_pres_rem / 12.0, 2) if base_pres_rem else 0.0
-
-    # NR total y sus “espejos” de presentismo / antigüedad sobre NR
-    nr_total = nr_var + nr_sf
-    antig_nr = _pct(nr_total, float(anios)) if (anios > 0 and nr_total) else 0.0
-    pres_nr = round((nr_total + antig_nr) / 12.0, 2) if nr_total else 0.0
-
-    # --- HABERES ---
-    _add(items, "Básico (REM)", base=basico, rem=basico)
-    if zona:
-        _add(items, f"Zona desfavorable ({zona_pct:.0f}%)", base=basico, rem=zona)
+    add("Básico (REM)", base=basico, rem=basico)
     if antig_rem:
-        _add(items, f"Antigüedad ({anios} años)", base=basico + zona, rem=antig_rem)
+        add("Antigüedad (REM)", base=basico, rem=antig_rem)
     if pres_rem:
-        _add(items, "Presentismo (8,33%)", base=base_pres_rem, rem=pres_rem)
+        add("Presentismo (REM)", base=base_pres_rem, rem=pres_rem)
+    if titulo_rem:
+        add("Adicional por Título (REM)", base=basico, rem=titulo_rem)
 
     if nr_var:
-        _add(items, "No Rem (variable)", base=nr_var, nr=nr_var)
+        add("No Rem (variable)", base=nr_var, nr=nr_var)
     if nr_sf:
-        _add(items, "Suma Fija (NR)", base=nr_sf, nr=nr_sf)
+        add("Suma Fija (NR)", base=nr_sf, nr=nr_sf)
+    if titulo_nr:
+        add("Adicional por Título (NR)", base=nr_total, nr=titulo_nr)
     if antig_nr:
-        _add(items, f"Antigüedad (NR) ({anios} años)", base=nr_total, nr=antig_nr)
+        add("Antigüedad (NR)", base=nr_total, nr=antig_nr)
     if pres_nr:
-        _add(items, "Presentismo (NR) (8,33%)", base=(nr_total + antig_nr), nr=pres_nr)
+        add("Presentismo (NR)", base=base_pres_nr, nr=pres_nr)
 
-    # Totales haberes
-    tot_rem = sum(_to_float(it["remunerativo"]) for it in items)
-    tot_nr = sum(_to_float(it["no_remunerativo"]) for it in items)
-
-    # --- DEDUCCIONES (según reglas del sistema) ---
-    base_jub_pami = tot_rem
-    jub = _pct(base_jub_pami, 11.0)
-    pami = _pct(base_jub_pami, 3.0)
-
-    # Obra social: siempre 3% sobre REM.
-    # Si OSECAC=SI, además 3% sobre NR y $100 fijo.
-    os_base = tot_rem
-    os_nr_base = tot_nr if osecac_mode == "SI" else 0.0
-    os_aporte = _pct(os_base, 3.0) + (_pct(os_nr_base, 3.0) if os_nr_base else 0.0)
-    os_fijo = 100.0 if osecac_mode == "SI" else 0.0
-
-    # FAECYS 0,5% sobre (REM + todo lo NR)
-    base_solidarios = tot_rem + tot_nr
-    faecys = _pct(base_solidarios, 0.5)
-
-    # Sindicato: % configurable sobre (REM + NR) + fijo (si se usa)
-    sindicato = _pct(base_solidarios, afiliado_pct) if afiliado_pct else 0.0
-    sindicato_fijo = afiliado_fijo
-
-    # Agregar filas de descuentos
-    _add(items, "Jubilación 11%", base=base_jub_pami, ded=jub)
-    _add(items, "PAMI 3%", base=base_jub_pami, ded=pami)
-    _add(items, "Obra Social 3%", base=(os_base + os_nr_base), ded=os_aporte)
-    if os_fijo:
-        _add(items, "OSECAC ($100)", base=100.0, ded=os_fijo)
-    _add(items, "FAECYS 0,5%", base=base_solidarios, ded=faecys)
-    if sindicato or sindicato_fijo:
-        _add(items, "Sindicato", base=base_solidarios, ded=(sindicato + sindicato_fijo))
-
-    tot_ded = sum(_to_float(it["deduccion"]) for it in items)
-    neto = round((tot_rem + tot_nr - tot_ded), 2)
+    # Descuentos
+    add("Jubilación 11%", base=total_rem, ded=jub)
+    add("PAMI 3%", base=total_rem, ded=pami)
+    if osecac:
+        add("Obra Social 3% + $100 (OSECAC)", base=base_os, ded=obra_social)
+    else:
+        add("Obra Social 3%", base=base_os, ded=obra_social)
+    add("FAECYS 0,5%", base=base_sind, ded=faecys)
+    if afiliado:
+        add("SINDICATO 2%", base=base_sind, ded=sindicato)
 
     return {
         "ok": True,
-        "auto": {
-            "basico": round(basico, 2),
-            "nr_var": round(nr_var, 2),
-            "nr_sf": round(nr_sf, 2),
-            "nr_total": round(nr_total, 2),
-        },
+        "rama": row.rama,
+        "agrup": row.agrup,
+        "categoria": row.categoria,
+        "mes": row.mes,
+        "jornada": j,
+        "anios_antig": float(anios_antig or 0.0),
         "items": items,
         "totales": {
-            "remunerativo": round(tot_rem, 2),
-            "no_remunerativo": round(tot_nr, 2),
-            "deducciones": round(tot_ded, 2),
-            "neto": neto,
+            "rem": _round2(total_rem),
+            "nr": _round2(total_nr),
+            "ded": _round2(total_desc),
+            "neto": _round2(neto),
         },
     }
