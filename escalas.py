@@ -11,7 +11,7 @@ import openpyxl
 
 
 # Permite override en Render / Docker:
-# export MAESTRO_PATH=/app/maestro.xlsx
+# export MAESTRO_PATH=/app/COMERCIOONLINE_MAESTRO.xlsx
 _DEFAULT = Path(__file__).with_name("maestro.xlsx")
 MAESTRO_PATH = Path(os.getenv("MAESTRO_PATH", str(_DEFAULT)))
 
@@ -30,11 +30,6 @@ class Row:
 _CACHE: Optional[Dict[str, Any]] = None
 
 
-def clear_cache() -> None:
-    global _CACHE
-    _CACHE = None
-
-
 def _to_float(x: Any) -> float:
     if x is None:
         return 0.0
@@ -43,16 +38,8 @@ def _to_float(x: Any) -> float:
     s = str(x).strip()
     if not s:
         return 0.0
-    # allow "1.234.567,89" / "3.208.680"
-    s = s.replace("$", "").replace(" ", "")
-    # 1.234.567,89 -> 1234567.89
-    if s.count(",") == 1 and s.count(".") >= 1:
-        s = s.replace(".", "").replace(",", ".")
-    elif s.count(",") == 0 and s.count(".") >= 1:
-        # 3.208.680 -> 3208680
-        s = s.replace(".", "")
-    else:
-        s = s.replace(",", ".")
+    # allow "1.234.567,89"
+    s = s.replace(".", "").replace(",", ".")
     try:
         return float(s)
     except Exception:
@@ -72,12 +59,15 @@ def _norm_mes(x: Any) -> str:
     if not s:
         return ""
     # allow "2026-01-01" -> "2026-01"
-    if len(s) >= 7 and s[0:4].isdigit() and s[4] in "-/" and s[5:7].isdigit():
-        return f"{s[0:4]}-{s[5:7]}"
-    # intento extra: datetime string
-    m = re.match(r"^(\d{4})[-/](\d{2})", s)
-    if m:
-        return f"{m.group(1)}-{m.group(2)}"
+    if len(s) >= 7 and s[4] == "-" and s[0:4].isdigit() and s[5:7].isdigit():
+        return s[:7]
+    # intentar parseo a datetime
+    try:
+        ts = openpyxl.utils.datetime.from_excel(x)  # type: ignore
+        if isinstance(ts, (dt.datetime, dt.date)):
+            return ts.strftime("%Y-%m")
+    except Exception:
+        pass
     return ""
 
 
@@ -99,8 +89,9 @@ def _is_standard_tabular_sheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> bo
 
 
 def _scan_meses_in_sheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> set[str]:
-    """Extrae meses detectando fechas en col A."""
+    """Para hojas no tabulares (p.ej. Agua Potable), extrae meses detectando fechas."""
     meses: set[str] = set()
+    # escanear la columna A primero (donde suelen estar las vigencias)
     for r in range(1, ws.max_row + 1):
         v = ws.cell(r, 1).value
         if isinstance(v, (dt.datetime, dt.date)):
@@ -111,69 +102,6 @@ def _scan_meses_in_sheet(ws: openpyxl.worksheet.worksheet.Worksheet) -> set[str]
             if m:
                 meses.add(f"{m.group(1)}-{m.group(2)}")
     return meses
-
-
-def _parse_agua_potable(ws: openpyxl.worksheet.worksheet.Worksheet, rama: str) -> Tuple[List[Dict[str, Any]], set[str], Dict[str, set[str]], Dict[Tuple[str,str], set[str]]]:
-    """
-    Formato por bloques:
-      - 'AGRUPAMIENTO: ...'
-      - 'Categoría: ...'
-      - fila encabezado con 'MES - AÑO'
-      - filas con fecha en col A, básico en col B, NR1 col C, NR2 col D
-    """
-    rows: List[Dict[str, Any]] = []
-    meses: set[str] = set()
-    agrups_by_rama: Dict[str, set[str]] = {rama: set()}
-    cats_by_rama_agrup: Dict[Tuple[str,str], set[str]] = {}
-
-    agrup_actual = "—"
-    cat_actual = ""
-
-    # buscar header "MES - AÑO"
-    for r in range(1, ws.max_row + 1):
-        a = ws.cell(r, 1).value
-        a_s = str(a).strip() if a is not None else ""
-
-        if a_s.upper().startswith("AGRUPAMIENTO"):
-            # "AGRUPAMIENTO: XXX"
-            agrup_actual = a_s.split(":", 1)[1].strip() if ":" in a_s else a_s.strip()
-            if not agrup_actual:
-                agrup_actual = "—"
-            continue
-
-        if a_s.upper().startswith("CATEGOR"):
-            cat_actual = a_s.split(":", 1)[1].strip() if ":" in a_s else a_s.strip()
-            continue
-
-        if a_s.upper().startswith("MES"):
-            # parse data rows until next non-date
-            rr = r + 1
-            while rr <= ws.max_row:
-                v = ws.cell(rr, 1).value
-                if not isinstance(v, (dt.datetime, dt.date)):
-                    break
-                mes = v.strftime("%Y-%m")
-                basico = _to_float(ws.cell(rr, 2).value)
-                nr1 = _to_float(ws.cell(rr, 3).value)
-                nr2 = _to_float(ws.cell(rr, 4).value)
-
-                if cat_actual:
-                    agrups_by_rama.setdefault(rama, set()).add(agrup_actual)
-                    cats_by_rama_agrup.setdefault((rama, agrup_actual), set()).add(cat_actual)
-                    meses.add(mes)
-                    rows.append({
-                        "rama": rama,
-                        "agrup": agrup_actual,
-                        "categoria": cat_actual,
-                        "mes": mes,
-                        "basico": basico,
-                        "no_rem_1": nr1,
-                        "no_rem_2": nr2,
-                    })
-                rr += 1
-            continue
-
-    return rows, meses, agrups_by_rama, cats_by_rama_agrup
 
 
 def _load_payload() -> Dict[str, Any]:
@@ -200,18 +128,7 @@ def _load_payload() -> Dict[str, Any]:
         rama_sheet = _norm_rama_from_sheet(name)
         ramas.add(rama_sheet)
 
-        # Agua Potable: parsear su formato por bloques
-        if rama_sheet == "AGUA POTABLE":
-            ap_rows, ap_meses, ap_agr, ap_cats = _parse_agua_potable(ws, rama_sheet)
-            rows.extend(ap_rows)
-            meses |= ap_meses
-            for k,v in ap_agr.items():
-                agrups_by_rama.setdefault(k, set()).update(v)
-            for k,v in ap_cats.items():
-                cats_by_rama_agrup.setdefault(k, set()).update(v)
-            continue
-
-        # Hojas tabulares estándar
+        # Hojas no tabulares (p.ej. Agua Potable): NO parsear como Rama/Agrup/Cat/Mes.
         if not _is_standard_tabular_sheet(ws):
             meses |= _scan_meses_in_sheet(ws)
             continue
@@ -278,14 +195,21 @@ def _load_payload() -> Dict[str, Any]:
             categorias_dict[f"{r}||{a}"] = {c: True for c in cats}
 
     meta = {
+        # ✅ Listas limpias, sin fechas/números
         "ramas": ramas_sorted,
         "meses": meses_sorted,
+
+        # Para selects
         "agrupamientos": agrupamientos,
         "categorias": categorias,
+
+        # Compat (Object.keys)
         "ramas_dict": ramas_dict,
         "meses_dict": meses_dict,
         "agrupamientos_dict": agrupamientos_dict,
         "categorias_dict": categorias_dict,
+
+        # Debug
         "filas": len(rows),
         "fuente": str(MAESTRO_PATH.name),
     }
@@ -295,6 +219,7 @@ def _load_payload() -> Dict[str, Any]:
 
 
 def get_meta() -> Dict[str, Any]:
+
     return _load_payload()["meta"]
 
 

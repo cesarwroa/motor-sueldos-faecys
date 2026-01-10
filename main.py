@@ -1,111 +1,100 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, ConfigDict
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
-from escalas import get_meta, get_payload, clear_cache
-from calculo import calcular_recibo
+import escalas
 
 
-app = FastAPI(title="Motor Sueldos FAECYS (Server-Side)")
+APP_DIR = Path(__file__).resolve().parent
+PUBLIC_DIR = APP_DIR / "public"
 
+app = FastAPI(title="Motor Sueldos FAECYS")
+
+# Si el front se sirve desde este mismo backend, CORS no hace falta,
+# pero lo dejamos abierto para pruebas.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-PUBLIC_DIR = Path(__file__).with_name("public")
-INDEX_HTML = PUBLIC_DIR / "index.html"
-
-
-class CalcularIn(BaseModel):
-    # Required
-    rama: str
-    agrup: str | None = "—"
-    categoria: str
-    mes: str
-
-    # Optional / extras (UI)
-    modo: str | None = "MENSUAL"
-    hs: float | None = 48
-    anios: int | None = 0
-    zona_pct: float | None = 0
-    presentismo: bool | None = True
-    afiliado: bool | None = False
-    osecac: bool | None = True
-    jubilado: bool | None = False
-
-    # extras
-    tur_titulo_pct: float | None = 0
-    agua_conex: int | None = 0
-    funAdic1: bool | None = False
-    funAdic2: bool | None = False
-    funAdic3: bool | None = False
-    funAdic4: bool | None = False
-
-    a_cuenta: float | None = 0
-    viaticos_nr: float | None = 0
-
-    hex50: float | None = 0
-    hex100: float | None = 0
-    noct: float | None = 0
-    fer_no: int | None = 0
-    fer_si: int | None = 0
-    vac_goz: float | None = 0
-    lic_sg: float | None = 0
-    aus: float | None = 0
-    faltante: float | None = 0
-    embargo: float | None = 0
-
-    # Liquidación final
-    lf_tipo: str | None = "RENUNCIA"
-    lf_ingreso: str | None = None
-    lf_egreso: str | None = None
-    lf_mrmnh: float | None = 0
-    lf_preaviso: int | None = 0
-    lf_integracion: bool | None = False
-    lf_sac_pre: bool | None = False
-    lf_sac_int: bool | None = False
-
-    model_config = ConfigDict(extra="allow")
+# Servir estáticos (y el index)
+app.mount("/public", StaticFiles(directory=str(PUBLIC_DIR)), name="public")
 
 
-@app.get("/", response_class=HTMLResponse)
-def home() -> str:
-    if INDEX_HTML.exists():
-        return INDEX_HTML.read_text(encoding="utf-8")
-    return "<h1>Motor Sueldos FAECYS</h1><p>Falta public/index.html</p>"
+@app.get("/")
+def home():
+    # Sirve el HTML principal (UI)
+    return FileResponse(str(PUBLIC_DIR / "index.html"))
 
 
 @app.get("/meta")
-def meta():
-    return get_meta()
+def meta() -> Dict[str, Any]:
+    return escalas.get_meta()
 
 
 @app.get("/payload")
-def payload():
-    return get_payload()
+def payload() -> Dict[str, Any]:
+    return escalas.get_payload()
+
+
+class CalcularIn(BaseModel):
+    rama: str
+    agrup: Optional[str] = ""
+    categoria: str
+    mes: str
+    hs: Optional[float] = 48
+    anios: Optional[float] = 0
+    # El front manda muchos campos extra; los ignoramos sin error.
+    class Config:
+        extra = "allow"
 
 
 @app.post("/calcular")
-def calcular(inp: CalcularIn):
-    data = inp.model_dump()
-    res = calcular_recibo(data)
-    if not res.get("ok", False):
-        raise HTTPException(status_code=400, detail=res.get("error", "Error de cálculo"))
-    return res
+def calcular(inp: CalcularIn) -> Dict[str, Any]:
+    """
+    Devuelve las bases desde el maestro para que el front arme el recibo.
+    (básico + NR). Luego, en siguientes iteraciones, devolvemos items/totales completos.
+    """
+    rama = (inp.rama or "").strip()
+    agrup = (inp.agrup or "").strip()
+    cat = (inp.categoria or "").strip()
+    mes = (inp.mes or "").strip()
+
+    row = escalas.find_row(rama=rama, agrup=agrup, categoria=cat, mes=mes)
+    if not row:
+        return {
+            "ok": False,
+            "error": "No se encontró combinación en maestro",
+            "rama": rama,
+            "agrup": agrup,
+            "categoria": cat,
+            "mes": mes,
+        }
+
+    return {
+        "ok": True,
+        "rama": rama,
+        "agrup": agrup,
+        "categoria": cat,
+        "mes": mes,
+        "basico": row.get("basico", 0),
+        "no_rem_1": row.get("no_rem_1", 0),
+        "no_rem_2": row.get("no_rem_2", 0),
+    }
 
 
 @app.post("/reload")
-def reload_maestro():
-    clear_cache()
-    return {"ok": True, "msg": "Cache limpiada. /meta y /payload se regeneran en el próximo request."}
+def reload_maestro() -> Dict[str, Any]:
+    # Limpia cache para que tome el Excel actualizado sin redeploy
+    escalas._CACHE = None  # type: ignore[attr-defined]
+    return {"ok": True, "reloaded": True, "maestro_path": str(escalas.MAESTRO_PATH)}

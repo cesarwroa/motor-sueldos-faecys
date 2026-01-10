@@ -1,0 +1,1019 @@
+
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Recibo de Sueldo - Secretaría de Asuntos Laborales - FAECYS</title>
+<style>
+:root{ --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --grid:#e2e8f0; }
+*{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
+.container{max-width:1200px;margin:24px auto;padding:0 16px} .card{background:#fff;border:1px solid var(--grid);border-radius:16px;padding:16px}
+.grid{display:grid;gap:12px} .cols-4{grid-template-columns:repeat(4,minmax(0,1fr))} .cols-3{grid-template-columns:repeat(3,1fr)}
+label{display:block;font-size:12px;color:#475569;margin-bottom:6px} input,select,button{border:1px solid var(--grid);border-radius:10px;padding:10px;background:white}
+button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events:none;opacity:.9}
+.table{width:100%;border-collapse:collapse;border:1px solid var(--grid);border-radius:12px;overflow:hidden}
+.table th,.table td{border-bottom:1px solid var(--grid);padding:10px;text-align:left;font-size:14px} .table thead th{background:#f8fafc;font-weight:800}
+.note{font-size:12px;color:#334155;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px;padding:8px;margin-top:6px}
+
+.inline-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inline-hint{font-size:12px;color:#334155}
+.km-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.km-pair{display:flex;align-items:center;gap:6px;white-space:nowrap}
+
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:12px}
+.tabs{display:flex;gap:6px;margin:12px 0} .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
+.right{text-align:right}
+@media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} }
+
+/* === FORCE FORMAT · MVP exacto + OnePage === */
+@page { size: A4; margin: 10mm; } /* área util 190mm x 277mm */
+#printArea .sheet { position:relative; width:190mm; min-height:260mm; margin:0 auto; font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial; color:#0f172a; font-size:11px; }
+#printArea .title { font-size:14px; font-weight:700; margin:0 0 3mm 0; }
+#printArea .subheader { font-size:11px; color:#475569; margin:0 0 2mm 0; }
+#printArea .row3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; margin:1.2mm 0; }
+#printArea .cell { white-space:nowrap; }
+#printArea .label { color:#475569; }
+#printArea table { width:190mm; border-collapse:collapse; border:0.3mm solid #d0d7e2; margin-top:3mm; table-layout:fixed; }
+#printArea thead th { background:#f1f5f9; font-weight:700; }
+#printArea th, #printArea td { padding:1.4mm 2mm; border-bottom:0.3mm solid #e2e8f0; vertical-align:top; }
+#printArea td.right, #printArea th.right { text-align:right; white-space:nowrap; }
+#printArea tfoot td { font-weight:800; }
+#printArea .neto { font-size:13px; font-weight:900; }
+#printArea .foot { display:grid; grid-template-columns: 1fr 1fr; gap:6mm; margin-top:5mm; align-items:start; }
+#printArea .firmaBox { border-top:0.3mm solid #94a3b8; padding-top:2mm; text-align:center; }
+#printArea .sigBlock { border:0.3mm solid #cbd5e1; border-radius:2mm; padding:2mm 3mm; }
+#printArea .sigTitle { font-weight:700; margin-bottom:1mm; }
+#printArea .qr { width:32mm; height:32mm; border:0.3mm dashed #94a3b8; display:flex; align-items:center; justify-content:center; font-size:10px; color:#64748b; }
+
+
+/* === Base (solo HTML) === */
+.th-base-num, .col-base-num { min-width: 180px; }
+.base-mini { font-size: 12px; opacity:.95; }
+@media print { .th-base-num, .col-base-num, #co-toggle-base-num { display:none !important; } }
+
+/* Toggle columnas Base (Ver base) */
+.hide-base-col .th-base-num, .hide-base-col .col-base-num { display:none !important; }
+</style>
+<style>
+#co-inline-panel *{box-sizing:border-box}
+#co-inline-panel input, #co-inline-panel select{max-width:100%}
+#co-inline-panel > div:first-child{justify-self:start}
+#co-inline-panel{justify-items:start}
+</style>
+<style>
+#co-inline-panel{max-width:calc(100% - 8px); overflow:hidden;}
+#co-inline-panel *{box-sizing:border-box}
+#co-inline-panel input, #co-inline-panel select{max-width:100%}
+#co-inline-panel > div{min-width:0}
+#co-inline-panel > div:first-child{justify-self:start}
+#co-inline-panel{justify-items:start; column-gap:10px; row-gap:10px}
+#co-inline-panel .co-emb-row{display:grid; grid-template-columns:70px 1fr 90px; gap:8px}
+@media (max-width: 1100px){
+  #co-inline-panel{grid-template-columns:repeat(4, minmax(160px, 1fr));}
+}
+@media (max-width: 900px){
+  #co-inline-panel{grid-template-columns:repeat(3, minmax(160px, 1fr));}
+  #co-inline-panel .co-emb-row{grid-template-columns:60px 1fr 90px;}
+}
+</style>
+<style>
+/* Turismo title row full width and spacing */
+#co-inline-panel .co-turismo { grid-column: 1 / -1 !important; margin-top: 6px; }
+</style>
+
+<style>
+/* Centrado/estilo fila Total */
+tr.co-total-row > td { vertical-align: middle; }
+tr.co-total-row > td:first-child { font-weight: 700; }
+</style>
+
+<!-- Estilo responsivo específico para el panel de licencias/ausencias en dispositivos pequeños -->
+<style id="co-inline-responsive">
+  @media (max-width: 768px) {
+    /* Forzar una sola columna en el panel de licencias y ausencias */
+    #co-inline-panel {
+      grid-template-columns: 1fr !important;
+    }
+    /* Asegurar que los controles ocupen todo el ancho */
+    #co-inline-panel input,
+    #co-inline-panel select {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+    }
+  }
+</style>
+<style>
+/* CO: Ocultar números hasta presionar Calcular */
+.co-masked{color:transparent !important; text-shadow:none !important;}
+</style>
+</head>
+<body><div style="position:fixed;top:35%;left:50%;transform:translate(-50%,-50%) rotate(-25deg);font-size:44px;font-weight:700;color:rgba(0,0,0,0.06);white-space:nowrap;pointer-events:none;z-index:0;text-transform:uppercase;">SECRETARÍA DE ASUNTOS LABORALES – FAECYS</div><div style="background:#0a3a63;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #062135;"><div><div style="font-size:18px;font-weight:700;letter-spacing:0.04em">SECRETARÍA DE ASUNTOS LABORALES</div><div style="font-size:12px;opacity:0.9">FAECYS – Federación Argentina de Empleados de Comercio y Servicios</div></div></div>
+<style>
+  .vbadge{position:sticky;top:0;z-index:999;background:#111;color:#fff;padding:6px 10px;font:12px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;border-bottom:1px solid #000}
+  .vbadge small{opacity:.7}
+  .co-watermark{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;opacity:.06;font-size:72px;font-weight:800;letter-spacing:2px;transform:rotate(-24deg)}
+  @media print{ .vbadge{display:none}; .co-watermark{display:flex} }
+  .co-logo-ctl{display:none;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px;border-bottom:1px dashed #e5e7eb;background:#fafafa}
+  .co-logo-ctl input{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
+  .co-logo-preview img{height:36px;max-width:220px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px;background:#fff}
+</style>
+
+<div class="co-logo-ctl">
+<input id="co_logo_url" oninput="(function(u){var img=document.getElementById('co_logo_img'); if(!img)return; if(u.value){img.src=u.value; img.style.display='inline-block';} else {img.style.display='none';}})(this)" placeholder="URL del logo (opcional)"/>
+<div class="co-logo-preview"><img alt="logo" id="co_logo_img" style="display:none"/></div>
+</div>
+
+
+<!-- Patch deshabilitado: evitaba doble proporcional pero inflaba el neto al recalcular múltiples veces -->
+
+<div class="container">
+<h1>Sistema de Liquidación de Haberes</h1>
+<div class="tabs no-print">
+<div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
+<div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
+</div>
+<div class="card">
+<div class="grid cols-4">
+<div><label>Rama</label><select id="rama"></select></div>
+<div><label>Agrupamiento</label><select id="agrup"></select></div>
+<div><label>Categoría</label><select id="categoria"></select></div>
+<div><label>Mes</label><select id="mes"></select></div>
+</div>
+<div class="note" id="status">Cargando maestro…</div>
+</div>
+<div class="card" id="paneMensual">
+<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label>No Rem (variable) — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label>Suma Fija (NR) — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
+<div class="note" id="aguaBlock" style="display:none">
+<strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D (aplica 7% encadenado a Básico + Suma Fija)
+      <select id="aguaConex"><option value="A">A (hasta 500)</option><option value="B">B (+7% s/ A)</option><option value="C">C (+7% s/ B)</option><option value="D">D (+7% s/ C)</option></select>
+</div>
+<div class="note" id="funBlock" style="display:none">
+<strong>Fúnebres:</strong> Adicionales mensuales (desde “Adicionales” del maestro)
+      <div><label><input id="funAdic1" type="checkbox"/> Manipulación de cadáveres</label>
+<label><input id="funAdic2" type="checkbox"/> Resto del personal</label>
+<label><input id="funAdic3" type="checkbox"/> Chofer/Furgonero</label>
+<label><input id="funAdic4" type="checkbox"/> Indumentaria</label></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px"><div class="grid cols-4" style="margin-top:8px">
+</div><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
+<option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
+</select></div><div><label>OSECAC</label><select id="osecac"><option value="si">Sí (3% NR + $100)</option><option value="no">No</option></select></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" placeholder="$ 0,00" type="text"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
+<div><label>Feriados trabajados (días)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
+<div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
+<div style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
+</div>
+<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="calcularMensual()" type="button">Calcular mensual</button>
+<button onclick="window.print()" type="button">Imprimir / PDF</button>
+<span id="diagMensual" style="color:#64748b"></span>
+</div>
+<div class="badge" style="margin-top:8px">
+<div class="grid cols-4" style="margin-top:8px">
+  <div>
+    <label>Jubilado</label>
+    <div><input id="coJub" type="checkbox"/></div>
+  </div>
+  <div><label>Vacaciones gozadas (días)</label><input id="coVacGoz" min="0" step="1" type="number" value="0"/></div>
+  <div><label>Licencia con goce (días)</label><input id="coLicCG" min="0" step="1" type="number" value="0"/></div>
+  <div><label>Licencia sin goce / suspensión (días)</label><input id="coLicSG" min="0" step="1" type="number" value="0"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+  <div>
+    <label>Es suspensión</label>
+    <div><input id="coSuspension" type="checkbox"/></div>
+  </div>
+  <div><label>Ausencias injustificadas (días)</label><input id="coAus" min="0" step="1" type="number" value="0"/></div>
+  <div><label>Embargo (monto)</label><input id="coEmbargo" min="0" step="0.01" type="number" value="0"/></div>
+  <div></div>
+</div>
+
+Recibo Mensual</div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
+<div class="table-wrapper">
+<table class="table">
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
+<tbody id="tbodyMensual"></tbody>
+<tfoot>
+<tr>
+  <td>Total</td>
+  <td class="right col-base-num"></td>
+  <td class="right" id="totRem">$0,00</td>
+  <td class="right" id="totNR">$0,00</td>
+  <td class="right" id="totDed">$0,00</td>
+</tr>
+<tr>
+  <td class="right" colspan="4"><strong>Neto a cobrar</strong></td>
+  <td class="right" id="neto">$0,00</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+<div class="card" id="paneFinal" style="display:none">
+<div class="grid cols-4">
+<div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
+<div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
+<div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
+<div><label>MRMNH (mejor mensual) *</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><div class="campo tipo-lf">
+  <label for="lf_tipo">Tipo de liquidación</label>
+  <select id="lf_tipo">
+    <option value="DESPIDO_SC">Despido sin causa</option>
+    <option value="DESPIDO_CC">Despido con causa</option>
+    <option value="RENUNCIA">Renuncia</option>
+    <option value="FALLECIMIENTO">Fallecimiento</option>
+  </select>
+</div>
+<label>Preaviso</label><select id="lf_preaviso"><option value="0">Sin preaviso</option><option value="15">15 días</option><option value="30">1 mes</option><option value="60">2 meses</option></select></div>
+<div><label>Integración del mes</label><input checked="" id="lf_integracion" type="checkbox"/> Calcular automático</div>
+<div><label>SAC sobre preaviso</label><input id="lf_sac_pre" type="checkbox"/></div>
+<div><label>SAC sobre integración</label><input checked="" id="lf_sac_int" type="checkbox"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>Días trabajados del mes</label><input id="lf_dias_mes" max="31" min="0" type="number" value="0"/></div>
+<div><label>Vacaciones anuales (auto/edi.)</label><input id="lf_vac_anuales" min="0" type="number" value="14"/></div>
+<div><label>Vacaciones proporcionales</label><input class="readonly" disabled="" id="lf_vac_calc" readonly="" type="number" value="0"/></div>
+<div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
+</div>
+<div class="note small">* Usá “Sugerir MRMNH” para proponer un mejor mensual (editable) con NR + antigüedad + presentismo.</div>
+<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
+<button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
+<button onclick="window.print()" type="button">Imprimir / PDF</button>
+<span id="diagFinal" style="color:#64748b"></span>
+</div>
+<div class="badge" style="margin-top:8px">Liquidación Final</div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span></div>
+<div class="table-wrapper">
+<table class="table">
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<tbody id="tbodyFinal"></tbody>
+<tfoot>
+<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNR">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
+<tr><td class="right" colspan="4"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
+</tfoot>
+</table>
+</div>
+</div>
+</div>
+
+<div id="printArea" style="display:none"></div>
+<style id="printIsolation">
+@page{size:A4;margin:10mm}
+@media print{
+  body > *:not(#printArea){ display:none !important }
+  #printArea{ display:block !important }
+  html,body{ background:#fff !important }
+}
+#printArea{display:none}
+/* Hoja simple */
+#printArea .sheet{position:relative;width:190mm;min-height:260mm;margin:0 auto;color:#0f172a;font:11px/1.28 ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial}
+/* Título */
+#printArea .title{text-align:center;font-weight:900;font-size:16px;margin-bottom:6mm}
+/* Tabla con columnas fijas y números tabulares */
+#printArea table{width:100%;border-collapse:collapse;table-layout:fixed}
+#printArea thead th{padding:2.2mm 2mm 2mm;border-bottom:.45mm solid #000;font-weight:800}
+#printArea th,#printArea td{padding:2mm;font-variant-numeric:tabular-nums}
+#printArea th:nth-child(1),#printArea td:nth-child(1){text-align:left}
+#printArea th:nth-child(2),#printArea td:nth-child(2),
+#printArea th:nth-child(3),#printArea td:nth-child(3),
+#printArea th:nth-child(4),#printArea td:nth-child(4){text-align:right;white-space:nowrap}
+#printArea col.wFixed{width:33.5mm}
+/* Divisor */
+#printArea .divider td{padding:0;border-bottom:.35mm solid #000;height:0}
+/* Totales y Neto */
+#printArea tfoot td{padding:2.2mm 2mm;border-top:.45mm solid #000;font-weight:800}
+#printArea .neto{margin-top:2.6mm;text-align:center;font-size:13.2px;font-weight:900}
+/* Pie simple */
+#printArea .foot-final{display:grid;grid-template-columns:1fr 1fr;gap:25mm;margin-top:12mm}
+#printArea .firma{border-top:.35mm solid #0f172a;text-align:center;padding-top:6mm;height:22mm}
+</style>
+
+
+
+
+
+
+
+<!-- CO v97 patch (light listeners) -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+  /* Mejoras de layout para la columna de auditoría */
+  .co-audit-col{ white-space: normal !important; overflow-wrap: anywhere; }
+  table{ table-layout: auto; }
+
+@media print{#co-audit-bar{display:none!important}}
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- CO patch v7: dedup de filas, fix ausencia rem-only /30, caída presentismo 2+, recalculo neto inmediato, alineación total -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- co-base-rs-override-v1: fuerza misma base para FAECYS / Sindicato / Obra Social -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Ghost select cleaner: oculta selects vacíos sin id que aparecen como duplicados de Mes -->
+
+
+
+
+
+
+
+
+
+
+
+  <style>
+    /* Responsive design for mobile devices */
+    /* For phones (≤600px), stack grid columns and adjust form elements */
+    @media (max-width: 600px) {
+      /* Stack all grid layouts to a single column */
+      .grid,
+      .cols-4,
+      .cols-3 {
+        grid-template-columns: 1fr !important;
+      }
+      /* Increase readability of form controls */
+      label,
+      input,
+      select,
+      button {
+        font-size: 14px;
+        padding: 8px;
+      }
+      /* Ensure form controls fill the available width on small screens */
+      input,
+      select,
+      textarea,
+      button {
+        width: 100%;
+        max-width: 100%;
+        display: block;
+      }
+      /* Hide decorative watermark on small screens */
+      .co-watermark {
+        display: none;
+      }
+      /* Ensure table columns don't collapse too narrow */
+      .table th,
+      .table td {
+        min-width: 120px;
+      }
+
+    /* Para el panel de licencias y ausencias (co-inline-panel) usar una sola columna en móviles
+       de modo que las casillas de Licencia paga, Licencia sin goce, Vacaciones gozadas,
+       Ausencias injustificadas y Embargo se vean una debajo de otra.  Sin esta regla, el grid
+       mantiene tres columnas (160px mínimas) que no caben en pantallas angostas y provoca
+       que algunos campos queden fuera de vista. */
+    #co-inline-panel {
+      grid-template-columns: 1fr !important;
+    }
+    /* El contenedor de embargo mantiene su propio grid interno sin cambios */
+    }
+    /* On small tablets (601–900px), use two columns */
+    @media (min-width: 601px) and (max-width: 900px) {
+      .cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+      .cols-3 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+    /* Wrapper for tables to enable horizontal scrolling on narrow screens */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+(() => {
+  const API_BASE = "";
+  const ENDPOINT_CALC = API_BASE + "/calcular";
+  const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
+  const ENDPOINT_PAYLOAD = API_BASE + "/payload";
+
+  const $ = (id) => document.getElementById(id);
+  const num = (id) => {
+    const el = $(id);
+    if (!el) return 0;
+    const v = (el.value ?? "").toString().replace(",", ".").trim();
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const val = (id) => {
+    const el = $(id);
+    return el ? (el.value ?? "").toString().trim() : "";
+  };
+  const chk = (id) => {
+    const el = $(id);
+    return !!(el && el.checked);
+  };
+
+  const money = (x) => {
+    const n = Number(x);
+    const v = Number.isFinite(n) ? n : 0;
+    return v.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
+  };
+
+  function setText(id, txt) {
+    const el = $(id);
+    if (el) el.textContent = txt;
+  }
+  function setValue(id, v) {
+    const el = $(id);
+    if (el) el.value = (v ?? 0);
+  }
+
+  function clearTbody(tbodyId) {
+    const tb = $(tbodyId);
+    if (tb) tb.innerHTML = "";
+  }
+  function addRow(tbodyId, it) {
+    const tb = $(tbodyId);
+    if (!tb) return;
+    const tr = document.createElement("tr");
+    const base = (it.base === null || it.base === undefined) ? "" : money(it.base);
+    tr.innerHTML = `
+      <td>${(it.concepto ?? "")}</td>
+      <td class="text-end">${base}</td>
+      <td class="text-end">${money(it.remunerativo)}</td>
+      <td class="text-end">${money(it.no_remunerativo)}</td>
+      <td class="text-end">${money(it.deduccion)}</td>
+    `;
+    tb.appendChild(tr);
+  }
+
+  async function fetchJSON(url, payload=null) {
+    const opt = payload ? {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+    } : { method:"GET" };
+    const res = await fetch(url, opt);
+    if (!res.ok) {
+      const t = await res.text().catch(()=> "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${t}`.trim());
+    }
+    return await res.json();
+  }
+
+  // -------- META (sin montos) --------
+  let META = null;
+  let PAYLOAD_ROWS = null;
+  let TREE = null;
+
+  function fillSelect(selectEl, options, placeholder="— Seleccione —") {
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholder;
+    selectEl.appendChild(ph);
+    for (const opt of options) {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      selectEl.appendChild(o);
+    }
+  }
+
+  function isDateLike(s){
+  if(!s) return false;
+  const t = String(s).trim();
+  if(/^(\d{4}-\d{2}-\d{2})/.test(t)) return true;
+  if(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(t)) return true;
+  return false;
+}
+
+  function buildTree(rows){
+    const tree = {};
+    for (const row of (rows || [])) {
+      const r = (row.rama || "").toString().trim();
+      const a = (row.agrup || "").toString().trim();
+      const c = (row.categoria || "").toString().trim();
+      const m = (row.mes || "").toString().trim();
+      if (!r || !a || !c || !m) continue;
+
+      if (!tree[r]) tree[r] = { agrups: {} };
+      if (!tree[r].agrups[a]) tree[r].agrups[a] = { catsSet: new Set(), mesesByCatSet: {} };
+
+      tree[r].agrups[a].catsSet.add(c);
+      if (!tree[r].agrups[a].mesesByCatSet[c]) tree[r].agrups[a].mesesByCatSet[c] = new Set();
+      tree[r].agrups[a].mesesByCatSet[c].add(m);
+    }
+
+    for (const r of Object.keys(tree)) {
+      for (const a of Object.keys(tree[r].agrups)) {
+        const g = tree[r].agrups[a];
+        g.cats = Array.from(g.catsSet || []).sort();
+        delete g.catsSet;
+
+        g.mesesByCat = {};
+        for (const c of Object.keys(g.mesesByCatSet || {})) {
+          g.mesesByCat[c] = Array.from(g.mesesByCatSet[c] || []).sort();
+        }
+        delete g.mesesByCatSet;
+      }
+    }
+    return tree;
+  }
+
+
+
+function refreshSelectors() {
+    if (!META) return;
+
+    const ramaSel = $("rama");
+    const agrupSel = $("agrup");
+    const catSel = $("categoria");
+    const mesSel = $("mes");
+
+    // Ramas: preferir lista limpia del backend; fallback a dict o TREE
+    let ramas = [];
+    if (Array.isArray(META.ramas)) ramas = META.ramas.slice();
+    else if (META.ramas_dict) ramas = Object.keys(META.ramas_dict);
+    else if (META.ramas) ramas = Object.keys(META.ramas);
+
+    if ((!ramas || ramas.length === 0) && TREE) ramas = Object.keys(TREE);
+
+    ramas = (ramas || [])
+      .map(r => String(r || "").trim())
+      .filter(r => r && !isDateLike(r) && !/^(?:\d+|\d+\.\d+)$/.test(r))
+      .sort((a,b)=>a.localeCompare(b, "es"));
+
+    fillSelect(ramaSel, ramas.map(r => ({ value: r, label: r })), "— Seleccione —");
+
+    const curRama = ramaSel.dataset.last || ramaSel.value || (ramas.includes("GENERAL") ? "GENERAL" : (ramas[0] || ""));
+    if (ramas.includes(curRama)) ramaSel.value = curRama;
+
+    function refreshAgrup() {
+      const r = ramaSel.value;
+      ramaSel.dataset.last = r;
+
+      const agrups = (TREE && TREE[r]) ? Object.keys(TREE[r].agrups || {}).sort((a,b)=>a.localeCompare(b, "es")) : [];
+      fillSelect(agrupSel, agrups.map(a => ({ value: a, label: a })), "— Seleccione —");
+
+      const curAgr = agrupSel.dataset.last || agrupSel.value || (agrups[0] || "");
+      if (agrups.includes(curAgr)) agrupSel.value = curAgr;
+      refreshCat();
+    }
+
+    function refreshCat() {
+      const r = ramaSel.value;
+      const a = agrupSel.value;
+      agrupSel.dataset.last = a;
+
+      const cats = (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a]) ? (TREE[r].agrups[a].cats || []) : [];
+      fillSelect(catSel, cats.map(c => ({ value: c, label: c })), "— Seleccione —");
+
+      const curCat = catSel.dataset.last || catSel.value || (cats[0] || "");
+      if (cats.includes(curCat)) catSel.value = curCat;
+      refreshMes();
+    }
+
+    function refreshMes() {
+      const r = ramaSel.value;
+      const a = agrupSel.value;
+      const c = catSel.value;
+      catSel.dataset.last = c;
+
+      // Meses filtrados por Rama/Agrup/Categoría (evita meses globales que no existen para esa combinación)
+      let meses = [];
+      const mesesFiltrados =
+        (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a] && TREE[r].agrups[a].mesesByCat && TREE[r].agrups[a].mesesByCat[c])
+          ? TREE[r].agrups[a].mesesByCat[c].slice()
+          : [];
+
+      if (mesesFiltrados.length) {
+        meses = mesesFiltrados;
+      } else if (Array.isArray(META.meses)) {
+        meses = META.meses.slice();
+      } else if (META.meses_dict) {
+        meses = Object.keys(META.meses_dict);
+      }
+
+      meses = Array.from(new Set((meses || [])
+        .map(m => String(m || "").trim())
+        .filter(m => m)
+      )).sort((x,y)=>x.localeCompare(y, "es"));
+
+      fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
+
+      let curMes = mesSel.dataset.last || mesSel.value || "";
+      if (!curMes || !meses.includes(curMes)) curMes = (meses.length ? meses[meses.length - 1] : "");
+      if (curMes && meses.includes(curMes)) mesSel.value = curMes;
+      mesSel.dataset.last = mesSel.value;
+
+      toggleRamaBlocks();
+      if (mesSel.value) fetchAutoBase();
+      setText("status", "Maestro cargado.");
+    }
+
+    ramaSel.onchange = refreshAgrup;
+    agrupSel.onchange = refreshCat;
+    catSel.onchange = refreshMes;
+    mesSel.onchange = () => {
+      mesSel.dataset.last = mesSel.value;
+      toggleRamaBlocks();
+      fetchAutoBase();
+    };
+
+    const titSel = $("turTitulo");
+    if (titSel) {
+      titSel.onchange = () => {
+        // solo afecta a Turismo; re-calcular tabla si ya se calculó
+        if ((val("rama") || "").toUpperCase().includes("TURISMO")) {
+          // si ya hay un mes seleccionado, refrescar base (y luego el usuario toca Calcular)
+          if (val("mes")) fetchAutoBase();
+        }
+      };
+    }
+
+
+    refreshAgrup();
+  }
+
+
+  
+
+  async function fetchAutoBase(){
+    const r = val("rama");
+    const a = val("agrup");
+    const c = val("categoria");
+    const m = val("mes");
+    if (!r || !a || !c || !m) return;
+
+    const params = { rama: r, agrup: a, categoria: c, mes: m };
+
+    try {
+      let data;
+      try {
+        // Prefer POST (FastAPI /calcular suele ser POST)
+        data = await fetchJSON(ENDPOINT_CALC, params);
+      } catch (e1) {
+        const msg1 = String(e1 && e1.message ? e1.message : e1 || "");
+        // Fallback por si el servidor expone /calcular como GET (405 Method Not Allowed)
+        if (msg1.includes("405")) {
+          const qs = new URLSearchParams(params).toString();
+          data = await fetchJSON(`${ENDPOINT_CALC}?${qs}`);
+        } else {
+          throw e1;
+        }
+      }
+
+      if (data && data.ok) {
+        const b = Number(data.basico ?? 0) || 0;
+        const nr1 = Number(data.no_rem_1 ?? 0) || 0;
+        const nr2 = Number(data.no_rem_2 ?? 0) || 0;
+
+        setValue("basico", b);
+        setValue("nrVar", nr1);
+        setValue("nrSF", nr2);
+        setValue("nrTotal", nr1 + nr2);
+
+        setText("status", "Base cargada.");
+      } else {
+        setText("status", "Sin escala para esa combinación.");
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar base desde /calcular", e);
+      const msg = String(e && e.message ? e.message : e || "");
+      setText("status", msg.includes("404") ? "Sin escala para ese mes." : "Error al consultar el servidor.");
+    }
+  }
+
+function toggleRamaBlocks() {
+    const rama = (val("rama") || "").toUpperCase();
+    const agua = $("aguaBlock");
+    const fun = $("funBlock");
+    const tit = $("boxTitulo");
+    if (agua) agua.style.display = rama.includes("AGUA") ? "" : "none";
+    if (fun) fun.style.display = rama.includes("FUNEBRES") ? "" : "none";
+    if (tit) tit.style.display = rama.includes("TURISMO") ? "" : "none";
+    // reset si no es Turismo
+    if (tit && !rama.includes("TURISMO")) { const s = $("turTitulo"); if (s) s.value = "0"; }
+  }
+
+
+  // -------- Payload builders --------
+  function buildPayloadMensual() {
+    const coAus = num("coAus");
+
+    return {
+      rama: val("rama"),
+      agrup: val("agrup") || val("agrupamiento") || val("agrupacion") || val("agrup"), // por si cambia
+      categoria: val("categoria"),
+      mes: val("mes"),
+      hs: num("hs") || 48,
+      anios: num("antiguedad") || num("anios") || 0,
+      presentismo: (coAus <= 1),
+      basico: num("basico"),
+      zona: num("zona"),
+      afiliado: chk("afiliado") || val("afiliadoSel") === "si",
+      osecac: (val("osecac").toLowerCase().includes("no") ? "no" : "si"),
+      ferNoTrab: num("ferNoTrab"),
+      ferTrab: num("ferTrab"),
+      hex50: num("hex50"),
+      hex100: num("hex100"),
+      hsNoct: num("hsNoct"),
+      coVacGoz: num("coVacGoz"),
+      coLicCG: num("coLicCG"),
+      coLicSG: num("coLicSG"),
+      coSuspension: chk("coSuspension"),
+      coEmbargo: num("coEmbargo"),
+      coAus: coAus,
+      coJub: chk("coJub") || chk("jubilado"),
+      lf_tipo: "NINGUNA",
+      lf_ingreso: null,
+      lf_egreso: null,
+      // extras (API nueva los acepta)
+      aguaConex: val("aguaConex"),
+      funAdic1: chk("funAdic1"),
+      funAdic2: chk("funAdic2"),
+      funAdic3: chk("funAdic3"),
+      funAdic4: chk("funAdic4")
+    };
+  }
+
+  function buildPayloadFinal() {
+    const coAus = num("lf_coAus") || num("coAus");
+    const ingreso = val("lf_ingreso") || null;
+    const egreso = val("lf_egreso") || null;
+
+    return {
+      rama: val("lf_rama") || val("rama"),
+      agrup: val("lf_agrup") || val("agrup"),
+      categoria: val("lf_categoria") || val("categoria"),
+      mes: val("lf_mes") || val("mes"),
+      hs: num("lf_hs") || num("hs") || 48,
+      anios: num("lf_anios") || num("antiguedad") || 0,
+      presentismo: (coAus <= 1),
+      basico: num("lf_basico") || num("basico"),
+      zona: num("lf_zona") || num("zona"),
+      afiliado: chk("lf_afiliado") || chk("afiliado"),
+      osecac: (val("lf_osecac") || val("osecac")).toLowerCase().includes("no") ? "no" : "si",
+      ferNoTrab: num("lf_ferNoTrab") || 0,
+      ferTrab: num("lf_ferTrab") || 0,
+      hex50: num("lf_hex50") || 0,
+      hex100: num("lf_hex100") || 0,
+      hsNoct: num("lf_hsNoct") || 0,
+      coVacGoz: num("coVacGoz"),
+      coLicCG: num("coLicCG"),
+      coLicSG: num("coLicSG"),
+      coSuspension: chk("coSuspension"),
+      coEmbargo: num("coEmbargo"),
+      coAus: coAus,
+      coJub: chk("lf_coJub") || chk("coJub") || chk("jubilado"),
+      lf_tipo: val("lf_tipo") || "NINGUNA",
+      lf_ingreso: ingreso,
+      lf_egreso: egreso,
+      aguaConex: val("aguaConex"),
+      funAdic1: chk("funAdic1"),
+      funAdic2: chk("funAdic2"),
+      funAdic3: chk("funAdic3"),
+      funAdic4: chk("funAdic4")
+    };
+  }
+
+  async function postCalculo(payload, tbodyId, totRemId, totNrId, totDedId, netoId) {
+    const data = await fetchJSON(ENDPOINT_CALC, payload);
+    // Si el backend aún devuelve solo base (esqueleto), armamos items/totales acá para que el botón "Calcular" muestre algo visible.
+    const ramaSel = String(payload?.rama || val("rama") || "").toUpperCase();
+    const pctTitulo = Number((document.getElementById("turTitulo")?.value ?? 0)) || 0;
+    const b0 = Number(data?.basico ?? 0) || 0;
+    const nr1 = Number(data?.no_rem_1 ?? 0) || 0;
+    const nr2 = Number(data?.no_rem_2 ?? 0) || 0;
+
+    if ((!data.items || !Array.isArray(data.items)) && data && data.ok) {
+      const items = [];
+      items.push({ concepto: "Básico (REM)", base: b0, remunerativo: b0, no_remunerativo: 0, deduccion: 0 });
+      if (nr1) items.push({ concepto: "No Rem (variable)", base: nr1, remunerativo: 0, no_remunerativo: nr1, deduccion: 0 });
+      if (nr2) items.push({ concepto: "Suma Fija (NR)", base: nr2, remunerativo: 0, no_remunerativo: nr2, deduccion: 0 });
+
+      // Turismo: Adicional por título (solo UI + cálculo simple)
+      if (ramaSel.includes("TURISMO") && pctTitulo > 0) {
+        const t = pctTitulo / 100.0;
+        const addRem = +(b0 * t);
+        const addNR = +((nr1 + nr2) * t);
+        if (addRem) items.push({ concepto: `Adicional por Título (REM) ${pctTitulo}%`, base: b0, remunerativo: addRem, no_remunerativo: 0, deduccion: 0 });
+        if (addNR) items.push({ concepto: `Adicional por Título (NR) ${pctTitulo}%`, base: (nr1 + nr2), remunerativo: 0, no_remunerativo: addNR, deduccion: 0 });
+      }
+
+      const total_rem = items.reduce((s,it)=>s+(Number(it.remunerativo)||0),0);
+      const total_nr = items.reduce((s,it)=>s+(Number(it.no_remunerativo)||0),0);
+      const total_deducciones = 0;
+      const neto = total_rem + total_nr - total_deducciones;
+
+      data.items = items;
+      data.totales = { total_rem, total_nr, total_deducciones, neto };
+    }
+
+
+    // llenar tabla
+    clearTbody(tbodyId);
+    (data.items || []).forEach(it => addRow(tbodyId, it));
+
+    // totales
+    setText(totRemId, money(data.totales?.total_rem ?? 0));
+    setText(totNrId, money(data.totales?.total_nr ?? 0));
+    setText(totDedId, money(data.totales?.total_deducciones ?? 0));
+    setText(netoId, money(data.totales?.neto ?? 0));
+
+    // auto (mostrar en inputs sin exponer maestro)
+    const auto = data.auto || (data && data.ok ? {
+      basico: data.basico,
+      nrVar: data.no_rem_1,
+      nrSF: data.no_rem_2,
+      nrTotal: (Number(data.no_rem_1 ?? 0) || 0) + (Number(data.no_rem_2 ?? 0) || 0)
+    } : null);
+
+    if (auto) {
+      setValue("basico", auto.basico ?? 0);
+      setValue("nrVar", auto.nrVar ?? 0);
+      setValue("nrSF", auto.nrSF ?? 0);
+      setValue("nrTotal", auto.nrTotal ?? 0);
+    }
+
+    setText("status", "OK");
+    return data;
+  }
+
+  // -------- Handlers públicos (usan IDs existentes) --------
+  window.calcularMensual = async function() {
+    try {
+      const payload = buildPayloadMensual();
+      await postCalculo(payload, "tbodyMensual", "totRem", "totNR", "totDed", "neto");
+    } catch (e) {
+      console.error(e);
+      alert("Error al calcular (API). Revisá conexión o datos.");
+      setText("status", "Error");
+    }
+  };
+
+  window.calcularFinal = async function() {
+    try {
+      const payload = buildPayloadFinal();
+      await postCalculo(payload, "tbodyFinal", "lf_totRem", "lf_totNR", "lf_totDed", "lf_neto");
+    } catch (e) {
+      console.error(e);
+      alert("Error al calcular Liquidación Final (API).");
+    }
+  };
+
+  
+  async function boot() {
+    try {
+      document.body.classList.add("hide-base-col");
+      setText("status", "Cargando maestro…");
+
+      META = await fetchJSON(ENDPOINT_META);
+
+      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
+      const payload = await fetchJSON(ENDPOINT_PAYLOAD);
+      PAYLOAD_ROWS = payload.rows || [];
+      TREE = buildTree(PAYLOAD_ROWS);
+
+      refreshSelectors();
+      toggleRamaBlocks();
+
+      const baseChk = $("coBaseNumChk");
+      if (baseChk) {
+        baseChk.addEventListener("change", () => {
+          if (baseChk.checked) document.body.classList.remove("hide-base-col");
+          else document.body.classList.add("hide-base-col");
+        });
+      }
+
+      setText("status", "Maestro cargado.");
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo cargar el maestro (META) desde el servidor.");
+      setText("status", "Sin conexión");
+    }
+  }
+
+
+  document.addEventListener("DOMContentLoaded", boot);
+})();
+</script>
+
+</body>
+
+
+</html>
