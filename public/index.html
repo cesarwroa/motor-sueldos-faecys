@@ -490,33 +490,6 @@ Recibo Mensual</div>
   const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
 
-  // -------- helpers --------
-  const MES_MIN = "2026-01"; // mostrar meses desde enero 2026
-
-  function pick(obj, keys) {
-    for (const k of keys) {
-      if (obj && Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
-    }
-    return undefined;
-  }
-
-  function normStr(x) {
-    return (x ?? "").toString().trim();
-  }
-
-  function normMes(x) {
-    const t = normStr(x);
-    if (!t) return "";
-    // "YYYY-MM" o "YYYY-MM-DD ..."
-    const m = t.match(/^(\d{4}-\d{2})/);
-    return m ? m[1] : t;
-  }
-
-  function mesGE(a, b) {
-    // compara "YYYY-MM" lexicográfico
-    return normMes(a) >= normMes(b);
-  }
-
   const $ = (id) => document.getElementById(id);
   const num = (id) => {
     const el = $(id);
@@ -569,17 +542,26 @@ Recibo Mensual</div>
   }
 
   async function fetchJSON(url, payload=null) {
-    const opt = payload ? {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify(payload),
-    } : { method:"GET" };
-    const res = await fetch(url, opt);
-    if (!res.ok) {
-      const t = await res.text().catch(()=> "");
-      throw new Error(`HTTP ${res.status} ${res.statusText} ${t}`.trim());
+    // API del servidor usa GET con query params (no POST con JSON).
+    let finalUrl = url;
+    const opt = { method: "GET" };
+
+    if (payload && typeof payload === "object") {
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(payload)) {
+        if (v === undefined || v === null) continue;
+        const s = (typeof v === "string") ? v.trim() : String(v);
+        if (s === "") continue;
+        params.append(k, s);
+      }
+      const qs = params.toString();
+      if (qs) finalUrl = url + (url.includes("?") ? "&" : "?") + qs;
     }
-    return await res.json();
+
+    const res = await fetch(finalUrl, opt);
+    const txt = await res.text().catch(()=> "");
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} ${txt}`.trim());
+    try { return txt ? JSON.parse(txt) : null; } catch { return txt; }
   }
 
   // -------- META (sin montos) --------
@@ -613,15 +595,11 @@ Recibo Mensual</div>
   function buildTree(rows){
     const tree = {};
     for (const row of (rows || [])) {
-      const r = normStr(pick(row, ["rama","RAMA","Rama"]));
-      let a = normStr(pick(row, ["agrup","agrupamiento","agrupacion","AGRUP","AGRUPAMIENTO","Agrupamiento","Agrup"]));
-      let c = normStr(pick(row, ["categoria","cat","CATEGORIA","Categoria","Categoría"]));
-      const m = normMes(pick(row, ["mes","MES","Mes","periodo","Periodo","PERIODO"]));
-
-      // Normalizaciones: algunos payloads usan "—" o vacío
-      if (!a) a = "—";
-      if (!c) c = "—";
-      if (!r || !m) continue;
+      const r = (row.rama || "").toString().trim();
+      const a = (row.agrup || "").toString().trim();
+      const c = (row.categoria || "").toString().trim();
+      const m = (row.mes || "").toString().trim();
+      if (!r || !a || !c || !m) continue;
 
       if (!tree[r]) tree[r] = { agrups: {} };
       if (!tree[r].agrups[a]) tree[r].agrups[a] = { catsSet: new Set(), mesesByCatSet: {} };
@@ -642,34 +620,6 @@ Recibo Mensual</div>
           g.mesesByCat[c] = Array.from(g.mesesByCatSet[c] || []).sort();
         }
         delete g.mesesByCatSet;
-      }
-    }
-    return tree;
-  }
-
-  function buildTreeFromMeta(meta) {
-    const tree = {};
-    if (!meta) return tree;
-    const ramas = Array.isArray(meta.ramas) ? meta.ramas : Object.keys(meta.agrupamientos || {});
-    const mesesGlobal = Array.isArray(meta.meses) ? meta.meses : [];
-    for (const r0 of ramas || []) {
-      const r = normStr(r0);
-      if (!r || isDateLike(r) || /^(?:\d+|\d+\.\d+)$/.test(r)) continue;
-      const agrups = (meta.agrupamientos && meta.agrupamientos[r]) ? meta.agrupamientos[r] : [];
-      const aList = Array.isArray(agrups) ? agrups : [];
-      if (!tree[r]) tree[r] = { agrups: {} };
-      for (const a0 of (aList.length ? aList : ["—"])) {
-        const a = normStr(a0) || "—";
-        const cats = (meta.categorias && meta.categorias[r] && meta.categorias[r][a]) ? meta.categorias[r][a] : [];
-        const cList = Array.isArray(cats) ? cats : ["—"];
-        if (!tree[r].agrups[a]) tree[r].agrups[a] = { cats: [], mesesByCat: {} };
-        for (const c0 of cList) {
-          const c = normStr(c0) || "—";
-          if (!tree[r].agrups[a].cats.includes(c)) tree[r].agrups[a].cats.push(c);
-          const mr = (meta.meses_por_rama?.[r] || meta.mesesPorRama?.[r]);
-          const meses = Array.isArray(mr) ? mr : mesesGlobal;
-          tree[r].agrups[a].mesesByCat[c] = Array.from(new Set((meses || []).map(normMes).filter(m=>m && mesGE(m, MES_MIN))));
-        }
       }
     }
     return tree;
@@ -707,12 +657,7 @@ function refreshSelectors() {
       const r = ramaSel.value;
       ramaSel.dataset.last = r;
 
-      let agrups = (TREE && TREE[r]) ? Object.keys(TREE[r].agrups || {}) : [];
-      if ((!agrups || agrups.length === 0) && META && META.agrupamientos && META.agrupamientos[r]) {
-        const aList = META.agrupamientos[r];
-        if (Array.isArray(aList)) agrups = aList.slice();
-      }
-      agrups = (agrups || []).map(a=>normStr(a)).filter(a=>a).sort((a,b)=>a.localeCompare(b, "es"));
+      const agrups = (TREE && TREE[r]) ? Object.keys(TREE[r].agrups || {}).sort((a,b)=>a.localeCompare(b, "es")) : [];
       fillSelect(agrupSel, agrups.map(a => ({ value: a, label: a })), "— Seleccione —");
 
       const curAgr = agrupSel.dataset.last || agrupSel.value || (agrups[0] || "");
@@ -725,12 +670,7 @@ function refreshSelectors() {
       const a = agrupSel.value;
       agrupSel.dataset.last = a;
 
-      let cats = (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a]) ? (TREE[r].agrups[a].cats || []) : [];
-      if ((!cats || cats.length === 0) && META && META.categorias && META.categorias[r] && META.categorias[r][a]) {
-        const cList = META.categorias[r][a];
-        if (Array.isArray(cList)) cats = cList.slice();
-      }
-      cats = (cats || []).map(c=>normStr(c)).filter(c=>c).sort((a,b)=>a.localeCompare(b, "es"));
+      const cats = (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a]) ? (TREE[r].agrups[a].cats || []) : [];
       fillSelect(catSel, cats.map(c => ({ value: c, label: c })), "— Seleccione —");
 
       const curCat = catSel.dataset.last || catSel.value || (cats[0] || "");
@@ -753,9 +693,6 @@ function refreshSelectors() {
 
       if (mesesFiltrados.length) {
         meses = mesesFiltrados;
-      } else if (META && (META.meses_por_rama || META.mesesPorRama) && (META.meses_por_rama?.[r] || META.mesesPorRama?.[r])) {
-        const mList = (META.meses_por_rama?.[r] || META.mesesPorRama?.[r]);
-        if (Array.isArray(mList)) meses = mList.slice();
       } else if (Array.isArray(META.meses)) {
         meses = META.meses.slice();
       } else if (META.meses_dict) {
@@ -763,9 +700,10 @@ function refreshSelectors() {
       }
 
       meses = Array.from(new Set((meses || [])
-        .map(m => normMes(m))
-        .filter(m => m && mesGE(m, MES_MIN))
+        .map(m => String(m || "").trim())
+        .filter(m => m)
       )).sort((x,y)=>x.localeCompare(y, "es"));
+      meses = meses.filter(m => String(m) >= "2026-01");
 
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
@@ -1032,17 +970,10 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
       META = await fetchJSON(ENDPOINT_META);
 
-      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload.
-      // El endpoint /payload exige query params (rama, mes). Usamos un bootstrap mínimo.
-      try {
-        const qs = new URLSearchParams({ rama: "GENERAL", mes: MES_MIN });
-        const payload = await fetchJSON(`${ENDPOINT_PAYLOAD}?${qs.toString()}`);
-        PAYLOAD_ROWS = payload.rows || [];
-        TREE = buildTree(PAYLOAD_ROWS);
-      } catch (e) {
-        console.warn("No se pudo cargar /payload. Se usa META para poblar selectores.", e);
-        TREE = buildTreeFromMeta(META);
-      }
+      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
+      const payload = await fetchJSON(ENDPOINT_PAYLOAD);
+      PAYLOAD_ROWS = payload.rows || [];
+      TREE = buildTree(PAYLOAD_ROWS);
 
       refreshSelectors();
       toggleRamaBlocks();
