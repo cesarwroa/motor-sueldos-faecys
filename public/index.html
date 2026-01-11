@@ -619,14 +619,15 @@ const money = (x) => {
   }
 
   function loadPayloadFor(rama, mes){
-    if(!rama || !mes) return Promise.resolve();
-    const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    return fetchJSON(url).then(payload => {
-      const rawRows = normalizePayloadRows(payload);
-      PAYLOAD_ROWS = rawRows.map(normalizeRow).filter(x => x.rama && x.agrup && x.categoria && x.mes);
-      TREE = buildTree(PAYLOAD_ROWS);
-    });
-  }
+  if(!rama || !mes) return Promise.resolve();
+  const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
+  return fetchJSON(url).then(payload => {
+    const rawRows = normalizePayloadRows(payload);
+    // Guardar filas crudas para debug; TREE se arma con extracción tolerante (buildTree)
+    PAYLOAD_ROWS = rawRows;
+    TREE = buildTree(rawRows);
+  });
+}
 
   async function onSelectionChange(){
     // Update month options first (from META), then load payload for selected rama+mes to populate agrup/categoría
@@ -677,40 +678,62 @@ const money = (x) => {
   return false;
 }
 
-  function buildTree(rows){
-    const tree = {};
-    const arr = Array.isArray(rows) ? rows : [];
-    for (const row of arr) {
-      const r = (row.rama || "").toString().trim();
-      const a = (row.agrup || "").toString().trim();
-      const c = (row.categoria || "").toString().trim();
-      const m = (row.mes || "").toString().trim();
-      if (!r || !a || !c || !m) continue;
+  function normKey(k){
+  return String(k||"")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g,"")
+    .replace(/[^a-z0-9_]/g,"");
+}
+function pick(row, candidates){
+  if(!row) return "";
+  for(const c of candidates){
+    if(row[c] != null) return String(row[c]).trim();
+  }
+  const map = {};
+  for(const k of Object.keys(row)){
+    map[normKey(k)] = k;
+  }
+  for(const c of candidates){
+    const nk = normKey(c);
+    if(map[nk]) return String(row[map[nk]]).trim();
+  }
+  return "";
+}
 
-      if (!tree[r]) tree[r] = { agrups: {} };
-      if (!tree[r].agrups[a]) tree[r].agrups[a] = { catsSet: new Set(), mesesByCatSet: {} };
+function buildTree(rows){
+  const tree = {};
+  const arr = Array.isArray(rows) ? rows : [];
+  for (const row of arr) {
+    const r = pick(row, ["rama","Rama","RAMA","branch"]);
+    const a = pick(row, ["agrup","agrupamiento","Agrupamiento","AGRUPAMIENTO","grupo","Grupo"]);
+    const c = pick(row, ["categoria","Categoría","Categoria","CATEGORIA","cat","Cat"]);
+    const m = pick(row, ["mes","Mes","MES","escala","Escala","periodo","Periodo","PERIODO"]);
 
-      tree[r].agrups[a].catsSet.add(c);
-      if (!tree[r].agrups[a].mesesByCatSet[c]) tree[r].agrups[a].mesesByCatSet[c] = new Set();
-      tree[r].agrups[a].mesesByCatSet[c].add(m);
-    }
+    if (!r || !a || !c || !m) continue;
 
-    // materializar sets
-    for (const r of Object.keys(tree)) {
-      for (const a of Object.keys(tree[r].agrups)) {
-        const node = tree[r].agrups[a];
-        node.cats = Array.from(node.catsSet).sort((x,y)=>x.localeCompare(y,"es"));
-        delete node.catsSet;
-        node.mesesByCat = {};
-        for (const c of Object.keys(node.mesesByCatSet)) {
-          node.mesesByCat[c] = Array.from(node.mesesByCatSet[c]).sort((x,y)=>x.localeCompare(y,"es"));
-        }
-        delete node.mesesByCatSet;
-      }
-    }
-    return tree;
+    if (!tree[r]) tree[r] = { agrups: {} };
+    if (!tree[r].agrups[a]) tree[r].agrups[a] = { catsSet: new Set(), mesesByCatSet: {} };
+
+    tree[r].agrups[a].catsSet.add(c);
+    if (!tree[r].agrups[a].mesesByCatSet[c]) tree[r].agrups[a].mesesByCatSet[c] = new Set();
+    tree[r].agrups[a].mesesByCatSet[c].add(m);
   }
 
+  for (const r of Object.keys(tree)) {
+    for (const a of Object.keys(tree[r].agrups)) {
+      const node = tree[r].agrups[a];
+      node.cats = Array.from(node.catsSet).sort((x,y)=>x.localeCompare(y,"es"));
+      delete node.catsSet;
+      node.mesesByCat = {};
+      for (const c of Object.keys(node.mesesByCatSet)) {
+        node.mesesByCat[c] = Array.from(node.mesesByCatSet[c]).sort((x,y)=>x.localeCompare(y,"es"));
+      }
+      delete node.mesesByCatSet;
+    }
+  }
+  return tree;
+}
 
 
 function refreshSelectors(opts={}) {
@@ -971,11 +994,17 @@ function toggleRamaBlocks() {
   
 
 async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
+
+// Validación: no permitir calcular si falta selección
+if (!payload || !payload.rama || !payload.mes || !payload.agrup || !payload.categoria) {
+  alert("Seleccioná Rama, Agrupamiento, Categoría y Mes antes de calcular.");
+  throw new Error("Faltan selecciones (rama/agrup/categoria/mes).");
+}
   // Server-side: el backend devuelve "items" y "totales" listos.
   const url = new URL(`${API_BASE}/calcular`, window.location.href);
   url.searchParams.set("rama", payload.rama);
-  url.searchParams.set("agrup", payload.agrup || "—");
-  url.searchParams.set("categoria", payload.categoria || "—");
+  url.searchParams.set("agrup", payload.agrup || "");
+  url.searchParams.set("categoria", payload.categoria || "");
   url.searchParams.set("mes", payload.mes);
 
   // Jornada y antigüedad (si no existen, usa 48 y 0)
