@@ -995,9 +995,23 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       // Inicializar rama/mes desde META (sin depender de payload)
       refreshSelectors({onlyMeta:true});
 
-      // Si todavía no hay valores seleccionados, intentar setear defaults
-      const rama = getSelectedValue("rama");
-      const mes  = getSelectedValue("mes");
+      // Setear defaults (primera opción válida) para Rama y Mes si quedaron en blanco
+      const ramaSel = $("rama");
+      const mesSel  = $("mes");
+
+      const pickFirst = (sel) => {
+        if (!sel) return "";
+        const v = (sel.value || "").trim();
+        if (v && v !== "—") return v;
+        const opt = Array.from(sel.options || []).find(o => (o.value||"").trim() && (o.value||"").trim() !== "—");
+        if (opt) { sel.value = opt.value; return opt.value; }
+        return "";
+      };
+
+      const rama = pickFirst(ramaSel);
+      const mes  = pickFirst(mesSel);
+
+      if (!rama || !mes) throw new Error("No hay Rama/Mes disponibles en el maestro (META).");
 
       await loadPayloadFor(rama, mes);
 
@@ -1008,6 +1022,8 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       console.error(e);
       alert("No se pudo cargar el maestro (META/PAYLOAD) desde el servidor.");
       setText("statusMsg","Error al cargar maestro.");
+    }
+
   }
 
   document.addEventListener("DOMContentLoaded", boot);
