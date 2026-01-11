@@ -1,146 +1,152 @@
+
 from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
-import pandas as pd
 from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from openpyxl import load_workbook
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(BASE_DIR, "data", "maestro_actualizado.xlsx")
-PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+MAESTRO_PATH = os.path.join(APP_ROOT, "data", "maestro_actualizado.xlsx")
 
-app = FastAPI()
+app = FastAPI(title="Motor Sueldos FAECYS")
 
-# Permitir que el HTML servido desde el mismo dominio o desde localhost pueda consultar la API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Servir el frontend
+if os.path.isdir(os.path.join(APP_ROOT, "public")):
+    app.mount("/", StaticFiles(directory=os.path.join(APP_ROOT, "public"), html=True), name="public")
+
 
 def _norm(s: Any) -> str:
-    if s is None:
-        return ""
-    s = str(s).strip()
-    # normalizar espacios
-    s = " ".join(s.split())
-    return s
+    return " ".join(str(s or "").strip().split())
+
+
+def _month_key(m: str) -> str:
+    # Mantener formato YYYY-MM si viene así; si viene fecha YYYY-MM-DD, cortar
+    m = _norm(m)
+    if len(m) >= 7 and m[4] == "-" and m[6].isdigit():
+        return m[:7]
+    return m
+
 
 @lru_cache(maxsize=1)
-def _load_maestro() -> pd.DataFrame:
-    if not os.path.exists(DATA_PATH):
-        raise FileNotFoundError(f"No existe el maestro en {DATA_PATH}")
-    # concatenar todas las hojas de categorías
-    xl = pd.ExcelFile(DATA_PATH)
-    frames = []
-    for sh in xl.sheet_names:
-        if not sh.startswith("Categorias_"):
-            continue
-        df = xl.parse(sh)
-        # columnas esperadas: Rama, Agrupamiento, Categoria, Mes
-        cols = {c: c.strip() for c in df.columns}
-        df.rename(columns=cols, inplace=True)
-        needed = ["Rama", "Agrupamiento", "Categoria", "Mes"]
-        if not all(c in df.columns for c in needed):
-            continue
-        # normalizar
-        for c in needed:
-            df[c] = df[c].apply(_norm)
-        frames.append(df)
-    if not frames:
-        raise ValueError("No se encontraron hojas 'Categorias_*' en el maestro.")
-    cat = pd.concat(frames, ignore_index=True)
+def _load_rows() -> List[Dict[str, Any]]:
+    if not os.path.exists(MAESTRO_PATH):
+        raise FileNotFoundError(f"No se encontró el maestro en {MAESTRO_PATH}")
 
-    # asegurar tipos numéricos si existen
-    for col in ["Basico", "No Remunerativo", "SUMA_FIJA"]:
-        if col in cat.columns:
-            cat[col] = pd.to_numeric(cat[col], errors="coerce").fillna(0.0)
+    wb = load_workbook(MAESTRO_PATH, data_only=True)
 
-    return cat
+    rows: List[Dict[str, Any]] = []
+    for name in wb.sheetnames:
+        if not name.startswith("Categorias_"):
+            continue
+        ws = wb[name]
+        # Esperamos encabezados: Rama, Agrupamiento, Categoria, Mes, Basico, No Remunerativo, SUMA_FIJA
+        header = [(_norm(c) or "").lower() for c in next(ws.iter_rows(min_row=1, max_row=1, values_only=True))]
+        idx = {h: i for i, h in enumerate(header) if h}
+        required = ["rama", "agrupamiento", "categoria", "mes", "basico", "no remunerativo", "suma_fija"]
+        # permitir variantes de suma fija
+        if "suma_fija" not in idx and "suma fija" in idx:
+            idx["suma_fija"] = idx["suma fija"]
+        if "no remunerativo" not in idx and "no remunerativo" in idx:
+            idx["no remunerativo"] = idx["no remunerativo"]
+
+        missing = [k for k in ["rama", "agrupamiento", "categoria", "mes", "basico"] if k not in idx]
+        if missing:
+            # hoja distinta; la ignoramos para no romper
+            continue
+
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            rama = _norm(r[idx["rama"]])
+            agrup = _norm(r[idx["agrupamiento"]])
+            cat = _norm(r[idx["categoria"]])
+            mes = _month_key(r[idx["mes"]])
+            basico = float(r[idx["basico"]] or 0)
+            no_rem = float(r[idx.get("no remunerativo", -1)] or 0) if idx.get("no remunerativo", -1) != -1 else 0.0
+            suma_fija = float(r[idx.get("suma_fija", -1)] or 0) if idx.get("suma_fija", -1) != -1 else 0.0
+
+            if not rama or not mes or not cat:
+                continue
+
+            rows.append({
+                "rama": rama,
+                "agrup": agrup or "—",
+                "categoria": cat,
+                "mes": mes,
+                "basico": basico,
+                "no_rem_1": no_rem,
+                "no_rem_2": suma_fija,
+            })
+
+    return rows
+
+
+def _index_rows(rows: List[Dict[str, Any]]) -> Dict[Tuple[str, str, str, str], Dict[str, Any]]:
+    out: Dict[Tuple[str, str, str, str], Dict[str, Any]] = {}
+    for it in rows:
+        key = (_norm(it["rama"]).upper(), _norm(it["agrup"]), _norm(it["categoria"]), _month_key(it["mes"]))
+        out[key] = it
+    return out
+
+
+@lru_cache(maxsize=1)
+def _rows_index():
+    rows = _load_rows()
+    return _index_rows(rows)
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 
 @app.get("/meta")
-def meta() -> Dict[str, Any]:
-    """
-    Devuelve combinaciones válidas para selects.
-    Formato:
-      {
-        ok: true,
-        ramas: [...],
-        rows: [{rama, agrup, categoria, mes}, ...]
-      }
-    """
-    df = _load_maestro()
-    rows = (
-        df[["Rama", "Agrupamiento", "Categoria", "Mes"]]
-        .drop_duplicates()
-        .sort_values(["Rama", "Agrupamiento", "Categoria", "Mes"])
-    )
-    out_rows = [
-        {
-            "rama": r.Rama,
-            "agrup": r.Agrupamiento,
-            "categoria": r.Categoria,
-            "mes": str(r.Mes),
-        }
-        for r in rows.itertuples(index=False)
-    ]
-    ramas = sorted(df["Rama"].dropna().unique().tolist())
-    return {"ok": True, "ramas": ramas, "rows": out_rows}
+def meta():
+    try:
+        rows = _load_rows()
+        ramas = sorted({r["rama"] for r in rows})
+        meses = sorted({r["mes"] for r in rows})
+        return {"ok": True, "ramas": ramas, "meses": meses}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+
 
 @app.get("/payload")
-def payload(
+def payload():
+    # El frontend lo usa para armar el árbol (buildTree)
+    try:
+        rows = _load_rows()
+        # devolver solo lo necesario + valores por si se usan
+        return {"ok": True, "rows": rows}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+
+
+@app.get("/calcular")
+def calcular(
     rama: str = Query(...),
     mes: str = Query(...),
     agrup: str = Query(...),
     categoria: str = Query(...),
-) -> Dict[str, Any]:
-    """
-    Devuelve importes base de la combinación seleccionada.
-    """
-    df = _load_maestro()
+):
+    try:
+        key = (_norm(rama).upper(), _norm(agrup), _norm(categoria), _month_key(mes))
+        hit = _rows_index().get(key)
+        if not hit:
+            # fallback: intentar con agrup "—" si viene vacío
+            key2 = (_norm(rama).upper(), "—", _norm(categoria), _month_key(mes))
+            hit = _rows_index().get(key2)
+        if not hit:
+            return {"ok": False, "error": "No se encontró esa combinación en el maestro", "rama": rama, "agrup": agrup, "categoria": categoria, "mes": mes}
 
-    rama_n = _norm(rama)
-    mes_n = _norm(mes)
-    agrup_n = _norm(agrup)
-    cat_n = _norm(categoria)
-
-    sub = df[
-        (df["Rama"] == rama_n)
-        & (df["Mes"].astype(str) == mes_n)
-        & (df["Agrupamiento"] == agrup_n)
-        & (df["Categoria"] == cat_n)
-    ]
-
-    if sub.empty:
         return {
-            "ok": False,
-            "error": "No se encontró esa combinación en el maestro",
-            "rama": rama_n,
-            "agrup": agrup_n,
-            "categoria": cat_n,
-            "mes": mes_n,
+            "ok": True,
+            "basico": hit["basico"],
+            "no_rem_1": hit["no_rem_1"],
+            "no_rem_2": hit["no_rem_2"],
         }
-
-    # si hubiera más de una fila, tomar la primera
-    row = sub.iloc[0].to_dict()
-
-    return {
-        "ok": True,
-        "rama": rama_n,
-        "agrup": agrup_n,
-        "categoria": cat_n,
-        "mes": mes_n,
-        "basico": float(row.get("Basico", 0.0)),
-        "no_rem": float(row.get("No Remunerativo", 0.0)),
-        "suma_fija": float(row.get("SUMA_FIJA", 0.0)),
-    }
-
-# Servir estáticos (index.html)
-if os.path.isdir(PUBLIC_DIR):
-    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})

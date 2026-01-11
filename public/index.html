@@ -695,11 +695,6 @@ function refreshSelectors() {
         .filter(m => m)
       )).sort((x,y)=>x.localeCompare(y, "es"));
 
-      // Mostrar meses desde 2026-01 en adelante (si existen para la combinación)
-      const cutoffMes = "2026-01";
-      const mesesCut = meses.filter(m => m >= cutoffMes);
-      if (mesesCut.length) meses = mesesCut;
-
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
       let curMes = mesSel.dataset.last || mesSel.value || "";
@@ -973,7 +968,7 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       refreshSelectors();
       toggleRamaBlocks();
 
-      const baseChk = $("toggleBase") || $("coBaseNumChk");
+      const baseChk = $("coBaseNumChk");
       if (baseChk) {
         baseChk.addEventListener("change", () => {
           if (baseChk.checked) document.body.classList.remove("hide-base-col");
