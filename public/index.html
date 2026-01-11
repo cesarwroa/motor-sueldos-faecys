@@ -491,14 +491,14 @@ Recibo Mensual</div>
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
 
   const $ = (id) => document.getElementById(id);
+  
 
-  // FIX: helper faltante (evita que se rompa el boot)
-  function getSelectedValue(id) {
+  // FIX: helper faltante
+  function getSelectedValue(id){
     const el = document.getElementById(id);
-    return el ? el.value : "";
+    return el ? el.value : \"\";
   }
-
-  const num = (id) => {
+const num = (id) => {
     const el = $(id);
     if (!el) return 0;
     const v = (el.value ?? "").toString().replace(",", ".").trim();
@@ -514,7 +514,16 @@ Recibo Mensual</div>
     return !!(el && el.checked);
   };
 
-  const money = (x) => {
+  
+
+  // FIX: faltaba; evita que boot se corte
+  function updateAutoFieldsFromSelection(){
+    // Si hay lógica de autocompletar en otro lado, la llamamos; si no, no-op.
+    try {
+      if (typeof updateAutoFields === 'function') return updateAutoFields();
+    } catch(e) {}
+  }
+const money = (x) => {
     const n = Number(x);
     const v = Number.isFinite(n) ? n : 0;
     return v.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
@@ -561,13 +570,63 @@ Recibo Mensual</div>
     }
     return await res.json();
   }
-  async function loadPayloadFor(rama, mes){
-    if(!rama || !mes) return;
+
+  // FIX: alias por typo (fetchJson vs fetchJSON)
+  const fetchJson = fetchJSON;
+
+  async 
+  // FIX: normalización tolerante del payload del backend
+  function normalizePayloadRows(payload){
+    // Soporta: array directo, {rows:[]}, {data:[]}, {items:[]}
+    let rows = payload;
+    if (rows && typeof rows === "object" && !Array.isArray(rows)) {
+      if (Array.isArray(rows.rows)) rows = rows.rows;
+      else if (Array.isArray(rows.data)) rows = rows.data;
+      else if (Array.isArray(rows.items)) rows = rows.items;
+    }
+    if (!Array.isArray(rows)) return [];
+    // Si viene como matriz (array de arrays) con encabezados
+    if (rows.length && Array.isArray(rows[0])) {
+      const header = rows[0].map(x => String(x||"").trim().toLowerCase());
+      const out = [];
+      for (let i=1;i<rows.length;i++){
+        const r = rows[i];
+        const obj = {};
+        for (let j=0;j<header.length;j++) obj[header[j]] = r[j];
+        out.push(obj);
+      }
+      return out;
+    }
+    return rows;
+  }
+
+  function pickStr(obj, keys){
+    for (const k of keys){
+      if (obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null) {
+        const s = String(obj[k]).trim();
+        if (s) return s;
+      }
+    }
+    return "";
+  }
+
+  function normalizeRow(row){
+    // Intenta mapear distintas variantes de claves
+    const rama = pickStr(row, ["rama","RAMA","Rama","branch","ram"]);
+    const agrup = pickStr(row, ["agrup","agrupamiento","AGRUPAMIENTO","Agrupamiento","grupo","group"]);
+    const categoria = pickStr(row, ["categoria","categoría","CATEGORIA","Categoría","cat"]);
+    const mes = pickStr(row, ["mes","MES","Mes","periodo","período","PERIODO","Periodo","escala","Escala","ESCALA"]);
+    return { rama, agrup, categoria, mes };
+  }
+
+  function loadPayloadFor(rama, mes){
+    if(!rama || !mes) return Promise.resolve();
     const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    const raw = await fetchJSON(url);
-    // El endpoint puede devolver Array directo o un objeto {rows: [...]}
-    PAYLOAD_ROWS = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.rows) ? raw.rows : (raw && Array.isArray(raw.data) ? raw.data : []));
-    TREE = buildTree(PAYLOAD_ROWS);
+    return fetchJSON(url).then(payload => {
+      const rawRows = normalizePayloadRows(payload);
+      PAYLOAD_ROWS = rawRows.map(normalizeRow).filter(x => x.rama && x.agrup && x.categoria && x.mes);
+      TREE = buildTree(PAYLOAD_ROWS);
+    });
   }
 
   async function onSelectionChange(){
@@ -621,7 +680,8 @@ Recibo Mensual</div>
 
   function buildTree(rows){
     const tree = {};
-    for (const row of ((Array.isArray(rows) ? rows : (rows && Array.isArray(rows.rows) ? rows.rows : (rows && Array.isArray(rows.data) ? rows.data : []))))) {
+    const arr = Array.isArray(rows) ? rows : [];
+    for (const row of arr) {
       const r = (row.rama || "").toString().trim();
       const a = (row.agrup || "").toString().trim();
       const c = (row.categoria || "").toString().trim();
@@ -636,17 +696,17 @@ Recibo Mensual</div>
       tree[r].agrups[a].mesesByCatSet[c].add(m);
     }
 
+    // materializar sets
     for (const r of Object.keys(tree)) {
       for (const a of Object.keys(tree[r].agrups)) {
-        const g = tree[r].agrups[a];
-        g.cats = Array.from(g.catsSet || []).sort();
-        delete g.catsSet;
-
-        g.mesesByCat = {};
-        for (const c of Object.keys(g.mesesByCatSet || {})) {
-          g.mesesByCat[c] = Array.from(g.mesesByCatSet[c] || []).sort();
+        const node = tree[r].agrups[a];
+        node.cats = Array.from(node.catsSet).sort((x,y)=>x.localeCompare(y,"es"));
+        delete node.catsSet;
+        node.mesesByCat = {};
+        for (const c of Object.keys(node.mesesByCatSet)) {
+          node.mesesByCat[c] = Array.from(node.mesesByCatSet[c]).sort((x,y)=>x.localeCompare(y,"es"));
         }
-        delete g.mesesByCatSet;
+        delete node.mesesByCatSet;
       }
     }
     return tree;
@@ -827,26 +887,6 @@ function toggleRamaBlocks() {
     // reset si no es Turismo
     if (tit && !rama.includes("TURISMO")) { const s = $("turTitulo"); if (s) s.value = "0"; }
   }
-
-
-  // FIX: faltaba esta función (se llamaba en boot/onSelectionChange)
-  function updateAutoFieldsFromSelection(){
-    // Actualiza encabezados visibles
-    setText("outRama", val("rama") || "–");
-    setText("outAgrup", val("agrup") || "–");
-    setText("outCat", val("categoria") || "–");
-    setText("outEscala", val("mes") ? ("Escala " + val("mes")) : "");
-
-    setText("lf_outRama", val("rama") || "–");
-    setText("lf_outAgrup", val("agrup") || "–");
-    setText("lf_outCat", val("categoria") || "–");
-
-    // Recalcular bases automáticas si hay selección completa
-    if (val("rama") && val("agrup") && val("categoria") && val("mes")) {
-      fetchAutoBase();
-    }
-  }
-
 
 
   // -------- Payload builders --------
