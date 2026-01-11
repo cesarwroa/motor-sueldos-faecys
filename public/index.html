@@ -1,212 +1,502 @@
+
 <!DOCTYPE html>
 
 <html lang="es">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Recibo de Sueldo</title>
 <style>
-:root{ --bg:#f6f7fb; --card:#ffffff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb; --pri:#2563eb; }
-*{ box-sizing:border-box }
-body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--ink); }
-.container{ max-width:1100px; margin:16px auto; padding:16px; }
-.card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 14px 10px; box-shadow:0 6px 22px rgba(17,24,39,.06); }
-h1{ font-size:18px; margin:0 0 10px 0; }
-.grid{ display:grid; grid-template-columns: repeat(12,1fr); gap:10px; }
-.field{ grid-column: span 3; }
-.field.w2{ grid-column: span 2; }
-.field.w4{ grid-column: span 4; }
-label{ display:block; font-size:12px; color:var(--muted); margin:0 0 4px 0; }
-select, input{ width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:10px; font-size:13px; background:#fff; }
-small{ color:var(--muted); }
-.row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-button{ padding:8px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; font-weight:600; }
-button.primary{ background:var(--pri); border-color:var(--pri); color:#fff; }
-hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
-.table{ width:100%; border-collapse:collapse; font-size:13px; }
-.table th, .table td{ border-bottom:1px solid var(--line); padding:8px 6px; vertical-align:top; }
-.table th{ text-align:left; font-size:12px; color:var(--muted); font-weight:700; }
-.num{ text-align:right; white-space:nowrap; }
-.totals{ display:flex; gap:14px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap; }
-.pill{ border:1px solid var(--line); border-radius:999px; padding:6px 10px; background:#fff; font-weight:700; }
-.no-print{ }
-@media print{
-  body{ background:#fff; }
-  .no-print{ display:none !important; }
-  .card{ box-shadow:none; border:none; }
+:root{ --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --grid:#e2e8f0; }
+*{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
+.container{max-width:1200px;margin:24px auto;padding:0 16px} .card{background:#fff;border:1px solid var(--grid);border-radius:16px;padding:16px}
+.grid{display:grid;gap:12px} .cols-4{grid-template-columns:repeat(4,minmax(0,1fr))} .cols-3{grid-template-columns:repeat(3,1fr)}
+label{display:block;font-size:12px;color:#475569;margin-bottom:6px} input,select,button{border:1px solid var(--grid);border-radius:10px;padding:10px;background:white}
+button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events:none;opacity:.9}
+.table{width:100%;border-collapse:collapse;border:1px solid var(--grid);border-radius:12px;overflow:hidden}
+.table th,.table td{border-bottom:1px solid var(--grid);padding:10px;text-align:left;font-size:14px} .table thead th{background:#f8fafc;font-weight:800}
+.note{font-size:12px;color:#334155;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px;padding:8px;margin-top:6px}
+
+.inline-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inline-hint{font-size:12px;color:#334155}
+.km-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.km-pair{display:flex;align-items:center;gap:6px;white-space:nowrap}
+
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:12px}
+.tabs{display:flex;gap:6px;margin:12px 0} .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
+.right{text-align:right}
+@media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} }
+
+/* === FORCE FORMAT · MVP exacto + OnePage === */
+@page { size: A4; margin: 10mm; } /* área util 190mm x 277mm */
+#printArea .sheet { position:relative; width:190mm; min-height:260mm; margin:0 auto; font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial; color:#0f172a; font-size:11px; }
+#printArea .title { font-size:14px; font-weight:700; margin:0 0 3mm 0; }
+#printArea .subheader { font-size:11px; color:#475569; margin:0 0 2mm 0; }
+#printArea .row3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; margin:1.2mm 0; }
+#printArea .cell { white-space:nowrap; }
+#printArea .label { color:#475569; }
+#printArea table { width:190mm; border-collapse:collapse; border:0.3mm solid #d0d7e2; margin-top:3mm; table-layout:fixed; }
+#printArea thead th { background:#f1f5f9; font-weight:700; }
+#printArea th, #printArea td { padding:1.4mm 2mm; border-bottom:0.3mm solid #e2e8f0; vertical-align:top; }
+#printArea td.right, #printArea th.right { text-align:right; white-space:nowrap; }
+#printArea tfoot td { font-weight:800; }
+#printArea .neto { font-size:13px; font-weight:900; }
+#printArea .foot { display:grid; grid-template-columns: 1fr 1fr; gap:6mm; margin-top:5mm; align-items:start; }
+#printArea .firmaBox { border-top:0.3mm solid #94a3b8; padding-top:2mm; text-align:center; }
+#printArea .sigBlock { border:0.3mm solid #cbd5e1; border-radius:2mm; padding:2mm 3mm; }
+#printArea .sigTitle { font-weight:700; margin-bottom:1mm; }
+#printArea .qr { width:32mm; height:32mm; border:0.3mm dashed #94a3b8; display:flex; align-items:center; justify-content:center; font-size:10px; color:#64748b; }
+
+
+/* === Base (solo HTML) === */
+.th-base-num, .col-base-num { min-width: 180px; }
+.base-mini { font-size: 12px; opacity:.95; }
+@media print { .th-base-num, .col-base-num, #co-toggle-base-num { display:none !important; } }
+
+/* Toggle columnas Base (Ver base) */
+.hide-base-col .th-base-num, .hide-base-col .col-base-num { display:none !important; }
+</style>
+<style>
+#co-inline-panel *{box-sizing:border-box}
+#co-inline-panel input, #co-inline-panel select{max-width:100%}
+#co-inline-panel > div:first-child{justify-self:start}
+#co-inline-panel{justify-items:start}
+</style>
+<style>
+#co-inline-panel{max-width:calc(100% - 8px); overflow:hidden;}
+#co-inline-panel *{box-sizing:border-box}
+#co-inline-panel input, #co-inline-panel select{max-width:100%}
+#co-inline-panel > div{min-width:0}
+#co-inline-panel > div:first-child{justify-self:start}
+#co-inline-panel{justify-items:start; column-gap:10px; row-gap:10px}
+#co-inline-panel .co-emb-row{display:grid; grid-template-columns:70px 1fr 90px; gap:8px}
+@media (max-width: 1100px){
+  #co-inline-panel{grid-template-columns:repeat(4, minmax(160px, 1fr));}
 }
-.hide-base-col .base-col{ display:none !important; }
+@media (max-width: 900px){
+  #co-inline-panel{grid-template-columns:repeat(3, minmax(160px, 1fr));}
+  #co-inline-panel .co-emb-row{grid-template-columns:60px 1fr 90px;}
+}
+</style>
+<style>
+/* Turismo title row full width and spacing */
+#co-inline-panel .co-turismo { grid-column: 1 / -1 !important; margin-top: 6px; }
+</style>
+
+<style>
+/* Centrado/estilo fila Total */
+tr.co-total-row > td { vertical-align: middle; }
+tr.co-total-row > td:first-child { font-weight: 700; }
+</style>
+
+<!-- Estilo responsivo específico para el panel de licencias/ausencias en dispositivos pequeños -->
+<style id="co-inline-responsive">
+  @media (max-width: 768px) {
+    /* Forzar una sola columna en el panel de licencias y ausencias */
+    #co-inline-panel {
+      grid-template-columns: 1fr !important;
+    }
+    /* Asegurar que los controles ocupen todo el ancho */
+    #co-inline-panel input,
+    #co-inline-panel select {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box;
+    }
+  }
+</style>
+<style>
+/* CO: Ocultar números hasta presionar Calcular */
+.co-masked{color:transparent !important; text-shadow:none !important;}
 </style>
 </head>
-
 <body>
 <div class="container">
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <h1>Recibo de Sueldo (Prueba)</h1>
-      <div class="row no-print">
-        <label style="display:flex;align-items:center;gap:6px;margin:0">
-          <input id="toggleBase" type="checkbox">
-          <span style="font-size:12px;color:var(--muted)">Ver base</span>
-        </label>
-        <span id="status" style="font-size:12px;color:var(--muted)">—</span>
-      </div>
-    </div>
-
-    <div class="grid no-print">
-      <div class="field w4">
-        <label>Rama</label>
-        <select id="rama"></select>
-      </div>
-      <div class="field w4">
-        <label>Agrupamiento</label>
-        <select id="agrup"></select>
-      </div>
-      <div class="field w4">
-        <label>Categoría</label>
-        <select id="categoria"></select>
-      </div>
-
-      <div class="field w2">
-        <label>Mes</label>
-        <select id="mes"></select>
-      </div>
-      <div class="field w2">
-        <label>Hs (jornada)</label>
-        <input id="hs" type="number" value="48" min="1" step="1">
-      </div>
-      <div class="field w2">
-        <label>Años antigüedad</label>
-        <input id="anios" type="number" value="0" min="0" step="1">
-      </div>
-      <div class="field w2">
-        <label>Alta (para auto-antigüedad)</label>
-        <input id="alta" type="date"/>
-      </div>
-      <div class="field w2">
-        <label>Zona</label>
-        <input id="zona" type="number" value="0" step="0.01">
-      </div>
-
-      <div class="field w2">
-        <label>Ausencias injust.</label>
-        <input id="coAus" type="number" value="0" min="0" step="1">
-      </div>
-
-      <div class="field w2">
-        <label>Feriados no trabaj.</label>
-        <input id="ferNoTrab" type="number" value="0" min="0" step="1">
-      </div>
-      <div class="field w2">
-        <label>Feriados trabaj.</label>
-        <input id="ferTrab" type="number" value="0" min="0" step="1">
-      </div>
-      <div class="field w2">
-        <label>HE 50%</label>
-        <input id="hex50" type="number" value="0" min="0" step="1">
-      </div>
-      <div class="field w2">
-        <label>HE 100%</label>
-        <input id="hex100" type="number" value="0" min="0" step="1">
-      </div>
-      <div class="field w2">
-        <label>Hs Noct.</label>
-        <input id="hsNoct" type="number" value="0" min="0" step="1">
-      </div>
-
-      <div class="field w2">
-        <label>Obra Social</label>
-        <select id="osecac">
-          <option value="si">OSECAC (Sí)</option>
-          <option value="no">No OSECAC</option>
-        </select>
-      </div>
-      <div class="field w2">
-        <label>Afiliado Sindicato</label>
-        <select id="afiliadoSel">
-          <option value="no">No</option>
-          <option value="si">Sí</option>
-        </select>
-      </div>
-
-      <div class="field w4">
-        <label>Info</label>
-        <div class="row" style="gap:8px">
-          <button onclick="autocalcularAntiguedad()" type="button">Autocalcular antigüedad</button>
-        </div>
-        <small id="selInfo"></small>
-      </div>
-    </div>
-
-    <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-      <button onclick="calcularMensual()" class="primary" type="button">Calcular mensual</button>
-      <button onclick="calcularFinal()" type="button">Calcular Liquidación Final</button>
-      <button onclick="window.print()" type="button">Imprimir</button>
-    </div>
-
-    <hr>
-
-    <div id="paneMensual">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Concepto</th>
-            <th class="num base-col">Base</th>
-            <th class="num">Rem.</th>
-            <th class="num">No Rem.</th>
-            <th class="num">Deducciones</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyMensual"></tbody>
-      </table>
-
-      <div class="totals">
-        <div class="pill">Rem: <span id="totRem">$0</span></div>
-        <div class="pill">No Rem: <span id="totNR">$0</span></div>
-        <div class="pill">Ded: <span id="totDed">$0</span></div>
-        <div class="pill">Neto: <span id="neto">$0</span></div>
-      </div>
-    </div>
-
-    <div id="paneFinal" style="display:none">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Concepto</th>
-            <th class="num base-col">Base</th>
-            <th class="num">Rem.</th>
-            <th class="num">No Rem.</th>
-            <th class="num">Deducciones</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyFinal"></tbody>
-      </table>
-
-      <div class="totals">
-        <div class="pill">Rem: <span id="lf_totRem">$0</span></div>
-        <div class="pill">No Rem: <span id="lf_totNR">$0</span></div>
-        <div class="pill">Ded: <span id="lf_totDed">$0</span></div>
-        <div class="pill">Neto: <span id="lf_neto">$0</span></div>
-      </div>
-    </div>
-
+<h1>Sistema de Liquidación de Haberes</h1>
+<div class="tabs no-print">
+<div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
+<div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
+</div>
+<div class="card">
+<div class="grid cols-4">
+<div><label>Rama</label><select id="rama"></select></div>
+<div><label>Agrupamiento</label><select id="agrup"></select></div>
+<div><label>Categoría</label><select id="categoria"></select></div>
+<div><label>Mes</label><select id="mes"></select></div>
+</div>
+<div class="note" id="status">Cargando maestro…</div>
+</div>
+<div class="card" id="paneMensual">
+<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label>No Rem (variable) — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label>Suma Fija (NR) — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
+<div class="note" id="aguaBlock" style="display:none">
+<strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D (aplica 7% encadenado a Básico + Suma Fija)
+      <select id="aguaConex"><option value="A">A (hasta 500)</option><option value="B">B (+7% s/ A)</option><option value="C">C (+7% s/ B)</option><option value="D">D (+7% s/ C)</option></select>
+</div>
+<div class="note" id="funBlock" style="display:none">
+<strong>Fúnebres:</strong> Adicionales mensuales (desde “Adicionales” del maestro)
+      <div><label><input id="funAdic1" type="checkbox"/> Manipulación de cadáveres</label>
+<label><input id="funAdic2" type="checkbox"/> Resto del personal</label>
+<label><input id="funAdic3" type="checkbox"/> Chofer/Furgonero</label>
+<label><input id="funAdic4" type="checkbox"/> Indumentaria</label></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px"><div class="grid cols-4" style="margin-top:8px">
+</div><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
+<option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
+</select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" placeholder="$ 0,00" type="text"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
+<div><label>Feriados trabajados (días)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
+<div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
+<div style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
+</div>
+<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="calcularMensual()" type="button">Calcular mensual</button>
+<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="toggleBase"> Ver base</label>
+<span id="diagMensual" style="color:#64748b"></span>
+</div>
+<div class="badge" style="margin-top:8px">
+<div class="grid cols-4" style="margin-top:8px">
+  <div>
+    <label>Jubilado</label>
+    <div><input id="coJub" type="checkbox"/></div>
   </div>
+  <div><label>Vacaciones gozadas (días)</label><input id="coVacGoz" min="0" step="1" type="number" value="0"/></div>
+  <div><label>Licencia con goce (días)</label><input id="coLicCG" min="0" step="1" type="number" value="0"/></div>
+  <div><label>Licencia sin goce / suspensión (días)</label><input id="coLicSG" min="0" step="1" type="number" value="0"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+  <div>
+    <label>Es suspensión</label>
+    <div><input id="coSuspension" type="checkbox"/></div>
+  </div>
+  <div><label>Ausencias injustificadas (días)</label><input id="coAus" min="0" step="1" type="number" value="0"/></div>
+  <div><label>Embargo (monto)</label><input id="coEmbargo" min="0" step="0.01" type="number" value="0"/></div>
+  <div></div>
 </div>
 
-<script>
-  // ---- Endpoints ----
-  const API_BASE = location.origin;
-  const ENDPOINT_META    = `${API_BASE}/meta`;
-  const ENDPOINT_PAYLOAD = `${API_BASE}/payload`;
-  const ENDPOINT_CALC    = `${API_BASE}/calcular`;
+Recibo Mensual</div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
+<div class="table-wrapper">
+<table class="table">
+<thead><tr><th>Concepto</th><th class="right col-base-num">Base</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
+<tbody id="tbodyMensual"></tbody>
+<tfoot>
+<tr>
+  <td>Total</td>
+  <td class="right col-base-num"></td>
+  <td class="right" id="totRem">$0,00</td>
+  <td class="right" id="totNR">$0,00</td>
+  <td class="right" id="totDed">$0,00</td>
+</tr>
+<tr>
+  <td class="right" colspan="4"><strong>Neto a cobrar</strong></td>
+  <td class="right" id="neto">$0,00</td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+<div class="card" id="paneFinal" style="display:none">
+<div class="grid cols-4">
+<div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
+<div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
+<div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
+<div><label>MRMNH (mejor mensual) *</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><div class="campo tipo-lf">
+  <label for="lf_tipo">Tipo de liquidación</label>
+  <select id="lf_tipo">
+    <option value="DESPIDO_SC">Despido sin causa</option>
+    <option value="DESPIDO_CC">Despido con causa</option>
+    <option value="RENUNCIA">Renuncia</option>
+    <option value="FALLECIMIENTO">Fallecimiento</option>
+  </select>
+</div>
+<label>Preaviso</label><select id="lf_preaviso"><option value="0">Sin preaviso</option><option value="15">15 días</option><option value="30">1 mes</option><option value="60">2 meses</option></select></div>
+<div><label>Integración del mes</label><input checked="" id="lf_integracion" type="checkbox"/> Calcular automático</div>
+<div><label>SAC sobre preaviso</label><input id="lf_sac_pre" type="checkbox"/></div>
+<div><label>SAC sobre integración</label><input checked="" id="lf_sac_int" type="checkbox"/></div>
+</div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>Días trabajados del mes</label><input id="lf_dias_mes" max="31" min="0" type="number" value="0"/></div>
+<div><label>Vacaciones anuales (auto/edi.)</label><input id="lf_vac_anuales" min="0" type="number" value="14"/></div>
+<div><label>Vacaciones proporcionales</label><input class="readonly" disabled="" id="lf_vac_calc" readonly="" type="number" value="0"/></div>
+<div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
+</div>
+<div class="note small">* Usá “Sugerir MRMNH” para proponer un mejor mensual (editable) con NR + antigüedad + presentismo.</div>
+<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
+<button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
+<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input type="checkbox" id="toggleBase"> Ver base</label>
+<span id="diagFinal" style="color:#64748b"></span>
+</div>
+<div class="badge" style="margin-top:8px">Liquidación Final</div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span></div>
+<div class="table-wrapper">
+<table class="table">
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<tbody id="tbodyFinal"></tbody>
+<tfoot>
+<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNR">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
+<tr><td class="right" colspan="4"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
+</tfoot>
+</table>
+</div>
+</div>
+</div>
 
-  // ---- Helpers ----
+<div id="printArea" style="display:none"></div>
+<style id="printIsolation">
+@page{size:A4;margin:10mm}
+@media print{
+  body > *:not(#printArea){ display:none !important }
+  #printArea{ display:block !important }
+  html,body{ background:#fff !important }
+}
+#printArea{display:none}
+/* Hoja simple */
+#printArea .sheet{position:relative;width:190mm;min-height:260mm;margin:0 auto;color:#0f172a;font:11px/1.28 ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial}
+/* Título */
+#printArea .title{text-align:center;font-weight:900;font-size:16px;margin-bottom:6mm}
+/* Tabla con columnas fijas y números tabulares */
+#printArea table{width:100%;border-collapse:collapse;table-layout:fixed}
+#printArea thead th{padding:2.2mm 2mm 2mm;border-bottom:.45mm solid #000;font-weight:800}
+#printArea th,#printArea td{padding:2mm;font-variant-numeric:tabular-nums}
+#printArea th:nth-child(1),#printArea td:nth-child(1){text-align:left}
+#printArea th:nth-child(2),#printArea td:nth-child(2),
+#printArea th:nth-child(3),#printArea td:nth-child(3),
+#printArea th:nth-child(4),#printArea td:nth-child(4){text-align:right;white-space:nowrap}
+#printArea col.wFixed{width:33.5mm}
+/* Divisor */
+#printArea .divider td{padding:0;border-bottom:.35mm solid #000;height:0}
+/* Totales y Neto */
+#printArea tfoot td{padding:2.2mm 2mm;border-top:.45mm solid #000;font-weight:800}
+#printArea .neto{margin-top:2.6mm;text-align:center;font-size:13.2px;font-weight:900}
+/* Pie simple */
+#printArea .foot-final{display:grid;grid-template-columns:1fr 1fr;gap:25mm;margin-top:12mm}
+#printArea .firma{border-top:.35mm solid #0f172a;text-align:center;padding-top:6mm;height:22mm}
+</style>
+
+
+
+
+
+
+
+<!-- CO v97 patch (light listeners) -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+  /* Mejoras de layout para la columna de auditoría */
+  .co-audit-col{ white-space: normal !important; overflow-wrap: anywhere; }
+  table{ table-layout: auto; }
+
+@media print{#co-audit-bar{display:none!important}}
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- CO patch v7: dedup de filas, fix ausencia rem-only /30, caída presentismo 2+, recalculo neto inmediato, alineación total -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- co-base-rs-override-v1: fuerza misma base para FAECYS / Sindicato / Obra Social -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Ghost select cleaner: oculta selects vacíos sin id que aparecen como duplicados de Mes -->
+
+
+
+
+
+
+
+
+
+
+
+  <style>
+    /* Responsive design for mobile devices */
+    /* For phones (≤600px), stack grid columns and adjust form elements */
+    @media (max-width: 600px) {
+      /* Stack all grid layouts to a single column */
+      .grid,
+      .cols-4,
+      .cols-3 {
+        grid-template-columns: 1fr !important;
+      }
+      /* Increase readability of form controls */
+      label,
+      input,
+      select,
+      button {
+        font-size: 14px;
+        padding: 8px;
+      }
+      /* Ensure form controls fill the available width on small screens */
+      input,
+      select,
+      textarea,
+      button {
+        width: 100%;
+        max-width: 100%;
+        display: block;
+      }
+      /* Hide decorative watermark on small screens */
+      .co-watermark {
+        display: none;
+      }
+      /* Ensure table columns don't collapse too narrow */
+      .table th,
+      .table td {
+        min-width: 120px;
+      }
+
+    /* Para el panel de licencias y ausencias (co-inline-panel) usar una sola columna en móviles
+       de modo que las casillas de Licencia paga, Licencia sin goce, Vacaciones gozadas,
+       Ausencias injustificadas y Embargo se vean una debajo de otra.  Sin esta regla, el grid
+       mantiene tres columnas (160px mínimas) que no caben en pantallas angostas y provoca
+       que algunos campos queden fuera de vista. */
+    #co-inline-panel {
+      grid-template-columns: 1fr !important;
+    }
+    /* El contenedor de embargo mantiene su propio grid interno sin cambios */
+    }
+    /* On small tablets (601–900px), use two columns */
+    @media (min-width: 601px) and (max-width: 900px) {
+      .cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+      .cols-3 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+    /* Wrapper for tables to enable horizontal scrolling on narrow screens */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+(() => {
+  const API_BASE = "https://motor-sueldos-faecys.onrender.com";
+  const ENDPOINT_CALC = API_BASE + "/calcular";
+  const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
+  const ENDPOINT_PAYLOAD = API_BASE + "/payload";
+
   const $ = (id) => document.getElementById(id);
-  const num = (id, dflt=0) => {
+  const num = (id) => {
     const el = $(id);
-    if (!el) return dflt;
+    if (!el) return 0;
     const v = (el.value ?? "").toString().replace(",", ".").trim();
     const n = Number(v);
-    return Number.isFinite(n) ? n : dflt;
+    return Number.isFinite(n) ? n : 0;
   };
   const val = (id) => {
     const el = $(id);
@@ -227,95 +517,108 @@ hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
     const el = $(id);
     if (el) el.textContent = txt;
   }
-  function setStatus(txt){ setText("status", txt); }
-
   function setValue(id, v) {
     const el = $(id);
-    if (el) el.value = v;
+    if (el) el.value = (v ?? 0);
   }
 
-  function isDateLike(x){
-    const s = String(x||"").trim();
-    return /^\d{4}-\d{2}(-\d{2})?$/.test(s);
+  function clearTbody(tbodyId) {
+    const tb = $(tbodyId);
+    if (tb) tb.innerHTML = "";
+  }
+  function addRow(tbodyId, it) {
+    const tb = $(tbodyId);
+    if (!tb) return;
+    const tr = document.createElement("tr");
+    const base = (it.base === null || it.base === undefined) ? "" : money(it.base);
+    tr.innerHTML = `
+      <td>${(it.concepto ?? "")}</td>
+      <td class="text-end">${base}</td>
+      <td class="text-end">${money(it.remunerativo)}</td>
+      <td class="text-end">${money(it.no_remunerativo)}</td>
+      <td class="text-end">${money(it.deduccion)}</td>
+    `;
+    tb.appendChild(tr);
   }
 
-  function fillSelect(sel, items, placeholder){
-    if(!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = "";
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = placeholder || "—";
-    sel.appendChild(ph);
-    (items||[]).forEach(it=>{
-      const o=document.createElement("option");
-      o.value = it.value;
-      o.textContent = it.label;
-      sel.appendChild(o);
-    });
-    if(cur && Array.from(sel.options).some(o=>o.value===cur)) sel.value = cur;
-  }
-
-  // ---- State ----
-  let META = null;
-  let PAYLOAD_ROWS = [];
-  let TREE = null;
-
-  async function fetchJSON(url, data){
-    const hasData = (data && typeof data === "object");
-    const opt = hasData ? {
+  async function fetchJSON(url, payload=null) {
+    const opt = payload ? {
       method: "POST",
       headers: { "Content-Type":"application/json" },
-      body: JSON.stringify(data)
-    } : undefined;
-
-    const r = await fetch(url, opt);
-    if(!r.ok){
-      const t = await r.text();
-      throw new Error(`HTTP ${r.status} ${t}`);
+      body: JSON.stringify(payload),
+    } : { method:"GET" };
+    const res = await fetch(url, opt);
+    if (!res.ok) {
+      const t = await res.text().catch(()=> "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${t}`.trim());
     }
-    return r.json();
+    return await res.json();
   }
 
-  // ---- Tree builder (from rows) ----
+  // -------- META (sin montos) --------
+  let META = null;
+  let PAYLOAD_ROWS = null;
+  let TREE = null;
+
+  function fillSelect(selectEl, options, placeholder="— Seleccione —") {
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholder;
+    selectEl.appendChild(ph);
+    for (const opt of options) {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      selectEl.appendChild(o);
+    }
+  }
+
+  function isDateLike(s){
+  if(!s) return false;
+  const t = String(s).trim();
+  if(/^(\d{4}-\d{2}-\d{2})/.test(t)) return true;
+  if(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(t)) return true;
+  return false;
+}
+
   function buildTree(rows){
-    const t = {};
-    (rows||[]).forEach(r=>{
-      const rama = String(r.rama||"").trim();
-      const agrup = String(r.agrup||"—").trim() || "—";
-      const cat = String(r.categoria||"—").trim() || "—";
-      const mes = String(r.mes||"").trim();
-      if(!rama || !mes) return;
-      if(!t[rama]) t[rama] = { agrups:{} };
-      if(!t[rama].agrups[agrup]) t[rama].agrups[agrup] = { cats:[], mesesByCat:{} };
-      if(!t[rama].agrups[agrup].cats.includes(cat)) t[rama].agrups[agrup].cats.push(cat);
-      if(!t[rama].agrups[agrup].mesesByCat[cat]) t[rama].agrups[agrup].mesesByCat[cat] = [];
-      if(!t[rama].agrups[agrup].mesesByCat[cat].includes(mes)) t[rama].agrups[agrup].mesesByCat[cat].push(mes);
-    });
-    // sort
-    Object.keys(t).forEach(r=>{
-      Object.keys(t[r].agrups).forEach(a=>{
-        t[r].agrups[a].cats.sort((x,y)=>x.localeCompare(y,"es"));
-        Object.keys(t[r].agrups[a].mesesByCat).forEach(c=>{
-          t[r].agrups[a].mesesByCat[c].sort((x,y)=>x.localeCompare(y,"es"));
-        });
-      });
-    });
-    return t;
+    const tree = {};
+    for (const row of (rows || [])) {
+      const r = (row.rama || "").toString().trim();
+      const a = (row.agrup || "").toString().trim();
+      const c = (row.categoria || "").toString().trim();
+      const m = (row.mes || "").toString().trim();
+      if (!r || !a || !c || !m) continue;
+
+      if (!tree[r]) tree[r] = { agrups: {} };
+      if (!tree[r].agrups[a]) tree[r].agrups[a] = { catsSet: new Set(), mesesByCatSet: {} };
+
+      tree[r].agrups[a].catsSet.add(c);
+      if (!tree[r].agrups[a].mesesByCatSet[c]) tree[r].agrups[a].mesesByCatSet[c] = new Set();
+      tree[r].agrups[a].mesesByCatSet[c].add(m);
+    }
+
+    for (const r of Object.keys(tree)) {
+      for (const a of Object.keys(tree[r].agrups)) {
+        const g = tree[r].agrups[a];
+        g.cats = Array.from(g.catsSet || []).sort();
+        delete g.catsSet;
+
+        g.mesesByCat = {};
+        for (const c of Object.keys(g.mesesByCatSet || {})) {
+          g.mesesByCat[c] = Array.from(g.mesesByCatSet[c] || []).sort();
+        }
+        delete g.mesesByCatSet;
+      }
+    }
+    return tree;
   }
 
-  async function reloadTreeForRamaMes(rama, mes){
-    if(!rama || !mes) return;
-    const url = new URL(ENDPOINT_PAYLOAD, window.location.href);
-    url.searchParams.set("rama", String(rama));
-    url.searchParams.set("mes", String(mes));
-    const payload = await fetchJSON(url.toString());
-    PAYLOAD_ROWS = payload.rows || [];
-    TREE = buildTree(PAYLOAD_ROWS);
-  }
 
-  // ---- UI refresh ----
-  function refreshSelectors() {
+
+function refreshSelectors() {
     if (!META) return;
 
     const ramaSel = $("rama");
@@ -323,18 +626,20 @@ hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
     const catSel = $("categoria");
     const mesSel = $("mes");
 
-    // Ramas
+    // Ramas: preferir lista limpia del backend; fallback a dict o TREE
     let ramas = [];
     if (Array.isArray(META.ramas)) ramas = META.ramas.slice();
     else if (META.ramas_dict) ramas = Object.keys(META.ramas_dict);
     else if (META.ramas) ramas = Object.keys(META.ramas);
+
+    if ((!ramas || ramas.length === 0) && TREE) ramas = Object.keys(TREE);
 
     ramas = (ramas || [])
       .map(r => String(r || "").trim())
       .filter(r => r && !isDateLike(r) && !/^(?:\d+|\d+\.\d+)$/.test(r))
       .sort((a,b)=>a.localeCompare(b, "es"));
 
-    fillSelect(ramaSel, ramas.map(r => ({ value:r, label:r })), "— Seleccione —");
+    fillSelect(ramaSel, ramas.map(r => ({ value: r, label: r })), "— Seleccione —");
 
     const curRama = ramaSel.dataset.last || ramaSel.value || (ramas.includes("GENERAL") ? "GENERAL" : (ramas[0] || ""));
     if (ramas.includes(curRama)) ramaSel.value = curRama;
@@ -344,182 +649,288 @@ hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
       ramaSel.dataset.last = r;
 
       const agrups = (TREE && TREE[r]) ? Object.keys(TREE[r].agrups || {}).sort((a,b)=>a.localeCompare(b, "es")) : [];
-      fillSelect(agrupSel, agrups.map(a => ({ value:a, label:a })), "—");
+      fillSelect(agrupSel, agrups.map(a => ({ value: a, label: a })), "— Seleccione —");
 
-      const curA = agrupSel.dataset.last || agrupSel.value || (agrups[0] || "—");
-      if (curA && Array.from(agrupSel.options).some(o=>o.value===curA)) agrupSel.value = curA;
+      const curAgr = agrupSel.dataset.last || agrupSel.value || (agrups[0] || "");
+      if (agrups.includes(curAgr)) agrupSel.value = curAgr;
       refreshCat();
     }
 
     function refreshCat() {
       const r = ramaSel.value;
-      const a = agrupSel.value || "—";
+      const a = agrupSel.value;
       agrupSel.dataset.last = a;
 
       const cats = (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a]) ? (TREE[r].agrups[a].cats || []) : [];
-      fillSelect(catSel, cats.map(c => ({ value:c, label:c })), "—");
+      fillSelect(catSel, cats.map(c => ({ value: c, label: c })), "— Seleccione —");
 
-      const curC = catSel.dataset.last || catSel.value || (cats[0] || "");
-      if (curC && Array.from(catSel.options).some(o=>o.value===curC)) catSel.value = curC;
+      const curCat = catSel.dataset.last || catSel.value || (cats[0] || "");
+      if (cats.includes(curCat)) catSel.value = curCat;
       refreshMes();
     }
 
     function refreshMes() {
       const r = ramaSel.value;
-      const a = agrupSel.value || "—";
-      const c = catSel.value || "";
+      const a = agrupSel.value;
+      const c = catSel.value;
       catSel.dataset.last = c;
 
+      // Meses filtrados por Rama/Agrup/Categoría (evita meses globales que no existen para esa combinación)
       let meses = [];
-      if (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a] && TREE[r].agrups[a].mesesByCat && TREE[r].agrups[a].mesesByCat[c]) {
-        meses = TREE[r].agrups[a].mesesByCat[c].slice();
-      } else {
-        // fallback a META.meses filtrado
-        const mesesAll = Array.isArray(META?.meses) ? META.meses.map(x=>String(x||"").trim()).filter(Boolean) : [];
-        meses = mesesAll.filter(m => m >= "2026-01");
-        if(!meses.length) meses = mesesAll;
+      const mesesFiltrados =
+        (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a] && TREE[r].agrups[a].mesesByCat && TREE[r].agrups[a].mesesByCat[c])
+          ? TREE[r].agrups[a].mesesByCat[c].slice()
+          : [];
+
+      if (mesesFiltrados.length) {
+        meses = mesesFiltrados;
+      } else if (Array.isArray(META.meses)) {
+        meses = META.meses.slice();
+      } else if (META.meses_dict) {
+        meses = Object.keys(META.meses_dict);
       }
 
-      // filtro desde 2026-01
-      const mesesFil = meses.filter(m => m >= "2026-01");
-      if(mesesFil.length) meses = mesesFil;
+      meses = Array.from(new Set((meses || [])
+        .map(m => String(m || "").trim())
+        .filter(m => m)
+      )).sort((x,y)=>x.localeCompare(y, "es"));
 
-      meses.sort((x,y)=>x.localeCompare(y,"es"));
-      fillSelect(mesSel, meses.map(m => ({ value:m, label:m })), "—");
+      fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
-      const curM = mesSel.dataset.last || mesSel.value || (meses[0] || "");
-      if (curM && Array.from(mesSel.options).some(o=>o.value===curM)) mesSel.value = curM;
+      let curMes = mesSel.dataset.last || mesSel.value || "";
+      if (!curMes || !meses.includes(curMes)) curMes = (meses.length ? meses[meses.length - 1] : "");
+      if (curMes && meses.includes(curMes)) mesSel.value = curMes;
+      mesSel.dataset.last = mesSel.value;
 
-      // Info
-      setText("selInfo", `${ramaSel.value} · ${agrupSel.value||"—"} · ${catSel.value||"—"} · ${mesSel.value||"—"}`);
+      toggleRamaBlocks();
+      if (mesSel.value) fetchAutoBase();
+      setText("status", "Maestro cargado.");
     }
 
-    // handlers (con recarga de TREE)
-    ramaSel.onchange = async () => {
-      try{
-        const mesesAll = Array.isArray(META?.meses) ? META.meses.map(x=>String(x||"").trim()).filter(Boolean) : [];
-        const mesesFil = mesesAll.filter(m => m >= "2026-01");
-        if(!mesSel.value) mesSel.value = (mesesFil[0] || mesesAll[0] || "");
-        await reloadTreeForRamaMes(ramaSel.value, mesSel.value);
-        refreshAgrup();
-        toggleRamaBlocks();
-        fetchAutoBase();
-      }catch(e){ console.error(e); }
-    };
+    ramaSel.onchange = refreshAgrup;
     agrupSel.onchange = refreshCat;
     catSel.onchange = refreshMes;
-    mesSel.onchange = async () => {
-      try{
-        mesSel.dataset.last = mesSel.value;
-        await reloadTreeForRamaMes(ramaSel.value, mesSel.value);
-        refreshAgrup();
-        toggleRamaBlocks();
-        fetchAutoBase();
-      }catch(e){ console.error(e); }
+    mesSel.onchange = () => {
+      mesSel.dataset.last = mesSel.value;
+      toggleRamaBlocks();
+      fetchAutoBase();
     };
+
+    const titSel = $("turTitulo");
+    if (titSel) {
+      titSel.onchange = () => {
+        // solo afecta a Turismo; re-calcular tabla si ya se calculó
+        if ((val("rama") || "").toUpperCase().includes("TURISMO")) {
+          // si ya hay un mes seleccionado, refrescar base (y luego el usuario toca Calcular)
+          if (val("mes")) fetchAutoBase();
+        }
+      };
+    }
+
 
     refreshAgrup();
   }
 
-  function toggleRamaBlocks(){
-    // alterna pestañas si querés; por defecto mostramos mensual
-    $("paneMensual").style.display = "";
-    $("paneFinal").style.display = "none";
+
+  
+
+  async function fetchAutoBase(){
+    const r = val("rama");
+    const a = val("agrup");
+    const c = val("categoria");
+    const m = val("mes");
+    if (!r || !a || !c || !m) return;
+
+    const params = { rama: r, agrup: a, categoria: c, mes: m };
+
+    try {
+      let data;
+      try {
+        // Prefer POST (FastAPI /calcular suele ser POST)
+        data = await fetchJSON(ENDPOINT_CALC, params);
+      } catch (e1) {
+        const msg1 = String(e1 && e1.message ? e1.message : e1 || "");
+        // Fallback por si el servidor expone /calcular como GET (405 Method Not Allowed)
+        if (msg1.includes("405")) {
+          const qs = new URLSearchParams(params).toString();
+          data = await fetchJSON(`${ENDPOINT_CALC}?${qs}`);
+        } else {
+          throw e1;
+        }
+      }
+
+      if (data && data.ok) {
+        const b = Number(data.basico ?? 0) || 0;
+        const nr1 = Number(data.no_rem_1 ?? 0) || 0;
+        const nr2 = Number(data.no_rem_2 ?? 0) || 0;
+
+        setValue("basico", b);
+        setValue("nrVar", nr1);
+        setValue("nrSF", nr2);
+        setValue("nrTotal", nr1 + nr2);
+
+        setText("status", "Base cargada.");
+      } else {
+        setText("status", "Sin escala para esa combinación.");
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar base desde /calcular", e);
+      const msg = String(e && e.message ? e.message : e || "");
+      setText("status", msg.includes("404") ? "Sin escala para ese mes." : "Error al consultar el servidor.");
+    }
   }
 
-  // ---- Payload builders (ya estaban en tu archivo) ----
+function toggleRamaBlocks() {
+    const rama = (val("rama") || "").toUpperCase();
+    const agua = $("aguaBlock");
+    const fun = $("funBlock");
+    const tit = $("boxTitulo");
+    if (agua) agua.style.display = rama.includes("AGUA") ? "" : "none";
+    if (fun) fun.style.display = rama.includes("FUNEBRES") ? "" : "none";
+    if (tit) tit.style.display = rama.includes("TURISMO") ? "" : "none";
+    // reset si no es Turismo
+    if (tit && !rama.includes("TURISMO")) { const s = $("turTitulo"); if (s) s.value = "0"; }
+  }
+
+
+  // -------- Payload builders --------
   function buildPayloadMensual() {
     const coAus = num("coAus");
+
     return {
       rama: val("rama"),
-      agrup: val("agrup") || "—",
+      agrup: val("agrup") || val("agrupamiento") || val("agrupacion") || val("agrup"), // por si cambia
       categoria: val("categoria"),
       mes: val("mes"),
       hs: num("hs") || 48,
-      anios: num("anios") || 0,
+      anios: num("antiguedad") || num("anios") || 0,
       presentismo: (coAus <= 1),
       basico: num("basico"),
       zona: num("zona"),
-      afiliado: (val("afiliadoSel") === "si"),
+      afiliado: chk("afiliado") || val("afiliadoSel") === "si",
       osecac: (val("osecac").toLowerCase().includes("no") ? "no" : "si"),
       ferNoTrab: num("ferNoTrab"),
       ferTrab: num("ferTrab"),
       hex50: num("hex50"),
       hex100: num("hex100"),
       hsNoct: num("hsNoct"),
+      coVacGoz: num("coVacGoz"),
+      coLicCG: num("coLicCG"),
+      coLicSG: num("coLicSG"),
+      coSuspension: chk("coSuspension"),
+      coEmbargo: num("coEmbargo"),
+      coAus: coAus,
+      coJub: chk("coJub") || chk("jubilado"),
+      lf_tipo: "NINGUNA",
+      lf_ingreso: null,
+      lf_egreso: null,
+      // extras (API nueva los acepta)
+      aguaConex: val("aguaConex"),
+      funAdic1: chk("funAdic1"),
+      funAdic2: chk("funAdic2"),
+      funAdic3: chk("funAdic3"),
+      funAdic4: chk("funAdic4")
     };
   }
 
-  function buildPayloadFinal(){
-    // si tu backend la usa, completalo; por ahora deja lo básico
+  function buildPayloadFinal() {
+    const coAus = num("lf_coAus") || num("coAus");
+    const ingreso = val("lf_ingreso") || null;
+    const egreso = val("lf_egreso") || null;
+
     return {
-      rama: val("rama"),
-      agrup: val("agrup") || "—",
-      categoria: val("categoria"),
-      mes: val("mes"),
-      hs: num("hs") || 48,
-      anios: num("anios") || 0,
+      rama: val("lf_rama") || val("rama"),
+      agrup: val("lf_agrup") || val("agrup"),
+      categoria: val("lf_categoria") || val("categoria"),
+      mes: val("lf_mes") || val("mes"),
+      hs: num("lf_hs") || num("hs") || 48,
+      anios: num("lf_anios") || num("antiguedad") || 0,
+      presentismo: (coAus <= 1),
+      basico: num("lf_basico") || num("basico"),
+      zona: num("lf_zona") || num("zona"),
+      afiliado: chk("lf_afiliado") || chk("afiliado"),
+      osecac: (val("lf_osecac") || val("osecac")).toLowerCase().includes("no") ? "no" : "si",
+      ferNoTrab: num("lf_ferNoTrab") || 0,
+      ferTrab: num("lf_ferTrab") || 0,
+      hex50: num("lf_hex50") || 0,
+      hex100: num("lf_hex100") || 0,
+      hsNoct: num("lf_hsNoct") || 0,
+      coVacGoz: num("coVacGoz"),
+      coLicCG: num("coLicCG"),
+      coLicSG: num("coLicSG"),
+      coSuspension: chk("coSuspension"),
+      coEmbargo: num("coEmbargo"),
+      coAus: coAus,
+      coJub: chk("lf_coJub") || chk("coJub") || chk("jubilado"),
+      lf_tipo: val("lf_tipo") || "NINGUNA",
+      lf_ingreso: ingreso,
+      lf_egreso: egreso,
+      aguaConex: val("aguaConex"),
+      funAdic1: chk("funAdic1"),
+      funAdic2: chk("funAdic2"),
+      funAdic3: chk("funAdic3"),
+      funAdic4: chk("funAdic4")
     };
   }
 
-  function clearTbody(id){
-    const tb = $(id);
-    if(tb) tb.innerHTML = "";
-  }
-  function addRow(tbodyId, concepto, base, rem, nr, ded){
-    const tb = $(tbodyId);
-    if(!tb) return;
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${concepto}</td>
-      <td class="num base-col">${base ?? ""}</td>
-      <td class="num">${rem ?? ""}</td>
-      <td class="num">${nr ?? ""}</td>
-      <td class="num">${ded ?? ""}</td>
-    `;
-    tb.appendChild(tr);
-  }
+  
 
-  // ---- Server calculation renderer ----
-  async function postCalculo(payload, tbodyId, totRemId, totNrId, totDedId, totNetoId){
-    clearTbody(tbodyId);
+async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
+  // Server-side: el backend devuelve "items" y "totales" listos.
+  const url = new URL(`${API_BASE}/calcular`, window.location.href);
+  url.searchParams.set("rama", payload.rama);
+  url.searchParams.set("agrup", payload.agrup || "—");
+  url.searchParams.set("categoria", payload.categoria || "—");
+  url.searchParams.set("mes", payload.mes);
 
-    const url = new URL(`${API_BASE}/calcular`, window.location.href);
-    url.searchParams.set("rama", payload.rama);
-    url.searchParams.set("agrup", payload.agrup || "—");
-    url.searchParams.set("categoria", payload.categoria || "—");
-    url.searchParams.set("mes", payload.mes);
+  // Jornada y antigüedad (si no existen, usa 48 y 0)
+  const hs = num("hs", 48);
+  const anios = num("antig", 0);
+  url.searchParams.set("jornada", String(hs));
+  url.searchParams.set("anios_antig", String(anios));
 
-    // extras
-    url.searchParams.set("jornada", String(payload.hs || num("hs",48)));
-    url.searchParams.set("anios", String(payload.anios || num("anios",0)));
-    url.searchParams.set("zona", String(payload.zona || num("zona",0)));
-    url.searchParams.set("osecac", String(payload.osecac || val("osecac") || "si"));
-    url.searchParams.set("afiliado", String(payload.afiliado ? "si" : "no"));
+  // OSECAC
+  const osVal = (val("osecac") || "si").toLowerCase();
+  url.searchParams.set("osecac", String(osVal !== "no"));
 
-    const data = await fetchJSON(url.toString());
+  // Sindicato
+  const afiliado = chk("afiliado");
+  const sindPct = afiliado ? num("afiliado_selector", 2) : 0;
+  url.searchParams.set("afiliado", String(afiliado));
+  url.searchParams.set("sind_pct", String(sindPct));
 
-    const items = data.items || [];
-    items.forEach(it=>{
-      addRow(tbodyId,
-        it.concepto || "",
-        (it.base != null ? money(it.base) : ""),
-        (it.rem  != null ? money(it.rem)  : ""),
-        (it.nr   != null ? money(it.nr)   : ""),
-        (it.ded  != null ? money(it.ded)  : "")
-      );
-    });
+  // Título (Turismo)
+  const titPct = num("pctTitulo", 0);
+  url.searchParams.set("titulo_pct", String(titPct));
 
-    const tot = data.totales || {};
-    if($(totRemId)) $(totRemId).textContent = money(tot.rem || 0);
-    if($(totNrId)) $(totNrId).textContent  = money(tot.nr || 0);
-    if($(totDedId)) $(totDedId).textContent = money(tot.ded || 0);
-    if($(totNetoId)) $(totNetoId).textContent= money(tot.neto || 0);
+  const data = await fetchJson(url.toString());
 
-    return data;
+  // Encabezado informativo
+  document.getElementById("selInfo").textContent =
+    `Rama: ${data.rama} · Agrup: ${data.agrup} · Cat: ${data.categoria} · Escala ${data.mes}`;
+
+  // Tabla
+  const tbody = document.getElementById(tbodyId);
+  resetTabla(tbodyId);
+  (data.items || []).forEach(it => addRow(tbody, it));
+
+  // Totales
+  const tot = data.totales || {};
+  document.getElementById(totalsIds.rem).textContent = money(tot.rem || 0);
+  document.getElementById(totalsIds.nr).textContent  = money(tot.nr || 0);
+  document.getElementById(totalsIds.ded).textContent = money(tot.ded || 0);
+  document.getElementById(totalsIds.neto).textContent= money(tot.neto || 0);
+
+  // Base total (informativa)
+  if(document.getElementById(totalsIds.base)){
+    document.getElementById(totalsIds.base).textContent = money(0);
   }
 
-  // -------- Handlers públicos --------
+  return data;
+}
+
+
+// -------- Handlers públicos (usan IDs existentes) --------
   window.calcularMensual = async function() {
     try {
       const payload = buildPayloadMensual();
@@ -527,6 +938,7 @@ hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
     } catch (e) {
       console.error(e);
       alert("Error al calcular (API). Revisá conexión o datos.");
+      setText("status", "Error");
     }
   };
 
@@ -540,63 +952,141 @@ hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
     }
   };
 
-  window.autocalcularAntiguedad = function(){
-    const alta = val("alta");
-    if(!alta){ alert("Cargá la fecha de alta."); return; }
-    const mes = val("mes");
-    if(!mes){ alert("Seleccioná el mes."); return; }
-    // calculo simple: años completos al último día del mes seleccionado
-    const [yy,mm] = mes.split("-").map(Number);
-    const fin = new Date(yy, (mm||1), 0); // último día del mes
-    const ini = new Date(alta + "T00:00:00");
-    let years = fin.getFullYear() - ini.getFullYear();
-    const mDiff = fin.getMonth() - ini.getMonth();
-    if(mDiff < 0 || (mDiff === 0 && fin.getDate() < ini.getDate())) years--;
-    if(years < 0) years = 0;
-    setValue("anios", String(years));
-  };
+  
+  function normalizeRama(x){ return String(x||"").trim(); }
+  function normalizeMes(x){ return String(x||"").trim(); }
 
-  async function fetchAutoBase(){
-    // opcional: si tu backend devuelve base sugerida, podés usarlo
-    return;
+  function metaGetRamas(meta){
+    if (!meta) return [];
+    if (Array.isArray(meta.ramas)) return meta.ramas.map(normalizeRama).filter(Boolean);
+    if (Array.isArray(meta.RAMAS)) return meta.RAMAS.map(normalizeRama).filter(Boolean);
+    if (meta.data && Array.isArray(meta.data.ramas)) return meta.data.ramas.map(normalizeRama).filter(Boolean);
+    if (Array.isArray(meta.rows)) {
+      const s = new Set();
+      meta.rows.forEach(r=>{ if(r && r.rama) s.add(normalizeRama(r.rama)); });
+      return Array.from(s);
+    }
+    return [];
   }
 
-  // ---- Boot ----
+  function metaGetMeses(meta, rama){
+    const r = normalizeRama(rama);
+    if (!meta) return [];
+    // formatos posibles:
+    // 1) meta.mesesPorRama = {RAMA:["2026-01", ...]}
+    if (meta.mesesPorRama && meta.mesesPorRama[r]) return (meta.mesesPorRama[r]||[]).map(normalizeMes);
+    if (meta.meses_por_rama && meta.meses_por_rama[r]) return (meta.meses_por_rama[r]||[]).map(normalizeMes);
+    // 2) meta.meses = [{rama, mes}, ...]
+    if (Array.isArray(meta.meses)) {
+      if (meta.meses.length && typeof meta.meses[0] === 'object') {
+        return meta.meses.filter(m=>normalizeRama(m.rama)===r).map(m=>normalizeMes(m.mes)).filter(Boolean);
+      }
+      return meta.meses.map(normalizeMes).filter(Boolean);
+    }
+    // 3) meta.rows con rama/mes
+    if (Array.isArray(meta.rows)) {
+      const s = new Set();
+      meta.rows.forEach(rr=>{ if(rr && normalizeRama(rr.rama)===r && rr.mes) s.add(normalizeMes(rr.mes)); });
+      return Array.from(s);
+    }
+    return [];
+  }
+
+  function sortMeses(arr){
+    return (arr||[]).map(normalizeMes).filter(Boolean).sort(); // YYYY-MM lexicográfico OK
+  }
+
+  function filterMesDesde2026(arr){
+    return (arr||[]).filter(m => m >= '2026-01');
+  }
+
+  function fillSelect(el, items, placeholder){
+    if (!el) return;
+    el.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = placeholder || '— Seleccione —';
+    el.appendChild(opt0);
+    (items||[]).forEach(v=>{
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v;
+      el.appendChild(o);
+    });
+  }
+
+  async function loadPayloadForSelection(){
+    const rama = $("rama")?.value || '';
+    const mes = $("mes")?.value || '';
+    if (!rama || !mes) {
+      PAYLOAD_ROWS = [];
+      TREE = buildTree([]);
+      refreshSelectors();
+      return;
+    }
+    setText('status', 'Cargando escala…');
+    const u = new URL(ENDPOINT_PAYLOAD, window.location.origin);
+    u.searchParams.set('rama', rama);
+    u.searchParams.set('mes', mes);
+    const payload = await fetchJSON(u.toString());
+    // payload puede venir como {rows:[...]} o directamente [...]
+    const rows = Array.isArray(payload) ? payload : (payload.rows || payload.data || []);
+    PAYLOAD_ROWS = rows;
+    TREE = buildTree(rows);
+    refreshSelectors();
+    toggleRamaBlocks();
+    setText('status', 'Maestro cargado.');
+  }
+
+  function wireSelectors(){
+    const elR = $("rama");
+    const elM = $("mes");
+    if (elR) {
+      elR.addEventListener('change', async ()=>{
+        // actualizar meses por rama
+        const meses = filterMesDesde2026(sortMeses(metaGetMeses(META, elR.value)));
+        fillSelect(elM, meses, '— Seleccione —');
+        if (meses.length) elM.value = meses[0];
+        // limpiar agrup/cat hasta que cargue payload
+        fillSelect($("agrup"), [], '— Seleccione —');
+        fillSelect($("categoria"), [], '— Seleccione —');
+        await loadPayloadForSelection();
+      });
+    }
+    if (elM) {
+      elM.addEventListener('change', async ()=>{
+        fillSelect($("agrup"), [], '— Seleccione —');
+        fillSelect($("categoria"), [], '— Seleccione —');
+        await loadPayloadForSelection();
+      });
+    }
+  }
+
   async function boot() {
     try {
       document.body.classList.add("hide-base-col");
-      setStatus("Cargando maestro…");
+      setText("status", "Cargando maestro…");
 
       META = await fetchJSON(ENDPOINT_META);
 
-      // 1) Poblamos Ramas primero
-      TREE = {}; PAYLOAD_ROWS = [];
-      refreshSelectors();
+      // Poblar Ramas y Meses desde META (sin llamar /payload sin params)
+      const ramas = metaGetRamas(META);
+      fillSelect($("rama"), ramas, '— Seleccione —');
 
-      // 2) Defaults: GENERAL + primer mes >= 2026-01
-      const ramaSel = $("rama");
-      const mesSel  = $("mes");
+      // Default rama = primera
+      if (ramas.length) $("rama").value = ramas[0];
 
-      const ramas = Array.isArray(META?.ramas) ? META.ramas : [];
-      const defRama = ramas.includes("GENERAL") ? "GENERAL" : (ramas[0] || "");
-      if (defRama) ramaSel.value = defRama;
+      const meses = filterMesDesde2026(sortMeses(metaGetMeses(META, $("rama")?.value)));
+      fillSelect($("mes"), meses, '— Seleccione —');
+      if (meses.length) $("mes").value = meses[0];
 
-      const mesesAll = Array.isArray(META?.meses) ? META.meses.map(x=>String(x||"").trim()).filter(Boolean) : [];
-      const mesesFil = mesesAll.filter(m => m >= "2026-01");
-      const defMes = (mesesFil[0] || mesesAll[0] || "");
-      if (defMes) mesSel.value = defMes;
+      // Inicialmente vacíos; se cargan con /payload?rama&mes
+      fillSelect($("agrup"), [], '— Seleccione —');
+      fillSelect($("categoria"), [], '— Seleccione —');
 
-      // 3) Cargamos /payload?rama&mes
-      if (ramaSel.value && mesSel.value) {
-        await reloadTreeForRamaMes(ramaSel.value, mesSel.value);
-      }
+      wireSelectors();
 
-      // 4) Refrescamos selects con TREE real
-      refreshSelectors();
-      toggleRamaBlocks();
-
-      // Toggle "Ver base"
-      const baseChk = $("toggleBase");
+      const baseChk = $("coBaseNumChk");
       if (baseChk) {
         baseChk.addEventListener("change", () => {
           if (baseChk.checked) document.body.classList.remove("hide-base-col");
@@ -604,16 +1094,20 @@ hr{ border:none; border-top:1px solid var(--line); margin:12px 0; }
         });
       }
 
-      setStatus("Maestro cargado.");
+      await loadPayloadForSelection();
     } catch (e) {
       console.error(e);
-      alert("No se pudo cargar el maestro desde el servidor.");
-      setStatus("Sin conexión");
+      alert("No se pudo cargar el maestro (META) desde el servidor.");
+      setText("status", "Sin conexión");
     }
   }
 
+
   document.addEventListener("DOMContentLoaded", boot);
+})();
 </script>
 
 </body>
+
+
 </html>
