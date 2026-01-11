@@ -490,11 +490,6 @@ Recibo Mensual</div>
   const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
 
-  // Mostrar meses desde enero 2026 en adelante (por rama)
-  const MIN_MONTH = "2026-01";
-  const monthGE = (m, min) => (String(m) >= String(min));
-
-
   const $ = (id) => document.getElementById(id);
   const num = (id) => {
     const el = $(id);
@@ -605,6 +600,42 @@ Recibo Mensual</div>
       tree[r].agrups[a].mesesByCatSet[c].add(m);
     }
 
+  function buildTreeFromMeta(meta) {
+    const tree = {};
+    const ramasRaw = meta?.ramas;
+    const ramas = Array.isArray(ramasRaw)
+      ? ramasRaw
+      : ramasRaw && typeof ramasRaw === "object"
+        ? Object.keys(ramasRaw)
+        : [];
+
+    const agrupRaw = meta?.agrupamientos || {};
+    const catRaw = meta?.categorias || {};
+    const mesesRaw = Array.isArray(meta?.meses) ? meta.meses : [];
+    const meses = mesesRaw
+      .filter((m) => typeof m === "string" && m >= MIN_MONTH)
+      .sort();
+
+    for (const rama of ramas) {
+      const agrups = Array.isArray(agrupRaw[rama]) ? agrupRaw[rama] : (agrupRaw[rama] ? [agrupRaw[rama]] : []);
+      tree[rama] = {};
+      for (const agr of (agrups.length ? agrups : ["—"])) {
+        const cats = (catRaw?.[rama] && Array.isArray(catRaw[rama][agr]))
+          ? catRaw[rama][agr]
+          : (catRaw?.[rama] && typeof catRaw[rama] === "object"
+              ? Object.values(catRaw[rama]).flat().filter((x) => typeof x === "string")
+              : []);
+        const uniqueCats = Array.from(new Set(cats.length ? cats : ["—"]));
+        tree[rama][agr] = {};
+        for (const c of uniqueCats) {
+          tree[rama][agr][c] = { meses: meses.slice() };
+        }
+      }
+    }
+    return tree;
+  }
+
+
     for (const r of Object.keys(tree)) {
       for (const a of Object.keys(tree[r].agrups)) {
         const g = tree[r].agrups[a];
@@ -698,7 +729,6 @@ function refreshSelectors() {
       meses = Array.from(new Set((meses || [])
         .map(m => String(m || "").trim())
         .filter(m => m)
-        .filter(m => monthGE(m, MIN_MONTH))
       )).sort((x,y)=>x.localeCompare(y, "es"));
 
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
@@ -967,11 +997,11 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       META = await fetchJSON(ENDPOINT_META);
 
       // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
-      const payload = await fetchJSON(ENDPOINT_PAYLOAD);
-      PAYLOAD_ROWS = payload.rows || [];
-      TREE = buildTree(PAYLOAD_ROWS);
-
-      refreshSelectors();
+      // Render: NO llamamos /payload sin parámetros (Render responde 422 si faltan rama/mes).
+      // Construimos el árbol de selects desde /meta y usamos meses globales filtrados.
+      PAYLOAD_ROWS = [];
+      TREE = buildTreeFromMeta(META);
+refreshSelectors();
       toggleRamaBlocks();
 
       const baseChk = $("coBaseNumChk");
