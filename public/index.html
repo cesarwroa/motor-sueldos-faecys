@@ -829,6 +829,26 @@ function toggleRamaBlocks() {
   }
 
 
+  // FIX: faltaba esta función (se llamaba en boot/onSelectionChange)
+  function updateAutoFieldsFromSelection(){
+    // Actualiza encabezados visibles
+    setText("outRama", val("rama") || "–");
+    setText("outAgrup", val("agrup") || "–");
+    setText("outCat", val("categoria") || "–");
+    setText("outEscala", val("mes") ? ("Escala " + val("mes")) : "");
+
+    setText("lf_outRama", val("rama") || "–");
+    setText("lf_outAgrup", val("agrup") || "–");
+    setText("lf_outCat", val("categoria") || "–");
+
+    // Recalcular bases automáticas si hay selección completa
+    if (val("rama") && val("agrup") && val("categoria") && val("mes")) {
+      fetchAutoBase();
+    }
+  }
+
+
+
   // -------- Payload builders --------
   function buildPayloadMensual() {
     const coAus = num("coAus");
