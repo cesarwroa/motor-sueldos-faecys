@@ -960,21 +960,76 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
       META = await fetchJSON(ENDPOINT_META);
 
-      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
-      const payload = await fetchJSON(ENDPOINT_PAYLOAD);
-      PAYLOAD_ROWS = payload.rows || [];
-      TREE = buildTree(PAYLOAD_ROWS);
+      // Helpers
+      const ramaSel = $("rama");
+      const mesSel  = $("mes");
 
+      const pickDefaultRama = () => {
+        const ramas = Array.isArray(META?.ramas) ? META.ramas : [];
+        if (ramas.includes("GENERAL")) return "GENERAL";
+        return ramas[0] || "";
+      };
+
+      const pickDefaultMes = () => {
+        const meses = Array.isArray(META?.meses) ? META.meses : [];
+        const desde2026 = meses.filter(m => typeof m === "string" && m >= "2026-01");
+        // Si hay meses desde 2026-01, usar el primero; si no, usar el último disponible (o el primero)
+        if (desde2026.length) return desde2026[0];
+        return meses[0] || "";
+      };
+
+      async function loadPayloadFor(rama, mes) {
+        if (!rama || !mes) return;
+        const url = `${ENDPOINT_PAYLOAD}?rama=${encodeURIComponent(rama)}&mes=${encodeURIComponent(mes)}`;
+        const payload = await fetchJSON(url);
+        PAYLOAD_ROWS = payload.rows || [];
+        TREE = buildTree(PAYLOAD_ROWS);
+      }
+
+      // 1) Pintar selects básicos (ramas/meses) y 2) cargar payload para la combinación inicial
+      refreshSelectors();
+
+      // Asegurar rama/mes iniciales
+      if (ramaSel && !ramaSel.value) ramaSel.value = pickDefaultRama();
+      if (mesSel  && !mesSel.value)  mesSel.value  = pickDefaultMes();
+
+      // Cargar árbol (agrup/cat) para la combinación elegida
+      await loadPayloadFor(ramaSel.value, mesSel.value);
+
+      // Re-pintar ahora con TREE listo
       refreshSelectors();
       toggleRamaBlocks();
 
-      const baseChk = $("coBaseNumChk");
+      // Toggle base numérica (compat: id viejo/nuevo)
+      const baseChk = $("toggleBase") || $("coBaseNumChk");
       if (baseChk) {
         baseChk.addEventListener("change", () => {
           if (baseChk.checked) document.body.classList.remove("hide-base-col");
           else document.body.classList.add("hide-base-col");
         });
       }
+
+      // Al cambiar Rama o Mes, refrescar payload (para evitar 422 y mantener combos correctas)
+      let busy = false;
+      async function onRamaOMesChanged() {
+        if (busy) return;
+        busy = true;
+        try {
+          setText("status", "Cargando escala…");
+          await loadPayloadFor(ramaSel.value, mesSel.value);
+          refreshSelectors();
+          toggleRamaBlocks();
+          setText("status", "Maestro cargado.");
+        } catch (e) {
+          console.error(e);
+          setText("status", "Sin escala para ese mes.");
+        } finally {
+          busy = false;
+        }
+      }
+
+      if (ramaSel) ramaSel.addEventListener("change", onRamaOMesChanged);
+      if (mesSel)  mesSel.addEventListener("change", onRamaOMesChanged);
 
       setText("status", "Maestro cargado.");
     } catch (e) {
