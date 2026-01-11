@@ -576,12 +576,16 @@ const money = (x) => {
 
   // FIX: normalización tolerante del payload del backend
   function normalizePayloadRows(payload){
+    // FIX v10: soportar envoltorios {ok:true, payload:[...]} y similares
     // Soporta: array directo, {rows:[]}, {data:[]}, {items:[]}
     let rows = payload;
     if (rows && typeof rows === "object" && !Array.isArray(rows)) {
       if (Array.isArray(rows.rows)) rows = rows.rows;
       else if (Array.isArray(rows.data)) rows = rows.data;
       else if (Array.isArray(rows.items)) rows = rows.items;
+      else if (Array.isArray(rows.payload)) rows = rows.payload;
+      else if (Array.isArray(rows.maestro)) rows = rows.maestro;
+      else if (Array.isArray(rows.registros)) rows = rows.registros;
     }
     if (!Array.isArray(rows)) return [];
     // Si viene como matriz (array de arrays) con encabezados
@@ -619,14 +623,27 @@ const money = (x) => {
   }
 
   function loadPayloadFor(rama, mes){
-  if(!rama || !mes) return Promise.resolve();
-  const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-  return fetchJSON(url).then(payload => {
+  // FIX v10: algunos backends devuelven el maestro completo en /payload (sin filtros)
+  // o aceptan solo ?rama=... (sin mes). Probamos en cascada.
+  const tries = [];
+  if (rama && mes) tries.push(ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes));
+  if (rama) tries.push(ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama));
+  tries.push(ENDPOINT_PAYLOAD);
+
+  const attempt = async (i) => {
+    const url = tries[i];
+    const payload = await fetchJSON(url);
     const rawRows = normalizePayloadRows(payload);
-    // Guardar filas crudas para debug; TREE se arma con extracción tolerante (buildTree)
-    PAYLOAD_ROWS = rawRows;
-    TREE = buildTree(rawRows);
-  });
+    if (rawRows && rawRows.length) {
+      PAYLOAD_ROWS = rawRows;
+      TREE = buildTree(rawRows);
+      return;
+    }
+    // si vino vacío, seguir probando
+    if (i+1 < tries.length) return attempt(i+1);
+  };
+
+  return attempt(0);
 }
 
   async function onSelectionChange(){
