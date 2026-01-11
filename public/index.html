@@ -542,26 +542,17 @@ Recibo Mensual</div>
   }
 
   async function fetchJSON(url, payload=null) {
-    // API del servidor usa GET con query params (no POST con JSON).
-    let finalUrl = url;
-    const opt = { method: "GET" };
-
-    if (payload && typeof payload === "object") {
-      const params = new URLSearchParams();
-      for (const [k, v] of Object.entries(payload)) {
-        if (v === undefined || v === null) continue;
-        const s = (typeof v === "string") ? v.trim() : String(v);
-        if (s === "") continue;
-        params.append(k, s);
-      }
-      const qs = params.toString();
-      if (qs) finalUrl = url + (url.includes("?") ? "&" : "?") + qs;
+    const opt = payload ? {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+    } : { method:"GET" };
+    const res = await fetch(url, opt);
+    if (!res.ok) {
+      const t = await res.text().catch(()=> "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${t}`.trim());
     }
-
-    const res = await fetch(finalUrl, opt);
-    const txt = await res.text().catch(()=> "");
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} ${txt}`.trim());
-    try { return txt ? JSON.parse(txt) : null; } catch { return txt; }
+    return await res.json();
   }
 
   // -------- META (sin montos) --------
@@ -703,7 +694,6 @@ function refreshSelectors() {
         .map(m => String(m || "").trim())
         .filter(m => m)
       )).sort((x,y)=>x.localeCompare(y, "es"));
-      meses = meses.filter(m => String(m) >= "2026-01");
 
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
@@ -965,32 +955,69 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
   
   async function boot() {
     try {
-      document.body.classList.add("hide-base-col");
-      setText("status", "Cargando maestro…");
+      document.body.classList.add("booting");
+      setText("status", "Cargando maestro...");
 
+      // 1) META
       META = await fetchJSON(ENDPOINT_META);
 
-      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
-      const payload = await fetchJSON(ENDPOINT_PAYLOAD);
-      PAYLOAD_ROWS = payload.rows || [];
-      TREE = buildTree(PAYLOAD_ROWS);
+      // 2) Cargar payload por rama/mes (solo desde 2026-01)
+      PAYLOAD_ROWS = [];
+      const ramas = (META?.ramas || []).filter(Boolean);
+      const meses = (META?.meses || [])
+        .filter(m => /^\d{4}-\d{2}$/.test(m))
+        .filter(m => m >= "2026-01")
+        .sort();
 
-      refreshSelectors();
-      toggleRamaBlocks();
+      // Guardamos qué meses existen por rama (para armar el selector)
+      const mesesPorRama = Object.create(null);
 
-      const baseChk = $("coBaseNumChk");
-      if (baseChk) {
-        baseChk.addEventListener("change", () => {
-          if (baseChk.checked) document.body.classList.remove("hide-base-col");
-          else document.body.classList.add("hide-base-col");
-        });
+      for (const rama of ramas) {
+        mesesPorRama[rama] = [];
+        for (const mes of meses) {
+          try {
+            const payload = await fetchJSON(`${ENDPOINT_PAYLOAD}?rama=${encodeURIComponent(rama)}&mes=${encodeURIComponent(mes)}`);
+            const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+            if (rows.length > 0) {
+              PAYLOAD_ROWS.push(...rows);
+              mesesPorRama[rama].push(mes);
+            }
+          } catch (e) {
+            // Si no existe para esa combinación, seguimos.
+          }
+        }
       }
 
+      // 3) Construir árbol para selectores (rama -> agrup -> cat -> meses)
+      TREE = buildTree(PAYLOAD_ROWS);
+
+      // Si por alguna razón TREE quedó vacío, al menos cargamos ramas/meses globales
+      // (pero preferimos TREE cuando existe)
+      if (!TREE || Object.keys(TREE).length === 0) {
+        TREE = Object.create(null);
+        for (const rama of ramas) {
+          TREE[rama] = { agrups: {}, cats: {}, mesesAll: mesesPorRama[rama] || meses };
+        }
+      } else {
+        // Guardar meses disponibles por rama en el árbol (para el selector de mes)
+        for (const rama of Object.keys(TREE)) {
+          TREE[rama].mesesAll = (mesesPorRama[rama] && mesesPorRama[rama].length)
+            ? mesesPorRama[rama].slice()
+            : (TREE[rama].mesesAll || meses);
+        }
+      }
+
+      // 4) Inicializar selects
+      refreshSelectors({ preferRama: ramas[0] || "" });
+
+      // Estado ok
       setText("status", "Maestro cargado.");
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       alert("No se pudo cargar el maestro (META) desde el servidor.");
       setText("status", "Sin conexión");
+    } finally {
+      document.body.classList.remove("booting");
     }
   }
 
