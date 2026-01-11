@@ -564,7 +564,9 @@ Recibo Mensual</div>
   async function loadPayloadFor(rama, mes){
     if(!rama || !mes) return;
     const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    PAYLOAD_ROWS = await fetchJSON(url);
+    const raw = await fetchJSON(url);
+    // El endpoint puede devolver Array directo o un objeto {rows: [...]}
+    PAYLOAD_ROWS = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.rows) ? raw.rows : (raw && Array.isArray(raw.data) ? raw.data : []));
     TREE = buildTree(PAYLOAD_ROWS);
   }
 
@@ -619,7 +621,7 @@ Recibo Mensual</div>
 
   function buildTree(rows){
     const tree = {};
-    for (const row of (rows || [])) {
+    for (const row of ((Array.isArray(rows) ? rows : (rows && Array.isArray(rows.rows) ? rows.rows : (rows && Array.isArray(rows.data) ? rows.data : []))))) {
       const r = (row.rama || "").toString().trim();
       const a = (row.agrup || "").toString().trim();
       const c = (row.categoria || "").toString().trim();
