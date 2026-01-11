@@ -554,6 +554,33 @@ Recibo Mensual</div>
     }
     return await res.json();
   }
+  async function loadPayloadFor(rama, mes){
+    if(!rama || !mes) return;
+    const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
+    PAYLOAD_ROWS = await fetchJSON(url);
+    TREE = buildTree(PAYLOAD_ROWS);
+  }
+
+  async function onSelectionChange(){
+    // Update month options first (from META), then load payload for selected rama+mes to populate agrup/categoría
+    refreshSelectors({onlyMeta:true}); // custom flag (handled below) to avoid using stale TREE
+    const rama = getSelectedValue("rama");
+    const mes  = getSelectedValue("mes");
+    // Clear dependent selects while loading
+    fillSelect("agrup", [], "— Seleccione —");
+    fillSelect("categoria", [], "— Seleccione —");
+    try{
+      setText("statusMsg", "Cargando escala...");
+      await loadPayloadFor(rama, mes);
+      refreshSelectors();
+      updateAutoFieldsFromSelection();
+      setText("statusMsg", "Maestro cargado.");
+    }catch(e){
+      console.error(e);
+      setText("statusMsg", "Error al cargar escala.");
+    }
+  }
+
 
   // -------- META (sin montos) --------
   let META = null;
@@ -618,7 +645,7 @@ Recibo Mensual</div>
 
 
 
-function refreshSelectors() {
+function refreshSelectors(opts={}) {
     if (!META) return;
 
     const ramaSel = $("rama");
@@ -953,154 +980,29 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
   };
 
   
-  function normalizeRama(x){ return String(x||"").trim(); }
-  function normalizeMes(x){ return String(x||"").trim(); }
-
-  function metaGetRamas(meta){
-    if (!meta) return [];
-    if (Array.isArray(meta.ramas)) return meta.ramas.map(normalizeRama).filter(Boolean);
-    if (Array.isArray(meta.RAMAS)) return meta.RAMAS.map(normalizeRama).filter(Boolean);
-    if (meta.data && Array.isArray(meta.data.ramas)) return meta.data.ramas.map(normalizeRama).filter(Boolean);
-    if (Array.isArray(meta.rows)) {
-      const s = new Set();
-      meta.rows.forEach(r=>{ if(r && r.rama) s.add(normalizeRama(r.rama)); });
-      return Array.from(s);
-    }
-    return [];
-  }
-
-  function metaGetMeses(meta, rama){
-    const r = normalizeRama(rama);
-    if (!meta) return [];
-    // formatos posibles:
-    // 1) meta.mesesPorRama = {RAMA:["2026-01", ...]}
-    if (meta.mesesPorRama && meta.mesesPorRama[r]) return (meta.mesesPorRama[r]||[]).map(normalizeMes);
-    if (meta.meses_por_rama && meta.meses_por_rama[r]) return (meta.meses_por_rama[r]||[]).map(normalizeMes);
-    // 2) meta.meses = [{rama, mes}, ...]
-    if (Array.isArray(meta.meses)) {
-      if (meta.meses.length && typeof meta.meses[0] === 'object') {
-        return meta.meses.filter(m=>normalizeRama(m.rama)===r).map(m=>normalizeMes(m.mes)).filter(Boolean);
-      }
-      return meta.meses.map(normalizeMes).filter(Boolean);
-    }
-    // 3) meta.rows con rama/mes
-    if (Array.isArray(meta.rows)) {
-      const s = new Set();
-      meta.rows.forEach(rr=>{ if(rr && normalizeRama(rr.rama)===r && rr.mes) s.add(normalizeMes(rr.mes)); });
-      return Array.from(s);
-    }
-    return [];
-  }
-
-  function sortMeses(arr){
-    return (arr||[]).map(normalizeMes).filter(Boolean).sort(); // YYYY-MM lexicográfico OK
-  }
-
-  function filterMesDesde2026(arr){
-    return (arr||[]).filter(m => m >= '2026-01');
-  }
-
-  function fillSelect(el, items, placeholder){
-    if (!el) return;
-    el.innerHTML = '';
-    const opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = placeholder || '— Seleccione —';
-    el.appendChild(opt0);
-    (items||[]).forEach(v=>{
-      const o = document.createElement('option');
-      o.value = v;
-      o.textContent = v;
-      el.appendChild(o);
-    });
-  }
-
-  async function loadPayloadForSelection(){
-    const rama = $("rama")?.value || '';
-    const mes = $("mes")?.value || '';
-    if (!rama || !mes) {
-      PAYLOAD_ROWS = [];
-      TREE = buildTree([]);
-      refreshSelectors();
-      return;
-    }
-    setText('status', 'Cargando escala…');
-    const u = new URL(ENDPOINT_PAYLOAD, window.location.origin);
-    u.searchParams.set('rama', rama);
-    u.searchParams.set('mes', mes);
-    const payload = await fetchJSON(u.toString());
-    // payload puede venir como {rows:[...]} o directamente [...]
-    const rows = Array.isArray(payload) ? payload : (payload.rows || payload.data || []);
-    PAYLOAD_ROWS = rows;
-    TREE = buildTree(rows);
-    refreshSelectors();
-    toggleRamaBlocks();
-    setText('status', 'Maestro cargado.');
-  }
-
-  function wireSelectors(){
-    const elR = $("rama");
-    const elM = $("mes");
-    if (elR) {
-      elR.addEventListener('change', async ()=>{
-        // actualizar meses por rama
-        const meses = filterMesDesde2026(sortMeses(metaGetMeses(META, elR.value)));
-        fillSelect(elM, meses, '— Seleccione —');
-        if (meses.length) elM.value = meses[0];
-        // limpiar agrup/cat hasta que cargue payload
-        fillSelect($("agrup"), [], '— Seleccione —');
-        fillSelect($("categoria"), [], '— Seleccione —');
-        await loadPayloadForSelection();
-      });
-    }
-    if (elM) {
-      elM.addEventListener('change', async ()=>{
-        fillSelect($("agrup"), [], '— Seleccione —');
-        fillSelect($("categoria"), [], '— Seleccione —');
-        await loadPayloadForSelection();
-      });
-    }
-  }
-
   async function boot() {
-    try {
-      document.body.classList.add("hide-base-col");
-      setText("status", "Cargando maestro…");
-
+    try{
+      setText("statusMsg","Cargando maestro (META)...");
       META = await fetchJSON(ENDPOINT_META);
 
-      // Poblar Ramas y Meses desde META (sin llamar /payload sin params)
-      const ramas = metaGetRamas(META);
-      fillSelect($("rama"), ramas, '— Seleccione —');
+      // Inicializar rama/mes desde META (sin depender de payload)
+      refreshSelectors({onlyMeta:true});
 
-      // Default rama = primera
-      if (ramas.length) $("rama").value = ramas[0];
+      // Si todavía no hay valores seleccionados, intentar setear defaults
+      const rama = getSelectedValue("rama");
+      const mes  = getSelectedValue("mes");
 
-      const meses = filterMesDesde2026(sortMeses(metaGetMeses(META, $("rama")?.value)));
-      fillSelect($("mes"), meses, '— Seleccione —');
-      if (meses.length) $("mes").value = meses[0];
+      await loadPayloadFor(rama, mes);
 
-      // Inicialmente vacíos; se cargan con /payload?rama&mes
-      fillSelect($("agrup"), [], '— Seleccione —');
-      fillSelect($("categoria"), [], '— Seleccione —');
-
-      wireSelectors();
-
-      const baseChk = $("coBaseNumChk");
-      if (baseChk) {
-        baseChk.addEventListener("change", () => {
-          if (baseChk.checked) document.body.classList.remove("hide-base-col");
-          else document.body.classList.add("hide-base-col");
-        });
-      }
-
-      await loadPayloadForSelection();
-    } catch (e) {
+      refreshSelectors();
+      updateAutoFieldsFromSelection();
+      setText("statusMsg","Maestro cargado.");
+    } catch(e){
       console.error(e);
-      alert("No se pudo cargar el maestro (META) desde el servidor.");
-      setText("status", "Sin conexión");
+      alert("No se pudo cargar el maestro (META/PAYLOAD) desde el servidor.");
+      setText("statusMsg","Error al cargar maestro.");
     }
-  }
+    }
 
 
   document.addEventListener("DOMContentLoaded", boot);
