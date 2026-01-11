@@ -954,38 +954,66 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
   
   async function boot() {
-    try {
-      document.body.classList.add("hide-base-col");
-      setText("status", "Cargando maestro…");
+  try {
+    document.body.classList.add("hide-base-col");
+    setText("status", "Cargando maestro…");
 
-      META = await fetchJSON(ENDPOINT_META);
+    // 1) Cargar META (lista de ramas/agrups/categorías/meses) desde el backend
+    META = await fetchJSON(ENDPOINT_META);
 
-      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
-      const payload = await fetchJSON(ENDPOINT_PAYLOAD);
-      PAYLOAD_ROWS = payload.rows || [];
-      TREE = buildTree(PAYLOAD_ROWS);
-
-      refreshSelectors();
-      toggleRamaBlocks();
-
-      const baseChk = $("coBaseNumChk");
-      if (baseChk) {
-        baseChk.addEventListener("change", () => {
-          if (baseChk.checked) document.body.classList.remove("hide-base-col");
-          else document.body.classList.add("hide-base-col");
-        });
+    // 2) Construir TREE sin llamar /payload "vacío" (eso daba 422)
+    //    Soportamos distintos formatos posibles del backend:
+    //    - META.tree  (estructura ya armada)
+    //    - META.rows  (filas: {rama, agrup, categoria, mes})
+    //    - META.ramas_dict (rama->agrup->categorias/meses)
+    if (META && META.tree) {
+      TREE = META.tree;
+    } else if (META && Array.isArray(META.rows)) {
+      TREE = buildTree(META.rows);
+    } else if (META && META.ramas_dict) {
+      // Normalizar a TREE esperado por refreshSelectors()
+      TREE = {};
+      for (const r of Object.keys(META.ramas_dict)) {
+        const agrupsObj = META.ramas_dict[r] || {};
+        TREE[r] = { agrups: {} };
+        for (const a of Object.keys(agrupsObj)) {
+          const catsObj = agrupsObj[a] || {};
+          const cats = Object.keys(catsObj).sort((x,y)=>x.localeCompare(y,"es"));
+          const mesesByCat = {};
+          for (const c of cats) {
+            const meses = (catsObj[c] || []).map(m=>String(m||"").trim()).filter(Boolean);
+            mesesByCat[c] = Array.from(new Set(meses)).sort((x,y)=>x.localeCompare(y,"es"));
+          }
+          TREE[r].agrups[a] = { cats, mesesByCat };
+        }
       }
-
-      setText("status", "Maestro cargado.");
-    } catch (e) {
-      console.error(e);
-      alert("No se pudo cargar el maestro (META) desde el servidor.");
-      setText("status", "Sin conexión");
+    } else {
+      TREE = null;
     }
+
+    refreshSelectors();
+    toggleRamaBlocks();
+
+    // Toggle "Ver base"
+    const toggleBase = $("toggleBase");
+    if (toggleBase) {
+      toggleBase.addEventListener("change", () => {
+        if (toggleBase.checked) document.body.classList.remove("hide-base-col");
+        else document.body.classList.add("hide-base-col");
+      });
+    }
+
+    setText("status", "Maestro cargado.");
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo cargar el maestro desde el servidor.");
+    setText("status", "Sin conexión");
   }
+}
 
 
-  document.addEventListener("DOMContentLoaded", boot);
+document.addEventListener("DOMContentLoaded", boot);
+("DOMContentLoaded", boot);
 })();
 </script>
 
