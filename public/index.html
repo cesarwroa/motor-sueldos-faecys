@@ -583,7 +583,74 @@ Recibo Mensual</div>
   return false;
 }
 
-  function buildTree(rows){
+  
+  // -------- Tree desde /meta --------
+  function buildTreeFromMeta(meta){
+    const tree = {};
+    if (!meta) return tree;
+
+    const agr = meta.agrupamientos || meta.agrups || meta.agrup || null;
+    const ramas = Array.isArray(meta.ramas) ? meta.ramas.map(x=>String(x||"").trim()).filter(Boolean)
+                 : (agr ? Object.keys(agr) : []);
+
+    // helper: detecta "AGRUP - CATEGORIA" donde AGRUP es un texto MAYUSC sin dígitos
+    const isAgrupPrefix = (left) => {
+      const s = String(left||"").trim();
+      if (!s) return false;
+      if (/[0-9]/.test(s)) return false;
+      return /^[A-ZÁÉÍÓÚÑ ]{3,}$/.test(s);
+    };
+
+    for (const r0 of ramas){
+      const r = String(r0||"").trim();
+      if (!r) continue;
+      if (!tree[r]) tree[r] = { agrups: {} };
+
+      const val = agr ? agr[r] : null;
+
+      // Caso 1: { AGRUP: [cats...] }
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        for (const [a0, cats0] of Object.entries(val)) {
+          const a = String(a0||"").trim() || "—";
+          const cats = Array.isArray(cats0) ? cats0.map(c=>String(c||"").trim()).filter(Boolean) : [];
+          if (!tree[r].agrups[a]) tree[r].agrups[a] = { cats: [], mesesByCat: {} };
+          tree[r].agrups[a].cats = Array.from(new Set([...tree[r].agrups[a].cats, ...cats])).sort((x,y)=>x.localeCompare(y,"es"));
+        }
+        continue;
+      }
+
+      // Caso 2: [ "cat", "AGRUP - cat", ... ]
+      const list = Array.isArray(val) ? val : [];
+      if (!tree[r].agrups["—"]) tree[r].agrups["—"] = { cats: [], mesesByCat: {} };
+
+      for (const item0 of list){
+        const item = String(item0||"").trim();
+        if (!item) continue;
+
+        if (item.includes(" - ")) {
+          const [left, ...rest] = item.split(" - ");
+          const right = rest.join(" - ").trim();
+          if (right && isAgrupPrefix(left)) {
+            const a = left.trim();
+            if (!tree[r].agrups[a]) tree[r].agrups[a] = { cats: [], mesesByCat: {} };
+            tree[r].agrups[a].cats.push(right);
+            continue;
+          }
+        }
+        tree[r].agrups["—"].cats.push(item);
+      }
+
+      // dedup y sort
+      for (const a of Object.keys(tree[r].agrups)) {
+        const cats = tree[r].agrups[a].cats || [];
+        tree[r].agrups[a].cats = Array.from(new Set(cats.map(c=>String(c||"").trim()).filter(Boolean))).sort((x,y)=>x.localeCompare(y,"es"));
+      }
+    }
+
+    return tree;
+  }
+
+function buildTree(rows){
     const tree = {};
     for (const row of (rows || [])) {
       const r = (row.rama || "").toString().trim();
@@ -684,41 +751,16 @@ function refreshSelectors() {
 
       if (mesesFiltrados.length) {
         meses = mesesFiltrados;
-      {
-        // Si no hubo meses por combinación, pero hay TREE para la rama, usar meses reales de esa rama
-        const mesesRama = [];
-        if (TREE && TREE[r] && TREE[r].agrups) {
-          for (const a2 of Object.keys(TREE[r].agrups || {})) {
-            const g = TREE[r].agrups[a2] || {};
-            const mbc = g.mesesByCat || {};
-            for (const c2 of Object.keys(mbc || {})) {
-              for (const m2 of (mbc[c2] || [])) mesesRama.push(m2);
-            }
-          }
-        }
-        if (mesesRama.length) {
-          meses = mesesRama;
-        } else if (Array.isArray(META.meses)) {
-          meses = META.meses.slice();
-        } else if (META.meses_dict) {
-          meses = Object.keys(META.meses_dict);
-        }
+      } else if (Array.isArray(META.meses)) {
+        meses = META.meses.slice();
+      } else if (META.meses_dict) {
+        meses = Object.keys(META.meses_dict);
       }
 
       meses = Array.from(new Set((meses || [])
         .map(m => String(m || "").trim())
         .filter(m => m)
-      ));
-
-      // Mostrar meses desde enero 2026 en adelante (por rama).
-      // Si la rama no tiene meses >= 2026-01, se deja el listado tal cual para no quedar vacío.
-      const mesesFiltrados2026 = meses.filter(m => {
-        const k = m.length >= 7 ? m.slice(0,7) : m;
-        return k >= "2026-01";
-      });
-      if (mesesFiltrados2026.length) meses = mesesFiltrados2026;
-
-      meses.sort((x,y)=>x.localeCompare(y, "es"));
+      )).sort((x,y)=>x.localeCompare(y, "es"));
 
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
@@ -985,31 +1027,8 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
       META = await fetchJSON(ENDPOINT_META);
 
-      // Armamos el árbol de combinaciones (Rama/Agrup/Categoría/Mes) desde /meta (sin llamar /payload vacío)
-      // Soporta distintos formatos de /meta: {tree}, {rows}, o {ramas_dict}
-      if (META && META.tree) {
-        TREE = META.tree;
-      } else if (META && Array.isArray(META.rows)) {
-        TREE = buildTree(META.rows);
-      } else if (META && META.ramas_dict) {
-        // Convertir ramas_dict -> rows
-        const rows = [];
-        for (const r of Object.keys(META.ramas_dict || {})) {
-          const agrupsObj = META.ramas_dict[r] || {};
-          for (const a of Object.keys(agrupsObj || {})) {
-            const catsObj = agrupsObj[a] || {};
-            for (const c of Object.keys(catsObj || {})) {
-              const meses = catsObj[c] || [];
-              for (const m of (Array.isArray(meses) ? meses : Object.keys(meses || {}))) {
-                rows.push({ rama: r, agrup: a, categoria: c, mes: m });
-              }
-            }
-          }
-        }
-        TREE = buildTree(rows);
-      } else {
-        TREE = null;
-      }
+      // Construimos el árbol de selectores desde /meta (sin llamar /payload vacío)
+      TREE = buildTreeFromMeta(META);
 
       refreshSelectors();
       toggleRamaBlocks();
