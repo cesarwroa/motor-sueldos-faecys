@@ -684,16 +684,41 @@ function refreshSelectors() {
 
       if (mesesFiltrados.length) {
         meses = mesesFiltrados;
-      } else if (Array.isArray(META.meses)) {
-        meses = META.meses.slice();
-      } else if (META.meses_dict) {
-        meses = Object.keys(META.meses_dict);
+      {
+        // Si no hubo meses por combinación, pero hay TREE para la rama, usar meses reales de esa rama
+        const mesesRama = [];
+        if (TREE && TREE[r] && TREE[r].agrups) {
+          for (const a2 of Object.keys(TREE[r].agrups || {})) {
+            const g = TREE[r].agrups[a2] || {};
+            const mbc = g.mesesByCat || {};
+            for (const c2 of Object.keys(mbc || {})) {
+              for (const m2 of (mbc[c2] || [])) mesesRama.push(m2);
+            }
+          }
+        }
+        if (mesesRama.length) {
+          meses = mesesRama;
+        } else if (Array.isArray(META.meses)) {
+          meses = META.meses.slice();
+        } else if (META.meses_dict) {
+          meses = Object.keys(META.meses_dict);
+        }
       }
 
       meses = Array.from(new Set((meses || [])
         .map(m => String(m || "").trim())
         .filter(m => m)
-      )).sort((x,y)=>x.localeCompare(y, "es"));
+      ));
+
+      // Mostrar meses desde enero 2026 en adelante (por rama).
+      // Si la rama no tiene meses >= 2026-01, se deja el listado tal cual para no quedar vacío.
+      const mesesFiltrados2026 = meses.filter(m => {
+        const k = m.length >= 7 ? m.slice(0,7) : m;
+        return k >= "2026-01";
+      });
+      if (mesesFiltrados2026.length) meses = mesesFiltrados2026;
+
+      meses.sort((x,y)=>x.localeCompare(y, "es"));
 
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
@@ -954,66 +979,59 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
   
   async function boot() {
-  try {
-    document.body.classList.add("hide-base-col");
-    setText("status", "Cargando maestro…");
+    try {
+      document.body.classList.add("hide-base-col");
+      setText("status", "Cargando maestro…");
 
-    // 1) Cargar META (lista de ramas/agrups/categorías/meses) desde el backend
-    META = await fetchJSON(ENDPOINT_META);
+      META = await fetchJSON(ENDPOINT_META);
 
-    // 2) Construir TREE sin llamar /payload "vacío" (eso daba 422)
-    //    Soportamos distintos formatos posibles del backend:
-    //    - META.tree  (estructura ya armada)
-    //    - META.rows  (filas: {rama, agrup, categoria, mes})
-    //    - META.ramas_dict (rama->agrup->categorias/meses)
-    if (META && META.tree) {
-      TREE = META.tree;
-    } else if (META && Array.isArray(META.rows)) {
-      TREE = buildTree(META.rows);
-    } else if (META && META.ramas_dict) {
-      // Normalizar a TREE esperado por refreshSelectors()
-      TREE = {};
-      for (const r of Object.keys(META.ramas_dict)) {
-        const agrupsObj = META.ramas_dict[r] || {};
-        TREE[r] = { agrups: {} };
-        for (const a of Object.keys(agrupsObj)) {
-          const catsObj = agrupsObj[a] || {};
-          const cats = Object.keys(catsObj).sort((x,y)=>x.localeCompare(y,"es"));
-          const mesesByCat = {};
-          for (const c of cats) {
-            const meses = (catsObj[c] || []).map(m=>String(m||"").trim()).filter(Boolean);
-            mesesByCat[c] = Array.from(new Set(meses)).sort((x,y)=>x.localeCompare(y,"es"));
+      // Armamos el árbol de combinaciones (Rama/Agrup/Categoría/Mes) desde /meta (sin llamar /payload vacío)
+      // Soporta distintos formatos de /meta: {tree}, {rows}, o {ramas_dict}
+      if (META && META.tree) {
+        TREE = META.tree;
+      } else if (META && Array.isArray(META.rows)) {
+        TREE = buildTree(META.rows);
+      } else if (META && META.ramas_dict) {
+        // Convertir ramas_dict -> rows
+        const rows = [];
+        for (const r of Object.keys(META.ramas_dict || {})) {
+          const agrupsObj = META.ramas_dict[r] || {};
+          for (const a of Object.keys(agrupsObj || {})) {
+            const catsObj = agrupsObj[a] || {};
+            for (const c of Object.keys(catsObj || {})) {
+              const meses = catsObj[c] || [];
+              for (const m of (Array.isArray(meses) ? meses : Object.keys(meses || {}))) {
+                rows.push({ rama: r, agrup: a, categoria: c, mes: m });
+              }
+            }
           }
-          TREE[r].agrups[a] = { cats, mesesByCat };
         }
+        TREE = buildTree(rows);
+      } else {
+        TREE = null;
       }
-    } else {
-      TREE = null;
+
+      refreshSelectors();
+      toggleRamaBlocks();
+
+      const baseChk = $("toggleBase");
+      if (baseChk) {
+        baseChk.addEventListener("change", () => {
+          if (baseChk.checked) document.body.classList.remove("hide-base-col");
+          else document.body.classList.add("hide-base-col");
+        });
+      }
+
+      setText("status", "Maestro cargado.");
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo cargar el maestro (META) desde el servidor.");
+      setText("status", "Sin conexión");
     }
-
-    refreshSelectors();
-    toggleRamaBlocks();
-
-    // Toggle "Ver base"
-    const toggleBase = $("toggleBase");
-    if (toggleBase) {
-      toggleBase.addEventListener("change", () => {
-        if (toggleBase.checked) document.body.classList.remove("hide-base-col");
-        else document.body.classList.add("hide-base-col");
-      });
-    }
-
-    setText("status", "Maestro cargado.");
-  } catch (e) {
-    console.error(e);
-    alert("No se pudo cargar el maestro desde el servidor.");
-    setText("status", "Sin conexión");
   }
-}
 
 
-document.addEventListener("DOMContentLoaded", boot);
-("DOMContentLoaded", boot);
+  document.addEventListener("DOMContentLoaded", boot);
 })();
 </script>
 
