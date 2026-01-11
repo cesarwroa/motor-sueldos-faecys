@@ -522,7 +522,9 @@ Recibo Mensual</div>
     if (el) el.value = (v ?? 0);
   }
 
-  function clearTbody(tbodyId) {
+  
+  function setStatus(txt){ setText('status', txt); }
+function clearTbody(tbodyId) {
     const tb = $(tbodyId);
     if (tb) tb.innerHTML = "";
   }
@@ -583,7 +585,54 @@ Recibo Mensual</div>
   return false;
 }
 
-  function buildTree(rows){
+  
+  function buildTreeFromMeta(meta){
+    const tree = {};
+    const ag = meta && meta.agrupamientos ? meta.agrupamientos : {};
+    for (const ramaKey of Object.keys(ag || {})) {
+      const r = String(ramaKey || "").trim();
+      if (!r) continue;
+      if (!tree[r]) tree[r] = { agrups: {} };
+      const items = Array.isArray(ag[ramaKey]) ? ag[ramaKey] : [];
+      for (const raw of items) {
+        const s = String(raw || "").trim();
+        if (!s) continue;
+        // formatos posibles: "AGRUP - CATEGORIA" o "CATEGORIA"
+        let a = "—";
+        let c = s;
+        const parts = s.split(" - ");
+        if (parts.length >= 2) {
+          a = parts[0].trim() || "—";
+          c = parts.slice(1).join(" - ").trim() || s;
+        }
+        if (!tree[r].agrups[a]) tree[r].agrups[a] = { cats: [], mesesByCat: {} };
+        if (!tree[r].agrups[a].mesesByCat[c]) tree[r].agrups[a].mesesByCat[c] = [];
+        // cats push unique later
+        tree[r].agrups[a].cats.push(c);
+      }
+      // dedup cats per agrup
+      for (const a of Object.keys(tree[r].agrups)) {
+        const uniq = Array.from(new Set(tree[r].agrups[a].cats.map(x=>String(x||"").trim()).filter(Boolean)));
+        uniq.sort((x,y)=>x.localeCompare(y,"es"));
+        tree[r].agrups[a].cats = uniq;
+      }
+    }
+    // meses: global filtrado >= 2026-01
+    const mesesAll = Array.isArray(meta && meta.meses) ? meta.meses : [];
+    const mesesFil = mesesAll.map(m=>String(m||"").trim()).filter(Boolean).filter(m=>m >= "2026-01");
+    const mesesFinal = (mesesFil.length ? mesesFil : mesesAll.map(m=>String(m||"").trim()).filter(Boolean));
+    for (const r of Object.keys(tree)) {
+      for (const a of Object.keys(tree[r].agrups)) {
+        for (const c of tree[r].agrups[a].cats) {
+          tree[r].agrups[a].mesesByCat[c] = mesesFinal.slice().sort((x,y)=>x.localeCompare(y,"es"));
+        }
+      }
+    }
+    return tree;
+  }
+
+
+function buildTree(rows){
     const tree = {};
     for (const row of (rows || [])) {
       const r = (row.rama || "").toString().trim();
@@ -618,131 +667,118 @@ Recibo Mensual</div>
 
 
 
-function refreshSelectors(){
-  if (!META) return;
+function refreshSelectors() {
+    if (!META) return;
 
-  const selRama = $("#rama");
-  const selAgrup = $("#agrup");
-  const selCat = $("#categoria");
-  const selMes = $("#mes");
+    const ramaSel = $("rama");
+    const agrupSel = $("agrup");
+    const catSel = $("categoria");
+    const mesSel = $("mes");
 
-  // Ramas
-  selRama.innerHTML = "";
-  (META.ramas || []).forEach(r => {
-    const opt = document.createElement("option");
-    opt.value = r;
-    opt.textContent = r;
-    selRama.appendChild(opt);
-  });
+    // Ramas: preferir lista limpia del backend; fallback a dict o TREE
+    let ramas = [];
+    if (Array.isArray(META.ramas)) ramas = META.ramas.slice();
+    else if (META.ramas_dict) ramas = Object.keys(META.ramas_dict);
+    else if (META.ramas) ramas = Object.keys(META.ramas);
 
-  function getAgrups(r){
-    const ag = META.agrupamientos;
-    if (!ag) return [];
-    if (Array.isArray(ag)) return ag;
-    return (ag[r] || []);
-  }
-  function getCats(r,a){
-    const cc = META.categorias;
-    if (!cc) return [];
-    if (cc[r] && cc[r][a]) return cc[r][a];
-    return [];
-  }
-  function getMeses(r){
-    // Prioridad: meses_por_rama si existe, si no meses globales
-    let meses = (META.meses_por_rama && META.meses_por_rama[r]) ? META.meses_por_rama[r] : (META.meses || []);
-    meses = (meses || []).slice().sort();
-    // Desde enero 2026 en adelante
-    meses = meses.filter(x => String(x) >= "2026-01");
-    return meses;
-  }
+    if ((!ramas || ramas.length === 0) && TREE) ramas = Object.keys(TREE);
 
-  function refreshAgrup(){
-    const r = selRama.value;
-    const agrups = getAgrups(r);
+    ramas = (ramas || [])
+      .map(r => String(r || "").trim())
+      .filter(r => r && !isDateLike(r) && !/^(?:\d+|\d+\.\d+)$/.test(r))
+      .sort((a,b)=>a.localeCompare(b, "es"));
 
-    selAgrup.innerHTML = "";
-    if (!agrups.length){
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "—";
-      selAgrup.appendChild(opt);
-      return;
+    fillSelect(ramaSel, ramas.map(r => ({ value: r, label: r })), "— Seleccione —");
+
+    const curRama = ramaSel.dataset.last || ramaSel.value || (ramas.includes("GENERAL") ? "GENERAL" : (ramas[0] || ""));
+    if (ramas.includes(curRama)) ramaSel.value = curRama;
+
+    function refreshAgrup() {
+      const r = ramaSel.value;
+      ramaSel.dataset.last = r;
+
+      const agrups = (TREE && TREE[r]) ? Object.keys(TREE[r].agrups || {}).sort((a,b)=>a.localeCompare(b, "es")) : [];
+      fillSelect(agrupSel, agrups.map(a => ({ value: a, label: a })), "— Seleccione —");
+
+      const curAgr = agrupSel.dataset.last || agrupSel.value || (agrups[0] || "");
+      if (agrups.includes(curAgr)) agrupSel.value = curAgr;
+      refreshCat();
     }
-    agrups.forEach(a=>{
-      const opt = document.createElement("option");
-      opt.value = a;
-      opt.textContent = a;
-      selAgrup.appendChild(opt);
-    });
 
-    // Si la selección actual no existe, usar la primera
-    if (![...selAgrup.options].some(o=>o.value===selAgrup.value)) {
-      selAgrup.value = agrups[0];
+    function refreshCat() {
+      const r = ramaSel.value;
+      const a = agrupSel.value;
+      agrupSel.dataset.last = a;
+
+      const cats = (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a]) ? (TREE[r].agrups[a].cats || []) : [];
+      fillSelect(catSel, cats.map(c => ({ value: c, label: c })), "— Seleccione —");
+
+      const curCat = catSel.dataset.last || catSel.value || (cats[0] || "");
+      if (cats.includes(curCat)) catSel.value = curCat;
+      refreshMes();
     }
-  }
 
-  function refreshCat(){
-    const r = selRama.value;
-    const a = selAgrup.value;
-    const cats = getCats(r,a);
+    function refreshMes() {
+      const r = ramaSel.value;
+      const a = agrupSel.value;
+      const c = catSel.value;
+      catSel.dataset.last = c;
 
-    selCat.innerHTML = "";
-    if (!cats.length){
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "—";
-      selCat.appendChild(opt);
-      return;
+      // Meses filtrados por Rama/Agrup/Categoría (evita meses globales que no existen para esa combinación)
+      let meses = [];
+      const mesesFiltrados =
+        (TREE && TREE[r] && TREE[r].agrups && TREE[r].agrups[a] && TREE[r].agrups[a].mesesByCat && TREE[r].agrups[a].mesesByCat[c])
+          ? TREE[r].agrups[a].mesesByCat[c].slice()
+          : [];
+
+      if (mesesFiltrados.length) {
+        meses = mesesFiltrados;
+      } else if (Array.isArray(META.meses)) {
+        meses = META.meses.slice();
+      } else if (META.meses_dict) {
+        meses = Object.keys(META.meses_dict);
+      }
+
+      meses = Array.from(new Set((meses || [])
+        .map(m => String(m || "").trim())
+        .filter(m => m)
+      )).sort((x,y)=>x.localeCompare(y, "es"));
+
+      fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
+
+      let curMes = mesSel.dataset.last || mesSel.value || "";
+      if (!curMes || !meses.includes(curMes)) curMes = (meses.length ? meses[meses.length - 1] : "");
+      if (curMes && meses.includes(curMes)) mesSel.value = curMes;
+      mesSel.dataset.last = mesSel.value;
+
+      toggleRamaBlocks();
+      if (mesSel.value) fetchAutoBase();
+      setStatus("Maestro cargado.");
     }
-    cats.forEach(c=>{
-      const opt = document.createElement("option");
-      opt.value = c;
-      opt.textContent = c;
-      selCat.appendChild(opt);
-    });
 
-    if (![...selCat.options].some(o=>o.value===selCat.value)) {
-      selCat.value = cats[0];
+    ramaSel.onchange = refreshAgrup;
+    agrupSel.onchange = refreshCat;
+    catSel.onchange = refreshMes;
+    mesSel.onchange = () => {
+      mesSel.dataset.last = mesSel.value;
+      toggleRamaBlocks();
+      fetchAutoBase();
+    };
+
+    const titSel = $("turTitulo");
+    if (titSel) {
+      titSel.onchange = () => {
+        // solo afecta a Turismo; re-calcular tabla si ya se calculó
+        if ((val("rama") || "").toUpperCase().includes("TURISMO")) {
+          // si ya hay un mes seleccionado, refrescar base (y luego el usuario toca Calcular)
+          if (val("mes")) fetchAutoBase();
+        }
+      };
     }
-  }
 
-  function refreshMes(){
-    const r = selRama.value;
-    const meses = getMeses(r);
 
-    const prev = selMes.value;
-    selMes.innerHTML = "";
-    (meses.length ? meses : ["2026-01"]).forEach(m=>{
-      const opt = document.createElement("option");
-      opt.value = m;
-      opt.textContent = m;
-      selMes.appendChild(opt);
-    });
-
-    if (prev && meses.includes(prev)) selMes.value = prev;
-    else selMes.value = selMes.options[0]?.value || "";
-  }
-
-  // Bind events (solo una vez)
-  selRama.onchange = () => {
     refreshAgrup();
-    refreshCat();
-    refreshMes();
-    fetchAutoBase();
-  };
-  selAgrup.onchange = () => {
-    refreshCat();
-    fetchAutoBase();
-  };
-  selCat.onchange = () => fetchAutoBase();
-  selMes.onchange = () => fetchAutoBase();
-
-  // Initial fill
-  refreshAgrup();
-  refreshCat();
-  refreshMes();
-  fetchAutoBase();
-}
+  }
 
 
   
@@ -966,24 +1002,7 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
   };
 
   
-  async function boot(){
-  setStatus("Cargando maestro...");
-  try{
-    META = await fetchJSON(ENDPOINT_META);
-    setStatus("Maestro cargado.");
-    // Completar selectores en base a /meta (sin llamar /payload)
-    refreshSelectors();
-  }catch(e){
-    console.error(e);
-    setStatus("Error");
-    alert("No se pudo cargar el maestro (META) desde el servidor.");
-  }
-}
-
-
-  document.addEventListener("DOMContentLoaded", boot);
-})();
-</script>
+  
 
 </body>
 
