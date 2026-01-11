@@ -960,47 +960,56 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
       META = await fetchJSON(ENDPOINT_META);
 
-      // Helpers
-      const ramaSel = $("rama");
-      const mesSel  = $("mes");
+      // Construimos un "payload" sintético desde /meta para poblar Rama/Agrup/Categoría/Mes
+      // (evita llamar /payload sin parámetros, que en el backend requiere rama/mes)
+      const metasMeses = Array.isArray(META?.meses) ? META.meses : [];
+      const mesesFiltrados = metasMeses.filter(m => typeof m === "string" && m >= "2026-01");
+      const mesesUsables = (mesesFiltrados.length ? mesesFiltrados : metasMeses);
 
-      const pickDefaultRama = () => {
-        const ramas = Array.isArray(META?.ramas) ? META.ramas : [];
-        if (ramas.includes("GENERAL")) return "GENERAL";
-        return ramas[0] || "";
-      };
+      const agrupMap = (META && typeof META.agrupamientos === "object") ? META.agrupamientos : {};
+      const ramas = Array.isArray(META?.ramas) ? META.ramas : Object.keys(agrupMap);
 
-      const pickDefaultMes = () => {
-        const meses = Array.isArray(META?.meses) ? META.meses : [];
-        const desde2026 = meses.filter(m => typeof m === "string" && m >= "2026-01");
-        // Si hay meses desde 2026-01, usar el primero; si no, usar el último disponible (o el primero)
-        if (desde2026.length) return desde2026[0];
-        return meses[0] || "";
-      };
+      const rows = [];
+      for (const rama of ramas) {
+        const cats = Array.isArray(agrupMap[rama]) ? agrupMap[rama] : [];
+        for (const raw of cats) {
+          const s = String(raw ?? "").trim();
+          if (!s) continue;
 
-      async function loadPayloadFor(rama, mes) {
-        if (!rama || !mes) return;
-        const url = `${ENDPOINT_PAYLOAD}?rama=${encodeURIComponent(rama)}&mes=${encodeURIComponent(mes)}`;
-        const payload = await fetchJSON(url);
-        PAYLOAD_ROWS = payload.rows || [];
-        TREE = buildTree(PAYLOAD_ROWS);
+          // Heurística:
+          // - Si viene "CODIGO - NOMBRE", usamos CODIGO como "agrup" y NOMBRE como "categoria"
+          // - Si no, dejamos agrup = "—" y categoria = s
+          let agrup = "—";
+          let categoria = s;
+
+          if (s.includes(" - ")) {
+            const [a, ...rest] = s.split(" - ");
+            const b = rest.join(" - ").trim();
+            const aTrim = (a || "").trim();
+            if (aTrim && b) { agrup = aTrim; categoria = b; }
+          } else {
+            // Agrupamiento por prefijo común (General)
+            const first = s.split(/\s+/)[0]?.trim();
+            if (first && first.length >= 3 && first.length <= 20 && !/^\d/.test(first)) {
+              // Solo para ramas típicas de comercio
+              if (["GENERAL","FUNEBRES","AGUA POTABLE"].includes(String(rama).toUpperCase())) {
+                agrup = first.toUpperCase() === first ? first : first; // mantener tal cual
+              }
+            }
+          }
+
+          for (const mes of mesesUsables) {
+            rows.push({ rama, agrup, categoria, mes });
+          }
+        }
       }
 
-      // 1) Pintar selects básicos (ramas/meses) y 2) cargar payload para la combinación inicial
-      refreshSelectors();
+      PAYLOAD_ROWS = rows;
+      TREE = buildTree(PAYLOAD_ROWS);
 
-      // Asegurar rama/mes iniciales
-      if (ramaSel && !ramaSel.value) ramaSel.value = pickDefaultRama();
-      if (mesSel  && !mesSel.value)  mesSel.value  = pickDefaultMes();
-
-      // Cargar árbol (agrup/cat) para la combinación elegida
-      await loadPayloadFor(ramaSel.value, mesSel.value);
-
-      // Re-pintar ahora con TREE listo
       refreshSelectors();
       toggleRamaBlocks();
 
-      // Toggle base numérica (compat: id viejo/nuevo)
       const baseChk = $("toggleBase") || $("coBaseNumChk");
       if (baseChk) {
         baseChk.addEventListener("change", () => {
@@ -1008,28 +1017,6 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
           else document.body.classList.add("hide-base-col");
         });
       }
-
-      // Al cambiar Rama o Mes, refrescar payload (para evitar 422 y mantener combos correctas)
-      let busy = false;
-      async function onRamaOMesChanged() {
-        if (busy) return;
-        busy = true;
-        try {
-          setText("status", "Cargando escala…");
-          await loadPayloadFor(ramaSel.value, mesSel.value);
-          refreshSelectors();
-          toggleRamaBlocks();
-          setText("status", "Maestro cargado.");
-        } catch (e) {
-          console.error(e);
-          setText("status", "Sin escala para ese mes.");
-        } finally {
-          busy = false;
-        }
-      }
-
-      if (ramaSel) ramaSel.addEventListener("change", onRamaOMesChanged);
-      if (mesSel)  mesSel.addEventListener("change", onRamaOMesChanged);
 
       setText("status", "Maestro cargado.");
     } catch (e) {
