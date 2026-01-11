@@ -486,6 +486,9 @@ Recibo Mensual</div>
 <script>
 (() => {
   const API_BASE = "https://motor-sueldos-faecys.onrender.com";
+  const MIN_MONTH = '2026-01';
+  function monthGE(m, minM){ if(!m) return false; const mm=String(m).slice(0,7); return mm >= minM; }
+
   const ENDPOINT_CALC = API_BASE + "/calcular";
   const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
@@ -600,74 +603,23 @@ Recibo Mensual</div>
       tree[r].agrups[a].mesesByCatSet[c].add(m);
     }
 
-  
-function buildTreeFromMeta(meta){
-  // Construye un árbol compatible con refreshSelectors():
-  // TREE[rama].agrups[agrup] = { cats: [...], mesesByCat: { [cat]: [...] } }
-  const tree = {};
-  const ramas = Array.isArray(meta?.ramas) ? meta.ramas
-              : (meta?.ramas && typeof meta.ramas === 'object') ? Object.keys(meta.ramas)
-              : [];
-  const agrupamientos = meta?.agrupamientos || {};
-  const categorias = meta?.categorias || {};
-  const mesesRaw = Array.isArray(meta?.meses) ? meta.meses
-                : (meta?.meses && typeof meta.meses === 'object') ? Object.keys(meta.meses)
-                : [];
-  // Pediste desde 2026-01 en adelante
-  const meses = mesesRaw
-    .map(String)
-    .filter(m => /^\d{4}-\d{2}$/.test(m))
-    .filter(m => m >= "2026-01")
-    .sort();
+    for (const r of Object.keys(tree)) {
+      for (const a of Object.keys(tree[r].agrups)) {
+        const g = tree[r].agrups[a];
+        g.cats = Array.from(g.catsSet || []).sort();
+        delete g.catsSet;
 
-  for (const r of ramas){
-    tree[r] = { agrups: {} };
-
-    let agrs = agrupamientos[r];
-    if (Array.isArray(agrs)) {
-      // ok
-    } else if (agrs && typeof agrs === "object") {
-      agrs = Object.keys(agrs);
-    } else {
-      agrs = ["—"];
+        g.mesesByCat = {};
+        for (const c of Object.keys(g.mesesByCatSet || {})) {
+          g.mesesByCat[c] = Array.from(g.mesesByCatSet[c] || []).sort();
+        }
+        delete g.mesesByCatSet;
+      }
     }
-    if (!agrs.length) agrs = ["—"];
-
-    for (const a of agrs){
-      // categorias pueden venir por rama o por rama+agrup
-      let cats = null;
-
-      // caso 1: categorias[r][a] => [...]
-      if (categorias[r] && typeof categorias[r] === "object" && categorias[r][a]) {
-        cats = categorias[r][a];
-      }
-      // caso 2: categorias[r] => [...]
-      else if (categorias[r] && Array.isArray(categorias[r])) {
-        cats = categorias[r];
-      }
-      // caso 3: key "RAMA|AGRUP"
-      else if (categorias[`${r}|${a}`]) {
-        cats = categorias[`${r}|${a}`];
-      }
-
-      if (Array.isArray(cats)) {
-        cats = cats.map(String);
-      } else if (cats && typeof cats === "object") {
-        cats = Object.keys(cats);
-      } else {
-        cats = ["—"];
-      }
-      cats = Array.from(new Set(cats)).filter(Boolean).sort();
-
-      const mesesByCat = {};
-      for (const c of cats) mesesByCat[c] = meses;
-
-      tree[r].agrups[a] = { cats, mesesByCat };
-    }
+    return tree;
   }
 
-  return tree;
-}
+
 
 function refreshSelectors() {
     if (!META) return;
@@ -758,7 +710,28 @@ function refreshSelectors() {
       setText("status", "Maestro cargado.");
     }
 
-    ramaSel.onchange = refreshAgrup;
+    
+
+  async function reloadPayloadAndTree(forceMes){
+    const r = ramaSel.value || '';
+    let m = forceMes || mesSel.value || '';
+    if (!r) return;
+    if (!m) {
+      // elegir un mes default (último disponible >= MIN_MONTH)
+      let meses = (META && Array.isArray(META.meses)) ? META.meses.slice() : [];
+      meses = meses.map(x => String(x).slice(0,7)).filter(x => monthGE(x, MIN_MONTH));
+      if (meses.length) m = meses[meses.length-1];
+    }
+    if (!m) return;
+    const url = `${API_BASE}/payload?rama=${encodeURIComponent(r)}&mes=${encodeURIComponent(m)}`;
+    const data = await fetchJSON(url);
+    PAYLOAD = data;
+    const rows = Array.isArray(data) ? data : (data && Array.isArray(data.rows) ? data.rows : (data && Array.isArray(data.data) ? data.data : []));
+    TREE = buildTree(rows);
+    // si mes venía vacío, setealo
+    if (!mesSel.value && m) mesSel.value = m;
+  }
+ramaSel.onchange = refreshAgrup;
     agrupSel.onchange = refreshCat;
     catSel.onchange = refreshMes;
     mesSel.onchange = () => {
@@ -1006,35 +979,31 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
   
   async function boot() {
     try {
-      document.body.classList.add("hide-base-col");
-      setText("status", "Cargando maestro…");
-
-      META = await fetchJSON(ENDPOINT_META);
-
-      // Para poblar agrup/cat/mes correctamente, armamos un árbol desde /payload
-      // Render: NO llamamos /payload sin parámetros (Render responde 422 si faltan rama/mes).
-      // Construimos el árbol de selects desde /meta y usamos meses globales filtrados.
-      PAYLOAD_ROWS = [];
-      TREE = buildTreeFromMeta(META);
-refreshSelectors();
-      toggleRamaBlocks();
-
-      const baseChk = $("coBaseNumChk");
-      if (baseChk) {
-        baseChk.addEventListener("change", () => {
-          if (baseChk.checked) document.body.classList.remove("hide-base-col");
-          else document.body.classList.add("hide-base-col");
-        });
+      setStatus('Cargando maestro...');
+      META = await fetchJSON(`${API_BASE}/meta`);
+      // forzar meses desde enero 2026
+      if (META && Array.isArray(META.meses)) {
+        META.meses = META.meses.map(x=>String(x).slice(0,7)).filter(x => monthGE(x, MIN_MONTH));
       }
-
-      setText("status", "Maestro cargado.");
+      // default rama
+      const ramas = Array.isArray(META?.ramas) ? META.ramas : [];
+      if (ramas.length) ramaSel.value = ramas.includes('GENERAL') ? 'GENERAL' : ramas[0];
+      // default mes (último >= MIN_MONTH)
+      let meses = Array.isArray(META?.meses) ? META.meses : [];
+      const defaultMes = meses.length ? meses[meses.length-1] : '';
+      mesSel.value = defaultMes;
+      // cargar payload inicial para que existan agrup/categorias
+      await reloadPayloadAndTree(defaultMes);
+      refreshSelectors();
+      toggleRamaBlocks();
+      fetchAutoBase();
+      setStatus('Maestro cargado.');
     } catch (e) {
       console.error(e);
-      alert("No se pudo cargar el maestro (META) desde el servidor.");
-      setText("status", "Sin conexión");
+      setStatus('Error cargando maestro.');
+      alert('No se pudo cargar el maestro (META) desde el servidor.');
     }
   }
-
 
   document.addEventListener("DOMContentLoaded", boot);
 })();
