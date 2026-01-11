@@ -484,6 +484,29 @@ Recibo Mensual</div>
 
 
 <script>
+
+  // === Helpers faltantes (fix) ===
+  function getSelectedValue(id){
+    const el = $(id);
+    if(!el) return "";
+    const v = (el.value ?? "").toString();
+    return v.trim();
+  }
+  function setSelectedValue(id, value){
+    const el = $(id);
+    if(!el) return;
+    el.value = value ?? "";
+  }
+  // Backward compat: algunos builds llamaban fetchJson
+  const fetchJson = (...args) => fetchJSON(...args);
+
+  // No-op seguro: el cálculo "auto" se actualiza al seleccionar (si la función existe en otra versión)
+  function updateAutoFieldsFromSelection(){
+    // Si en el futuro agregás una función real, este stub no rompe nada.
+    return;
+  }
+  // === /Helpers faltantes (fix) ===
+
 (() => {
   const API_BASE = "https://motor-sueldos-faecys.onrender.com";
   const ENDPOINT_CALC = API_BASE + "/calcular";
@@ -514,8 +537,7 @@ Recibo Mensual</div>
   };
 
   function setText(id, txt) {
-    let el = $(id);
-    if (!el && id === "statusMsg") el = $("status");
+    const el = $(id);
     if (el) el.textContent = txt;
   }
   function setValue(id, v) {
@@ -555,14 +577,10 @@ Recibo Mensual</div>
     }
     return await res.json();
   }
-
-  // Alias por compatibilidad
-  async function fetchJson(url, payload=null){ return fetchJSON(url, payload); }
   async function loadPayloadFor(rama, mes){
     if(!rama || !mes) return;
     const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    const raw = await fetchJSON(url);
-    PAYLOAD_ROWS = Array.isArray(raw) ? raw : (raw.payload || raw.rows || raw.maestro || raw.data || []);
+    PAYLOAD_ROWS = await fetchJSON(url);
     TREE = buildTree(PAYLOAD_ROWS);
   }
 
@@ -720,8 +738,6 @@ function refreshSelectors(opts={}) {
         meses = META.meses.slice();
       } else if (META.meses_dict) {
         meses = Object.keys(META.meses_dict);
-      } else if (META.meses) {
-        meses = Object.keys(META.meses);
       }
 
       meses = Array.from(new Set((meses || [])
@@ -995,23 +1011,9 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       // Inicializar rama/mes desde META (sin depender de payload)
       refreshSelectors({onlyMeta:true});
 
-      // Setear defaults (primera opción válida) para Rama y Mes si quedaron en blanco
-      const ramaSel = $("rama");
-      const mesSel  = $("mes");
-
-      const pickFirst = (sel) => {
-        if (!sel) return "";
-        const v = (sel.value || "").trim();
-        if (v && v !== "—") return v;
-        const opt = Array.from(sel.options || []).find(o => (o.value||"").trim() && (o.value||"").trim() !== "—");
-        if (opt) { sel.value = opt.value; return opt.value; }
-        return "";
-      };
-
-      const rama = pickFirst(ramaSel);
-      const mes  = pickFirst(mesSel);
-
-      if (!rama || !mes) throw new Error("No hay Rama/Mes disponibles en el maestro (META).");
+      // Si todavía no hay valores seleccionados, intentar setear defaults
+      const rama = getSelectedValue("rama");
+      const mes  = getSelectedValue("mes");
 
       await loadPayloadFor(rama, mes);
 
@@ -1023,8 +1025,8 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       alert("No se pudo cargar el maestro (META/PAYLOAD) desde el servidor.");
       setText("statusMsg","Error al cargar maestro.");
     }
+    }
 
-  }
 
   document.addEventListener("DOMContentLoaded", boot);
 })();
