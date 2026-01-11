@@ -485,6 +485,11 @@ Recibo Mensual</div>
 
 <script>
 
+  // === Helper global (fix de scope) ===
+  // Definimos $ en el scope global para que lo vean TODAS las funciones
+  // (helpers, boot, y el bloque principal).
+  const $ = (id) => document.getElementById(id);
+
   // === Helpers faltantes (fix) ===
   function getSelectedValue(id){
     const el = $(id);
@@ -580,8 +585,13 @@ Recibo Mensual</div>
   async function loadPayloadFor(rama, mes){
     if(!rama || !mes) return;
     const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    PAYLOAD_ROWS = await fetchJSON(url);
-    TREE = buildTree(PAYLOAD_ROWS);
+    const resp = await fetchJSON(url);
+    // Normalización: algunos backends devuelven {rows:[...]} o {ok:true, rows:[...]}
+    const rows = Array.isArray(resp)
+      ? resp
+      : (Array.isArray(resp?.rows) ? resp.rows : (Array.isArray(resp?.data) ? resp.data : []));
+    PAYLOAD_ROWS = rows;
+    TREE = buildTree(rows);
   }
 
   async function onSelectionChange(){
@@ -1011,9 +1021,21 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
       // Inicializar rama/mes desde META (sin depender de payload)
       refreshSelectors({onlyMeta:true});
 
-      // Si todavía no hay valores seleccionados, intentar setear defaults
-      const rama = getSelectedValue("rama");
-      const mes  = getSelectedValue("mes");
+      // Defaults robustos (evita /payload sin mes)
+      const ramasMeta = Array.isArray(META?.ramas) ? META.ramas : Object.keys(META?.ramas || {});
+      const mesesMeta = Array.isArray(META?.meses) ? META.meses : Object.keys(META?.meses || {});
+
+      let rama = getSelectedValue("rama") || (ramasMeta[0] || "GENERAL");
+      let mes  = getSelectedValue("mes")  || (mesesMeta[mesesMeta.length-1] || "");
+
+      // Si META no trae meses, usar mes actual YYYY-MM
+      if(!mes){
+        const d = new Date();
+        mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      }
+
+      setSelectedValue("rama", rama);
+      setSelectedValue("mes", mes);
 
       await loadPayloadFor(rama, mes);
 
