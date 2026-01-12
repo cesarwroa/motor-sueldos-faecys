@@ -484,38 +484,20 @@ Recibo Mensual</div>
 
 
 <script>
-
-  // === Helper global (fix de scope) ===
-  // Definimos $ en el scope global para que lo vean TODAS las funciones
-  // (helpers, boot, y el bloque principal).
-  const $ = (id) => document.getElementById(id);
-
-  // === Helpers faltantes (fix) ===
-  function getSelectedValue(id){
-    const el = $(id);
-    if(!el) return "";
-    const v = (el.value ?? "").toString();
-    return v.trim();
-  }
-  function setSelectedValue(id, value){
-    const el = $(id);
-    if(!el) return;
-    el.value = value ?? "";
-  }
-  // Backward compat: algunos builds llamaban fetchJson
-  const fetchJson = (...args) => fetchJSON(...args);
-
-  // No-op seguro: el cálculo "auto" se actualiza al seleccionar (si la función existe en otra versión)
-  function updateAutoFieldsFromSelection(){
-    // Si en el futuro agregás una función real, este stub no rompe nada.
-    return;
-  }
-  // === /Helpers faltantes (fix) ===
-
 (() => {
   const API_BASE = "https://motor-sueldos-faecys.onrender.com";
   const ENDPOINT_CALC = API_BASE + "/calcular";
-  const ENDPOINT_META = API_BASE + "/meta"; // nuevo endpoint
+  const ENDPOINT_META = API_BASE + "/meta"; 
+  // ===== Meses por rama (definido por César) =====
+  const MESES_POR_RAMA = {
+    "GENERAL":       ["2026-01","2026-02","2026-03","2026-04"],
+    "FUNEBRES":      ["2026-01","2026-02","2026-03","2026-04"],
+    "AGUA POTABLE":  ["2026-01","2026-02","2026-03","2026-04"],
+    "CALL CENTER":   ["2026-01","2026-02","2026-03","2026-04"],
+    "CEREALES":      ["2026-01","2026-02","2026-03"],
+    "TURISMO":       ["2026-01","2026-02","2026-03","2026-04","2026-05"]
+  };
+// nuevo endpoint
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
 
   const $ = (id) => document.getElementById(id);
@@ -585,13 +567,8 @@ Recibo Mensual</div>
   async function loadPayloadFor(rama, mes){
     if(!rama || !mes) return;
     const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    const resp = await fetchJSON(url);
-    // Normalización: algunos backends devuelven {rows:[...]} o {ok:true, rows:[...]}
-    const rows = Array.isArray(resp)
-      ? resp
-      : (Array.isArray(resp?.rows) ? resp.rows : (Array.isArray(resp?.data) ? resp.data : []));
-    PAYLOAD_ROWS = rows;
-    TREE = buildTree(rows);
+    PAYLOAD_ROWS = await fetchJSON(url);
+    TREE = buildTree(PAYLOAD_ROWS);
   }
 
   async function onSelectionChange(){
@@ -1014,43 +991,90 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
 
   
   async function boot() {
-    try{
-      setText("statusMsg","Cargando maestro (META)...");
-      META = await fetchJSON(ENDPOINT_META);
+  try {
+    // Status (si existe)
+    try { setText("statusMsg", "Cargando maestro…"); } catch(_) {}
+    try { setText("status", "Cargando maestro…"); } catch(_) {}
 
-      // Inicializar rama/mes desde META (sin depender de payload)
-      refreshSelectors({onlyMeta:true});
+    // 1) META
+    const metaResp = await fetchJSON(ENDPOINT_META);
+    // soportar meta con o sin ok
+    META = metaResp && metaResp.ok === false ? null : metaResp;
 
-      // Defaults robustos (evita /payload sin mes)
-      const ramasMeta = Array.isArray(META?.ramas) ? META.ramas : Object.keys(META?.ramas || {});
-      const mesesMeta = Array.isArray(META?.meses) ? META.meses : Object.keys(META?.meses || {});
+    if (!META) throw new Error("META inválida");
 
-      let rama = getSelectedValue("rama") || (ramasMeta[0] || "GENERAL");
-      let mes  = getSelectedValue("mes")  || (mesesMeta[mesesMeta.length-1] || "");
+    // 2) Poblar Ramas
+    const ramaSel = document.getElementById("rama");
+    const agrupSel = document.getElementById("agrup");
+    const catSel   = document.getElementById("categoria");
+    const mesSel   = document.getElementById("mes");
 
-      // Si META no trae meses, usar mes actual YYYY-MM
-      if(!mes){
-        const d = new Date();
-        mes = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!ramaSel || !agrupSel || !catSel || !mesSel) {
+      throw new Error("Faltan selects (rama/agrup/categoria/mes) en el HTML");
+    }
+
+    const ramas = Array.isArray(META.ramas) ? META.ramas : [];
+    ramaSel.innerHTML = "";
+    ramas.forEach(r => ramaSel.add(new Option(r, r)));
+
+    // Helpers de carga
+    const loadMeses = (rama) => {
+      const permitidos = MESES_POR_RAMA[rama] || [];
+      const mesesMeta = Array.isArray(META.meses) ? META.meses : [];
+      // intersección conservando el orden de permitidos
+      const meses = permitidos.filter(m => mesesMeta.includes(m));
+      mesSel.innerHTML = "";
+      meses.forEach(m => mesSel.add(new Option(m, m)));
+      // fallback: si no hay meses por rama, usar meta desde 2026-01 (por si)
+      if (mesSel.options.length === 0) {
+        const fb = mesesMeta.filter(m => m >= "2026-01");
+        fb.forEach(m => mesSel.add(new Option(m, m)));
       }
+      if (mesSel.options.length) mesSel.selectedIndex = mesSel.options.length - 1;
+    };
 
-      setSelectedValue("rama", rama);
-      setSelectedValue("mes", mes);
+    const loadAgrups = (rama) => {
+      const map = META.agrupamientos || {};
+      const agrups = Array.isArray(map[rama]) ? map[rama] : [];
+      agrupSel.innerHTML = "";
+      agrups.forEach(a => agrupSel.add(new Option(a, a)));
+      if (agrupSel.options.length) agrupSel.selectedIndex = 0;
+    };
 
-      await loadPayloadFor(rama, mes);
+    const loadCats = (rama, agrup) => {
+      const map = META.categorias || {};
+      const ramaObj = map[rama] || {};
+      const cats = Array.isArray(ramaObj[agrup]) ? ramaObj[agrup] : [];
+      catSel.innerHTML = "";
+      cats.forEach(c => catSel.add(new Option(c, c)));
+      if (catSel.options.length) catSel.selectedIndex = 0;
+    };
 
-      refreshSelectors();
-      updateAutoFieldsFromSelection();
-      setText("statusMsg","Maestro cargado.");
-    } catch(e){
-      console.error(e);
-      alert("No se pudo cargar el maestro (META/PAYLOAD) desde el servidor.");
-      setText("statusMsg","Error al cargar maestro.");
-    }
-    }
+    const syncAll = () => {
+      const rama = ramaSel.value;
+      loadMeses(rama);
+      loadAgrups(rama);
+      loadCats(rama, agrupSel.value);
+    };
 
+    // 3) Listeners
+    ramaSel.onchange = () => { syncAll(); };
+    agrupSel.onchange = () => { loadCats(ramaSel.value, agrupSel.value); };
 
-  document.addEventListener("DOMContentLoaded", boot);
+    // 4) Inicial
+    if (ramaSel.options.length) ramaSel.selectedIndex = 0;
+    syncAll();
+
+    // 5) Status OK
+    try { setText("statusMsg", "Listo."); } catch(_) {}
+    try { setText("status", "Listo."); } catch(_) {}
+
+  } catch (e) {
+    console.error(e);
+    try { setText("statusMsg", "Error al cargar maestro."); } catch(_) {}
+    try { setText("status", "Error al cargar maestro."); } catch(_) {}
+    alert("Error al cargar maestro (/meta). Ver consola.");
+  }
 })();
 </script>
 
