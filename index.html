@@ -1010,104 +1010,139 @@ function toggleRamaBlocks() {
 
   
 
-async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
-  // Server-side: el backend devuelve "items" y "totales" listos.
+async function postCalculo(opts){
+  // opts: { tbodyId, ids: { info: {rama,agrup,cat,escala}, totRem, totNR, totDed, neto }, modo }
+  const payload = opts.payload || {};
   const url = new URL(`${API_BASE}/calcular`, window.location.href);
-  url.searchParams.set("rama", payload.rama);
-  url.searchParams.set("agrup", payload.agrup || "—");
-  url.searchParams.set("categoria", payload.categoria || "—");
-  url.searchParams.set("mes", payload.mes);
 
-  // Jornada y antigüedad (si no existen, usa 48 y 0)
-  const hs = num("hs", 48);
-  const anios = num("antig", 0);
-  url.searchParams.set("jornada", String(hs));
-  url.searchParams.set("anios_antig", String(anios));
+  // Requeridos
+  url.searchParams.set("rama", payload.rama || val("rama"));
+  url.searchParams.set("agrup", payload.agrup || val("agrup") || "—");
+  url.searchParams.set("categoria", payload.categoria || val("categoria") || "—");
+  url.searchParams.set("mes", payload.mes || val("mes"));
 
-  // OSECAC
-  const osVal = (val("osecac") || "si").toLowerCase();
-  url.searchParams.set("osecac", String(osVal !== "no"));
+  // Parámetros simples (sin lógica de cálculo en el front)
+  const hsEl = document.getElementById("hs");
+  const aniosEl = document.getElementById("anios");
+  const jornada = hsEl ? Number(hsEl.value || 48) : 48;
+  const anios_antig = aniosEl ? Number(aniosEl.value || 0) : 0;
 
-  // Sindicato
-  const afiliado = chk("afiliado");
-  const sindPct = afiliado ? num("afiliado_selector", 2) : 0;
+  url.searchParams.set("jornada", String(Number.isFinite(jornada) ? jornada : 48));
+  url.searchParams.set("anios_antig", String(Number.isFinite(anios_antig) ? anios_antig : 0));
+
+  const osVal = (val("osecac") || "true").toLowerCase();
+  url.searchParams.set("osecac", String(osVal !== "false" && osVal !== "no"));
+
+  const afiliado = !!(document.getElementById("afiliado") && document.getElementById("afiliado").checked);
+  const afiliadoSel = document.getElementById("afiliado_selector");
+  const sindPct = (afiliado && afiliadoSel) ? Number(afiliadoSel.value || 0) : 0;
   url.searchParams.set("afiliado", String(afiliado));
-  url.searchParams.set("sind_pct", String(sindPct));
+  url.searchParams.set("sind_pct", String(Number.isFinite(sindPct) ? sindPct : 0));
 
-  // Título (Turismo): por nivel (maestro) o % manual (compat)
+  // Turismo título (si el backend lo usa solo por %)
   const titNivel = (val("tituloNivel") || "").trim();
-  if(titNivel){
-    url.searchParams.set("titulo_nivel", titNivel);
-    url.searchParams.set("titulo_pct", "0");
-  } else {
-    const titPct = num("pctTitulo", 0);
-    url.searchParams.set("titulo_pct", String(titPct));
-  }
+  if (titNivel) url.searchParams.set("titulo_nivel", titNivel);
+  const titPctEl = document.getElementById("pctTitulo");
+  const titPct = titPctEl ? Number(titPctEl.value || 0) : 0;
+  url.searchParams.set("titulo_pct", String(Number.isFinite(titPct) ? titPct : 0));
 
-  // Cajero Art.30 (opcional)
+  // Opcionales (solo si están)
   const cajTipo = (val("cajeroTipo") || "").trim();
-  if(cajTipo){
-    url.searchParams.set("cajero_tipo", cajTipo);
-  }
+  if (cajTipo) url.searchParams.set("cajero_tipo", cajTipo);
 
-  // KM Art.36 (opcional)
-  const kmCh = num("kmChofer", 0);
-  const kmAy = num("kmAyudante", 0);
-  if(kmCh > 0) url.searchParams.set("km_chofer", String(kmCh));
-  if(kmAy > 0) url.searchParams.set("km_ayudante", String(kmAy));
+  const kmChEl = document.getElementById("kmChofer");
+  const kmAyEl = document.getElementById("kmAyudante");
+  const kmCh = kmChEl ? Number(kmChEl.value || 0) : 0;
+  const kmAy = kmAyEl ? Number(kmAyEl.value || 0) : 0;
+  if (Number.isFinite(kmCh) && kmCh > 0) url.searchParams.set("km_chofer", String(kmCh));
+  if (Number.isFinite(kmAy) && kmAy > 0) url.searchParams.set("km_ayudante", String(kmAy));
 
-  // Conexiones (Agua Potable)
-  const conex = num("aguaConex", 0);
-  if(conex > 0) url.searchParams.set("conexiones", String(conex));
+
+  const conexEl = document.getElementById("aguaConex");
+  if (conexEl && conexEl.value) url.searchParams.set("conexiones", String(conexEl.value));
 
   const data = await fetchJSON(url.toString());
 
-  // Encabezado informativo
-  document.getElementById("selInfo").textContent =
-    `Rama: ${data.rama} · Agrup: ${data.agrup} · Cat: ${data.categoria} · Escala ${data.mes}`;
+  // Encabezado (usa IDs reales del HTML)
+  const info = (opts.ids && opts.ids.info) ? opts.ids.info : null;
+  if (info) {
+    setText(info.rama, data.rama ?? url.searchParams.get("rama"));
+    setText(info.agrup, data.agrup ?? url.searchParams.get("agrup"));
+    setText(info.cat, data.categoria ?? url.searchParams.get("categoria"));
+    setText(info.escala, data.mes ? `Escala ${data.mes}` : "");
+  }
 
   // Tabla
-  const tbody = document.getElementById(tbodyId);
-  resetTabla(tbodyId);
-  (data.items || []).forEach(it => addRow(tbody, it));
+  clearTbody(opts.tbodyId);
+  const items = data.items || [];
+  for (const it of items) addRow(opts.tbodyId, it);
 
   // Totales
-  const tot = data.totales || {};
-  document.getElementById(totalsIds.rem).textContent = money(tot.rem || 0);
-  document.getElementById(totalsIds.nr).textContent  = money(tot.nr || 0);
-  document.getElementById(totalsIds.ded).textContent = money(tot.ded || 0);
-  document.getElementById(totalsIds.neto).textContent= money(tot.neto || 0);
-
-  // Base total (informativa)
-  if(document.getElementById(totalsIds.base)){
-    document.getElementById(totalsIds.base).textContent = money(0);
-  }
+  const t = data.totales || {};
+  setText(opts.ids.totRem, money(t.rem ?? 0));
+  setText(opts.ids.totNR,  money(t.nr ?? 0));
+  setText(opts.ids.totDed, money(t.ded ?? 0));
+  setText(opts.ids.neto,   money(t.neto ?? 0));
 
   return data;
 }
 
+// -------- Handlers públicos (sin lógica de cálculo local) --------
+window.calcularMensual = async function() {
+  try {
+    setText("status", "Calculando…");
+    await postCalculo({
+      payload: {
+        rama: val("rama"),
+        agrup: val("agrup"),
+        categoria: val("categoria"),
+        mes: val("mes"),
+      },
+      tbodyId: "tbodyMensual",
+      ids: {
+        info: { rama:"outRama", agrup:"outAgrup", cat:"outCat", escala:"outEscala" },
+        totRem: "totRem",
+        totNR: "totNR",
+        totDed:"totDed",
+        neto:  "neto",
+      },
+      modo: "mensual"
+    });
+    setText("status", "Listo.");
+  } catch (e) {
+    console.error(e);
+    setText("status", "Error al calcular.");
+    alert("Error al calcular. Mirá la consola.");
+  }
+};
 
-// -------- Handlers públicos (usan IDs existentes) --------
-  window.calcularMensual = async function() {
-    try {
-      const payload = buildPayloadMensual();
-      await postCalculo(payload, "tbodyMensual", "totRem", "totNR", "totDed", "neto");
-    } catch (e) {
-      console.error(e);
-      alert("Error al calcular (API). Revisá conexión o datos.");
-      setText("status", "Error");
-    }
-  };
+window.calcularFinal = async function() {
+  try {
+    setText("status", "Calculando…");
+    await postCalculo({
+      payload: {
+        rama: val("rama"),
+        agrup: val("agrup"),
+        categoria: val("categoria"),
+        mes: val("mes"),
+      },
+      tbodyId: "tbodyFinal",
+      ids: {
+        info: { rama:"lf_outRama", agrup:"lf_outAgrup", cat:"lf_outCat", escala:"outEscala" },
+        totRem: "lf_totRem",
+        totNR:  "lf_totNR",
+        totDed: "lf_totDed",
+        neto:   "lf_neto",
+      },
+      modo: "final"
+    });
+    setText("status", "Listo.");
+  } catch (e) {
+    console.error(e);
+    alert("Error al calcular Liquidación Final.");
+  }
+};
 
-  window.calcularFinal = async function() {
-    try {
-      const payload = buildPayloadFinal();
-      await postCalculo(payload, "tbodyFinal", "lf_totRem", "lf_totNR", "lf_totDed", "lf_neto");
-    } catch (e) {
-      console.error(e);
-      alert("Error al calcular Liquidación Final (API).");
-    }
-  };
 
   
   async function boot() {
