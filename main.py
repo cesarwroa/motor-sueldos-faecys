@@ -50,9 +50,30 @@ def health():
 def meta():
     return get_meta()
 
-# ========= PAYLOAD =========
+# ========= PAYLOAD (bases del maestro) =========
 @app.get("/payload")
-def payload(rama: str, mes: str):
+def payload(
+    rama: str,
+    mes: str,
+    agrup: str = "—",
+    categoria: str = "—",
+):
+    return get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+
+# ========= CALCULAR (recibo completo) =========
+@app.get("/calcular")
+def calcular(
+    rama: str,
+    agrup: str,
+    categoria: str,
+    mes: str,
+    jornada: float = 48,
+    anios_antig: float = 0,
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0,
+    titulo_pct: float = 0,
+):
     return calcular_payload(
         rama=rama,
         agrup=agrup,
@@ -68,8 +89,8 @@ def payload(rama: str, mes: str):
 
 # ========= FUNEBRES =========
 @app.get("/adicionales-funebres")
-def adicionales_funebres():
-    return get_adicionales_funebres()
+def adicionales_funebres(mes: str):
+    return get_adicionales_funebres(mes)
 
 # ========= AGUA POTABLE =========
 @app.get("/regla-conexiones")
