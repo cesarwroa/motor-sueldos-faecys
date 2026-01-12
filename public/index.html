@@ -484,7 +484,6 @@ Recibo Mensual</div>
 
 
 <script>
-(() => {
   const API_BASE = "https://motor-sueldos-faecys.onrender.com";
   const ENDPOINT_CALC = API_BASE + "/calcular";
   const ENDPOINT_META = API_BASE + "/meta"; 
@@ -731,6 +730,23 @@ function refreshSelectors(opts={}) {
         .map(m => String(m || "").trim())
         .filter(m => m)
       )).sort((x,y)=>x.localeCompare(y, "es"));
+
+    // --- Filtro de meses por rama (solo desde 2026-01 y hasta el tope de cada rama)
+    const endByRama = {
+      "GENERAL": "2026-04",
+      "FUNEBRES": "2026-04",
+      "AGUA POTABLE": "2026-04",
+      "CALL CENTER": "2026-04",
+      "CEREALES": "2026-03",
+      "TURISMO": "2026-05",
+    };
+    const end = endByRama[String(rama || "").toUpperCase()] || null;
+    meses = meses.filter((m) => {
+      const mm = String(m || "");
+      if (mm < "2026-01") return false;
+      if (end && mm > end) return false;
+      return true;
+    });
 
       fillSelect(mesSel, meses.map(m => ({ value: m, label: m })), "— Seleccione —");
 
@@ -1075,7 +1091,9 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
     try { setText("status", "Error al cargar maestro."); } catch(_) {}
     alert("Error al cargar maestro (/meta). Ver consola.");
   }
-})();
+}
+
+document.addEventListener("DOMContentLoaded", boot);
 </script>
 
 </body>
