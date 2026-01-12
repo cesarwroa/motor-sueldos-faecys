@@ -298,30 +298,148 @@ def calcular_payload(
     sind_pct: float = 0,
     titulo_pct: float = 0,
 ) -> Dict[str, Any]:
-    """Cálculo mínimo del endpoint /calcular.
+    """Cálculo completo para el endpoint /calcular (sin lógica en el frontend).
 
-    Hoy devuelve:
-      - valores base del maestro (basico/no_rem/suma_fija)
-      - valores prorrateados por jornada (sobre 48hs) para que el front pueda renderizar
-      - eco de parámetros recibidos
+    Devuelve:
+      - items: lista de conceptos con columnas {concepto, r, n, d}
+      - totales: {rem, nr, ded, neto}
+      - eco de parámetros y bases del maestro
 
-    Nota: si más adelante querés mover TODO el cálculo al servidor, esta función es el lugar correcto.
+    Importante: la UI (index.html) NO debe calcular; solo renderiza este JSON.
     """
     base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
     if not base.get("ok"):
         return base
 
+    rama_u = base["rama"]
     j = float(jornada or 48)
     factor = (j / 48.0) if 48.0 else 1.0
 
-    bas = float(base.get("basico", 0.0) or 0.0)
-    nr = float(base.get("no_rem", 0.0) or 0.0)
-    sf = float(base.get("suma_fija", 0.0) or 0.0)
+    # Bases del maestro (jornada completa)
+    bas_full = float(base.get("basico", 0.0) or 0.0)
+    nr_full = float(base.get("no_rem", 0.0) or 0.0)
+    sf_full = float(base.get("suma_fija", 0.0) or 0.0)
 
-    # Prorrateo simple por jornada (si luego necesitás excepciones por rama, se agrega acá)
-    bas_j = bas * factor
-    nr_j = nr * factor
-    sf_j = sf * factor
+    # Prorrateo por jornada (regla general; si una rama no prorratea algún concepto,
+    # esa excepción se agrega aquí en el backend)
+    bas = bas_full * factor
+    nr = nr_full * factor
+    sf = sf_full * factor
+
+    # --- Helpers de cálculo ---
+    def antig_rate_for_rama(r: str) -> float:
+        # Agua Potable: 2% acumulativo
+        return 0.02 if _norm(r).upper() == "AGUA POTABLE" else 0.01
+
+    def antig_factor(r: str, years: float) -> float:
+        y = max(float(years or 0), 0.0)
+        rate = antig_rate_for_rama(r)
+        if _norm(r).upper() == "AGUA POTABLE":
+            # acumulativo (compuesto)
+            return (1.0 + rate) ** y - 1.0
+        # no acumulativo (lineal)
+        return rate * y
+
+    def money_round(x: float) -> float:
+        try:
+            return float(round(float(x or 0.0), 2))
+        except Exception:
+            return 0.0
+
+    items: List[Dict[str, Any]] = []
+
+    # --- Remunerativos ---
+    antig_pct = antig_factor(rama_u, anios_antig)
+    antig_rem = bas * antig_pct
+    # Presentismo: 1/12 de la remuneración del mes (básico + antigüedad)
+    pres_rem = (bas + antig_rem) / 12.0
+
+    # Turismo: adicional por título (si se usa en tu UI)
+    tit_rem = 0.0
+    try:
+        tp = float(titulo_pct or 0.0)
+        if tp > 0:
+            tit_rem = bas * (tp / 100.0)
+    except Exception:
+        tit_rem = 0.0
+
+    # Items Rem
+    if bas:
+        items.append({"concepto": "Básico", "r": money_round(bas), "n": 0.0, "d": 0.0})
+    if antig_rem:
+        items.append({"concepto": "Antigüedad", "r": money_round(antig_rem), "n": 0.0, "d": 0.0})
+    if pres_rem:
+        items.append({"concepto": "Presentismo", "r": money_round(pres_rem), "n": 0.0, "d": 0.0})
+    if tit_rem:
+        items.append({"concepto": "Adic. Título", "r": money_round(tit_rem), "n": 0.0, "d": 0.0})
+
+    rem_total = bas + antig_rem + pres_rem + tit_rem
+
+    # --- No remunerativos ---
+    nr_base = nr + sf  # consolidamos
+    antig_nr = nr_base * antig_pct if nr_base else 0.0
+    pres_nr = (nr_base + antig_nr) / 12.0 if nr_base else 0.0
+
+    if nr_base:
+        # Mostrar separado si viene suma fija
+        if nr:
+            items.append({"concepto": "No Remunerativo", "r": 0.0, "n": money_round(nr), "d": 0.0})
+        if sf:
+            items.append({"concepto": "Suma Fija (NR)", "r": 0.0, "n": money_round(sf), "d": 0.0})
+        if antig_nr:
+            items.append({"concepto": "Antigüedad (NR)", "r": 0.0, "n": money_round(antig_nr), "d": 0.0})
+        if pres_nr:
+            items.append({"concepto": "Presentismo (NR)", "r": 0.0, "n": money_round(pres_nr), "d": 0.0})
+
+    nr_total = nr_base + antig_nr + pres_nr
+
+    # --- Deducciones (reglas estándar ComercioOnline) ---
+    # Jubilación y PAMI: solo sobre Remunerativos
+    jub = rem_total * 0.11
+    pami = rem_total * 0.03
+
+    # Obra Social (3%): sobre Rem + (NR si tiene OSECAC)
+    os_base = rem_total + (nr_total if bool(osecac) else 0.0)
+    obra = os_base * 0.03
+
+    # Aporte fijo OSECAC por relación (solo si tiene OSECAC)
+    osecac_100 = 100.0 if bool(osecac) else 0.0
+
+    # Sindicato / FAECYS: solo si corresponde (controlado por el front con afiliado/sind_pct)
+    sind = 0.0
+    try:
+        sp = float(sind_pct or 0.0)
+        if bool(afiliado) and sp > 0:
+            sind = (rem_total + nr_total) * (sp / 100.0)
+    except Exception:
+        sind = 0.0
+
+    faecys = 0.0
+    if bool(afiliado):
+        faecys = (rem_total + nr_total) * 0.005  # 0,5%
+
+    # Items Ded
+    if jub:
+        items.append({"concepto": "Jubilación 11%", "r": 0.0, "n": 0.0, "d": money_round(jub)})
+    if pami:
+        items.append({"concepto": "Ley 19.032 (PAMI) 3%", "r": 0.0, "n": 0.0, "d": money_round(pami)})
+    if obra:
+        items.append({"concepto": "Obra Social 3%", "r": 0.0, "n": 0.0, "d": money_round(obra)})
+    if osecac_100:
+        items.append({"concepto": "OSECAC $100", "r": 0.0, "n": 0.0, "d": money_round(osecac_100)})
+    if faecys:
+        items.append({"concepto": "FAECYS 0,5%", "r": 0.0, "n": 0.0, "d": money_round(faecys)})
+    if sind:
+        items.append({"concepto": "Sindicato", "r": 0.0, "n": 0.0, "d": money_round(sind)})
+
+    ded_total = jub + pami + obra + osecac_100 + faecys + sind
+    neto = (rem_total + nr_total) - ded_total
+
+    # Normalizar floats
+    rem_total = money_round(rem_total)
+    nr_total = money_round(nr_total)
+    ded_total = money_round(ded_total)
+    neto = money_round(neto)
 
     return {
         "ok": True,
@@ -335,15 +453,24 @@ def calcular_payload(
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
         "titulo_pct": float(titulo_pct or 0),
-        # base maestro
-        "basico_base": bas,
-        "no_rem_base": nr,
-        "suma_fija_base": sf,
-        # prorrateado
-        "basico": bas_j,
-        "no_rem": nr_j,
-        "suma_fija": sf_j,
+        # bases maestro jornada completa
+        "basico_base": money_round(bas_full),
+        "no_rem_base": money_round(nr_full),
+        "suma_fija_base": money_round(sf_full),
+        # prorrateado (auto)
+        "basico": money_round(bas),
+        "no_rem": money_round(nr),
+        "suma_fija": money_round(sf),
+        # recibo
+        "items": items,
+        "totales": {
+            "rem": rem_total,
+            "nr": nr_total,
+            "ded": ded_total,
+            "neto": neto,
+        },
     }
+
 
 def get_adicionales_funebres(mes: str) -> List[Dict[str, Any]]:
     idx = _build_index()

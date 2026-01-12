@@ -52,18 +52,8 @@ def meta():
 
 # ========= PAYLOAD =========
 @app.get("/payload")
-def payload(rama: str, mes: str):    return calcular_payload(
-        rama=rama,
-        mes=mes,
-        agrup=agrup,
-        categoria=categoria,
-        jornada=jornada,
-        anios_antig=anios_antig,
-        osecac=osecac,
-        afiliado=afiliado,
-        sind_pct=sind_pct,
-        titulo_pct=titulo_pct,
-    )
+def payload(rama: str, mes: str):
+    return calcular_payload(rama, mes)
 
 # ========= CALCULAR =========
 @app.get("/calcular")
@@ -94,8 +84,8 @@ def calcular(
 
 # ========= FUNEBRES =========
 @app.get("/adicionales-funebres")
-def adicionales_funebres(mes: str):
-    return get_adicionales_funebres(mes)
+def adicionales_funebres():
+    return get_adicionales_funebres()
 
 # ========= AGUA POTABLE =========
 @app.get("/regla-conexiones")
