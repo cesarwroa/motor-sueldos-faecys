@@ -578,128 +578,49 @@ Recibo Mensual</div>
     const tb = $(tbodyId);
     if (tb) tb.innerHTML = "";
   }
-  function addRow(tbodyId, it) {
-    const tb = $(tbodyId);
-    if (!tb) return;
-    const tr = document.createElement("tr");
-    const base = (it.base === null || it.base === undefined) ? "" : money(it.base);
-    tr.innerHTML = `
-      <td>${(it.concepto ?? "")}</td>
-      <td class="text-end">${base}</td>
-      <td class="text-end">${money(it.remunerativo)}</td>
-      <td class="text-end">${money(it.no_remunerativo)}</td>
-      <td class="text-end">${money(it.deduccion)}</td>
-    `;
-    tb.appendChild(tr);
-  }
+  function addRow(tbodyId, row){
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const tr = document.createElement("tr");
 
-  async function fetchJSON(url, payload=null){
-    const opt = payload ? {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
-    } : { method: "GET" };
-    const res = await fetch(url, opt);
-    if (!res.ok) {
-      const t = await res.text().catch(()=> "");
-      throw new Error(`HTTP ${res.status} ${res.statusText} ${t}`.trim());
-    }
-    return await res.json();
-  }
-  // backwards-compatible alias (some code calls fetchJson)
-  const fetchJson = fetchJSON;
-  async function loadPayloadFor(rama, mes){
-    if(!rama || !mes) return;
-    const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
-    PAYLOAD_ROWS = await fetchJSON(url);
-    TREE = buildTree(PAYLOAD_ROWS);
-  }
+  const concepto = (row.concepto ?? row.c ?? row.nombre ?? "").toString();
+  const baseNum = row.base ?? row.base_num ?? row.b ?? 0;
 
-  async function onSelectionChange(){
-    // Update month options first (from META), then load payload for selected rama+mes to populate agrup/categoría
-    refreshSelectors({onlyMeta:true}); // custom flag (handled below) to avoid using stale TREE
-    const rama = getSelectedValue("rama");
-    const mes  = getSelectedValue("mes");
-    // Clear dependent selects while loading
-    fillSelect("agrup", [], "— Seleccione —");
-    fillSelect("categoria", [], "— Seleccione —");
-    try{
-      setText("statusMsg", "Cargando escala...");
-      await loadPayloadFor(rama, mes);
-      refreshSelectors();
-      updateAutoFieldsFromSelection();
-      setText("statusMsg", "Maestro cargado.");
-    }catch(e){
-      console.error(e);
-      setText("statusMsg", "Error al cargar escala.");
-    }
-  }
+  const r = Number(row.r ?? row.rem ?? row.remunerativo ?? 0) || 0;
+  const n = Number(row.n ?? row.nr ?? row.no_remunerativo ?? 0) || 0;
+  const d = Number(row.d ?? row.ded ?? row.desc ?? row.deduccion ?? 0) || 0;
 
+  const tdC = document.createElement("td");
+  tdC.textContent = concepto;
 
-  // -------- META (sin montos) --------
-  let META = null;
+  const tdB = document.createElement("td");
+  tdB.textContent = baseNum ? money(Number(baseNum) || 0) : "";
 
-  function applyMetaPatch(meta){
-    try{
-      if(!meta) return meta;
-      meta.agrupamientos = meta.agrupamientos || {};
-      meta.categorias = meta.categorias || {};
-      // merge agrupamientos
-      if(LOCAL_META_PATCH.agrupamientos){
-        for(const [rama, agrups] of Object.entries(LOCAL_META_PATCH.agrupamientos)){
-          if(!meta.agrupamientos[rama] || !Array.isArray(meta.agrupamientos[rama]) || meta.agrupamientos[rama].length===0){
-            meta.agrupamientos[rama] = agrups;
-          }
-        }
-      }
-      // merge categorias
-      if(LOCAL_META_PATCH.categorias){
-        for(const [rama, byAgrup] of Object.entries(LOCAL_META_PATCH.categorias)){
-          meta.categorias[rama] = meta.categorias[rama] || {};
-          for(const [agrup, cats] of Object.entries(byAgrup)){
-            if(!meta.categorias[rama][agrup] || !Array.isArray(meta.categorias[rama][agrup]) || meta.categorias[rama][agrup].length===0){
-              meta.categorias[rama][agrup] = cats;
-            } else {
-              // agrega categorías faltantes
-              for(const c of cats){
-                if(!meta.categorias[rama][agrup].includes(c)) meta.categorias[rama][agrup].push(c);
-              }
-            }
-          }
-        }
-      }
-      return meta;
-    }catch(e){
-      console.warn("applyMetaPatch error", e);
-      return meta;
-    }
-  }
+  const tdR = document.createElement("td");
+  tdR.textContent = money(r);
 
-  let PAYLOAD_ROWS = null;
-  let TREE = null;
+  const tdN = document.createElement("td");
+  tdN.textContent = money(n);
 
-  function fillSelect(selectEl, options, placeholder="— Seleccione —") {
-    if (!selectEl) return;
-    selectEl.innerHTML = "";
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = placeholder;
-    selectEl.appendChild(ph);
-    for (const opt of options) {
-      const o = document.createElement("option");
-      o.value = opt.value;
-      o.textContent = opt.label;
-      selectEl.appendChild(o);
-    }
-  }
+  const tdD = document.createElement("td");
+  tdD.textContent = money(d);
 
-  function isDateLike(s){
-  if(!s) return false;
-  const t = String(s).trim();
-  if(/^(\d{4}-\d{2}-\d{2})/.test(t)) return true;
-  if(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(t)) return true;
-  return false;
+  tr.appendChild(tdC);
+  tr.appendChild(tdB);
+  tr.appendChild(tdR);
+  tr.appendChild(tdN);
+  tr.appendChild(tdD);
+  tbody.appendChild(tr);
 }
+
+function setValIfExists(id, num){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = Number(num) || 0;
+  // inputs muestran número sin formato moneda para evitar parseos raros
+  el.value = (Math.round(v * 100) / 100).toString();
+}
+
 
   function buildTree(rows){
     const tree = {};
@@ -1062,27 +983,68 @@ async function postCalculo(opts){
   if (conexEl && conexEl.value) url.searchParams.set("conexiones", String(conexEl.value));
 
   const data = await fetchJSON(url.toString());
+// Completar campos auto si existen
+setValIfExists("basicoAuto", data.basico ?? data.basico_base ?? 0);
+setValIfExists("noRemAuto", data.no_rem ?? data.no_rem_base ?? 0);
+setValIfExists("sumaFijaAuto", data.suma_fija ?? data.suma_fija_base ?? 0);
+setValIfExists("nrTotalAuto", (data.totales && data.totales.nr) ? data.totales.nr : (data.no_rem ?? 0) + (data.suma_fija ?? 0));
+
 
   // Encabezado (usa IDs reales del HTML)
   const info = (opts.ids && opts.ids.info) ? opts.ids.info : null;
   if (info) {
-    setText(info.rama, data.rama ?? url.searchParams.get("rama"));
-    setText(info.agrup, data.agrup ?? url.searchParams.get("agrup"));
-    setText(info.cat, data.categoria ?? url.searchParams.get("categoria"));
-    setText(info.escala, data.mes ? `Escala ${data.mes}` : "");
+    setText(info.rama, data.rama ?? data.Rama ?? url.searchParams.get("rama"));
+    setText(info.agrup, data.agrup ?? data.Agrup ?? url.searchParams.get("agrup"));
+    setText(info.cat, data.categoria ?? data.Categoria ?? url.searchParams.get("categoria"));
+    const mm = data.mes ?? data.Mes ?? url.searchParams.get("mes");
+    setText(info.escala, mm ? `Escala ${mm}` : "");
   }
+
+  // Normalización de respuesta (el front NO calcula: solo adapta formatos)
+  const items =
+    data.items ??
+    data.filas ??
+    data.rows ??
+    data.conceptos ??
+    data.detalle ??
+    [];
+
+  const totRaw =
+    data.totales ??
+    data.totals ??
+    {};
+
+  // Totales: soportar distintos nombres habituales
+  const tot = {
+    rem:  totRaw.rem  ?? totRaw.remunerativo ?? data.tot_rem ?? data.totRem ?? 0,
+    nr:   totRaw.nr   ?? totRaw.no_remunerativo ?? data.tot_nr ?? data.totNR ?? 0,
+    ded:  totRaw.ded  ?? totRaw.deducciones ?? data.tot_ded ?? data.totDed ?? 0,
+    neto: totRaw.neto ?? data.neto ?? data.total_neto ?? 0,
+  };
 
   // Tabla
   clearTbody(opts.tbodyId);
-  const items = data.items || [];
-  for (const it of items) addRow(opts.tbodyId, it);
+  for (const it of items) {
+    // Acepta {concepto,r,n,d} o {c,rem,nr,ded} etc.
+    const row = {
+      concepto: it.concepto ?? it.c ?? it.nombre ?? it.detalle ?? "",
+      r: it.r ?? it.rem ?? it.remunerativo ?? 0,
+      n: it.n ?? it.nr ?? it.no_remunerativo ?? 0,
+      d: it.d ?? it.ded ?? it.desc ?? it.deduccion ?? 0,
+    };
+    addRow(opts.tbodyId, row);
+  }
 
   // Totales
-  const t = data.totales || {};
-  setText(opts.ids.totRem, money(t.rem ?? 0));
-  setText(opts.ids.totNR,  money(t.nr ?? 0));
-  setText(opts.ids.totDed, money(t.ded ?? 0));
-  setText(opts.ids.neto,   money(t.neto ?? 0));
+  setText(opts.ids.totRem, money(tot.rem));
+  setText(opts.ids.totNR,  money(tot.nr));
+  setText(opts.ids.totDed, money(tot.ded));
+  setText(opts.ids.neto,   money(tot.neto));
+
+  // Debug opcional: si no vinieron items, mostrar en consola
+  if (!items || items.length === 0) {
+    console.warn("Respuesta /calcular sin items/filas. JSON recibido:", data);
+  }
 
   return data;
 }
