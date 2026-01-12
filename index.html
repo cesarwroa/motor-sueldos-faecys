@@ -1214,82 +1214,58 @@ async function refreshPayload(){
   try{
     const rama = val("rama");
     const mes = val("mes");
-    const agrup = val("agrup") || "—";
-    const categoria = val("categoria") || "—";
+    const agrup = val("agrup") || "GENERAL";
+    const categoria = val("categoria") || "";
 
-    if (!rama || !mes || rama === "—" || mes === "—") return;
-
-    const url = new URL(API_BASE + "/payload");
-    url.searchParams.set("rama", rama);
-    url.searchParams.set("mes", mes);
-    url.searchParams.set("agrup", agrup);
-    url.searchParams.set("categoria", categoria);
-
-    const p = await fetchJSON(url.toString());
-    if (!p || p.ok === false){
-      setText("status", "No se pudo cargar la base.");
+    if (!rama || !mes || rama === "—" || mes === "—" || !categoria){
       return;
     }
 
-    setValIfExists("basicoAuto",   p.basico ?? p.basico_base ?? 0);
-    setValIfExists("noRemAuto",    p.no_rem ?? p.no_rem_base ?? 0);
-    setValIfExists("sumaFijaAuto", p.suma_fija ?? p.suma_fija_base ?? 0);
+    const jornada = Number(val("hs") || 48) || 48;
+    const anios_antig = Number(val("anios") || 0) || 0;
 
-    const nrTotal = (Number(p.no_rem ?? 0) || 0) + (Number(p.suma_fija ?? 0) || 0);
-    setValIfExists("nrTotalAuto", nrTotal);
+    const osecacSel = (val("osecac") || "").toString().toLowerCase();
+    const osecac = (osecacSel === "si" || osecacSel === "sí" || osecacSel.includes("si"));
 
-    setText("status", "Listo.");
-  }catch(err){
-    console.error(err);
-    setText("status", "Error al cargar base (payload).");
-  }
-}
+    const afiliadoEl = document.getElementById("afiliado");
+    const afiliado = afiliadoEl ? !!afiliadoEl.checked : false;
 
-// Override addRow: renderiza r/n/d/base del backend
-function addRow(tbodyId, it){
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
+    // por ahora lo manejamos simple
+    const sind_pct = 0;
+    const titulo_pct = 0;
 
-  const concepto = (it.concepto ?? it.c ?? it.nombre ?? "").toString();
-  const baseNum  = it.base ?? it.base_num ?? it.b ?? 0;
+    const url = new URL(API_BASE + "/calcular");
 
-  const r = Number(it.r ?? it.rem ?? it.remunerativo ?? 0) || 0;
-  const n = Number(it.n ?? it.nr ?? it.no_remunerativo ?? 0) || 0;
-  const d = Number(it.d ?? it.ded ?? it.desc ?? it.deduccion ?? 0) || 0;
+  const rama = val("rama");
+  const mes = val("mes");
+  const agrup = val("agrup") || "GENERAL";
+  const categoria = val("categoria") || "";
 
-  const tr = document.createElement("tr");
+  const jornada = Number(val("hs") || 48) || 48;
+  const anios_antig = Number(val("anios") || 0) || 0;
 
-  const tdC = document.createElement("td");
-  tdC.textContent = concepto;
+  const osecacSel = (val("osecac") || "").toString().toLowerCase();
+  const osecac = (osecacSel === "si" || osecacSel === "sí" || osecacSel.includes("si"));
 
-  const tdB = document.createElement("td");
-  tdB.textContent = baseNum ? money(Number(baseNum) || 0) : "";
+  const afiliadoEl = document.getElementById("afiliado");
+  const afiliado = afiliadoEl ? !!afiliadoEl.checked : false;
 
-  const tdR = document.createElement("td");
-  tdR.textContent = money(r);
+  const sind_pct = 0;
+  const titulo_pct = 0;
 
-  const tdN = document.createElement("td");
-  tdN.textContent = money(n);
-
-  const tdD = document.createElement("td");
-  tdD.textContent = money(d);
-
-  tr.appendChild(tdC);
-  tr.appendChild(tdB);
-  tr.appendChild(tdR);
-  tr.appendChild(tdN);
-  tr.appendChild(tdD);
-
-  tbody.appendChild(tr);
-}
-
-// Override postCalculo: usa items/totales del backend y pinta columnas
-async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
-  const qs = new URLSearchParams(payload);
-  const url = new URL(API_BASE + "/calcular");
-  url.search = qs.toString();
+  url.searchParams.set("rama", rama);
+  url.searchParams.set("agrup", agrup);
+  url.searchParams.set("categoria", categoria);
+  url.searchParams.set("mes", mes);
+  url.searchParams.set("jornada", String(jornada));
+  url.searchParams.set("anios_antig", String(anios_antig));
+  url.searchParams.set("osecac", osecac ? "true" : "false");
+  url.searchParams.set("afiliado", afiliado ? "true" : "false");
+  url.searchParams.set("sind_pct", String(sind_pct));
+  url.searchParams.set("titulo_pct", String(titulo_pct));
 
   const data = await fetchJSON(url.toString());
+
 
   // Normalizar respuesta
   const items = data.items ?? data.filas ?? data.rows ?? [];
