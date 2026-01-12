@@ -553,18 +553,12 @@ Recibo Mensual</div>
     tb.appendChild(tr);
   }
 
-  async function fetchJSON(url, payload=null) {
+  async function fetchJSON(url, payload=null){
     const opt = payload ? {
       method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify(payload),
-    }
-
-  // Alias compatibilidad (algunas funciones llaman fetchJson)
-  async function fetchJson(url, opts){
-    return await fetchJSON(url, opts);
-  }
- : { method:"GET" };
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    } : { method: "GET" };
     const res = await fetch(url, opt);
     if (!res.ok) {
       const t = await res.text().catch(()=> "");
@@ -572,6 +566,8 @@ Recibo Mensual</div>
     }
     return await res.json();
   }
+  // backwards-compatible alias (some code calls fetchJson)
+  const fetchJson = fetchJSON;
   async function loadPayloadFor(rama, mes){
     if(!rama || !mes) return;
     const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
