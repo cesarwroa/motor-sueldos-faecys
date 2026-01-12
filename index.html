@@ -1,49 +1,4 @@
 
-function setValIfExists(id, num){
-  const el = document.getElementById(id);
-  if (!el) return;
-  const v = Number(num) || 0;
-  el.value = (Math.round(v * 100) / 100).toString();
-}
-
-async function refreshPayload(){
-  try{
-    const rama = val("rama");
-    const mes = val("mes");
-    const agrup = val("agrup") || "—";
-    const categoria = val("categoria") || "—";
-
-    if (!rama || !mes || rama === "—" || mes === "—"){
-      return;
-    }
-
-    const url = new URL(API_BASE + "/payload");
-    url.searchParams.set("rama", rama);
-    url.searchParams.set("mes", mes);
-    url.searchParams.set("agrup", agrup);
-    url.searchParams.set("categoria", categoria);
-
-    const p = await fetchJSON(url);
-    if (!p || p.ok === false){
-      setText("status", "No se pudo cargar la base.");
-      return;
-    }
-
-    // Completar campos auto debajo del selector
-    setValIfExists("basicoAuto", p.basico ?? p.basico_base ?? 0);
-    setValIfExists("noRemAuto", p.no_rem ?? p.no_rem_base ?? 0);
-    setValIfExists("sumaFijaAuto", p.suma_fija ?? p.suma_fija_base ?? 0);
-
-    const nrTotal = (Number(p.no_rem ?? 0) || 0) + (Number(p.suma_fija ?? 0) || 0);
-    setValIfExists("nrTotalAuto", nrTotal);
-
-    setText("status", "Listo.");
-  }catch(err){
-    console.error(err);
-    setText("status", "Error al cargar base (payload).");
-  }
-}
-
 <!DOCTYPE html>
 
 <html lang="es">
@@ -623,41 +578,127 @@ Recibo Mensual</div>
     const tb = $(tbodyId);
     if (tb) tb.innerHTML = "";
   }
-  function addRow(tbodyId, it){
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
+  function addRow(tbodyId, it) {
+    const tb = $(tbodyId);
+    if (!tb) return;
+    const tr = document.createElement("tr");
+    const base = (it.base === null || it.base === undefined) ? "" : money(it.base);
+    tr.innerHTML = `
+      <td>${(it.concepto ?? "")}</td>
+      <td class="text-end">${base}</td>
+      <td class="text-end">${money(it.remunerativo)}</td>
+      <td class="text-end">${money(it.no_remunerativo)}</td>
+      <td class="text-end">${money(it.deduccion)}</td>
+    `;
+    tb.appendChild(tr);
+  }
 
-  const concepto = (it.concepto ?? it.c ?? it.nombre ?? "").toString();
-  const baseNum  = it.base ?? it.base_num ?? it.b ?? 0;
+  async function fetchJSON(url, payload=null){
+    const opt = payload ? {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    } : { method: "GET" };
+    const res = await fetch(url, opt);
+    if (!res.ok) {
+      const t = await res.text().catch(()=> "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${t}`.trim());
+    }
+    return await res.json();
+  }
+  // backwards-compatible alias (some code calls fetchJson)
+  const fetchJson = fetchJSON;
+  async function loadPayloadFor(rama, mes){
+    if(!rama || !mes) return;
+    const url = ENDPOINT_PAYLOAD + "?rama=" + encodeURIComponent(rama) + "&mes=" + encodeURIComponent(mes);
+    PAYLOAD_ROWS = await fetchJSON(url);
+    TREE = buildTree(PAYLOAD_ROWS);
+  }
 
-  const r = Number(it.r ?? it.rem ?? it.remunerativo ?? 0) || 0;
-  const n = Number(it.n ?? it.nr ?? it.no_remunerativo ?? 0) || 0;
-  const d = Number(it.d ?? it.ded ?? it.desc ?? it.deduccion ?? 0) || 0;
+  async function onSelectionChange(){
+    // Update month options first (from META), then load payload for selected rama+mes to populate agrup/categoría
+    refreshSelectors({onlyMeta:true}); // custom flag (handled below) to avoid using stale TREE
+    const rama = getSelectedValue("rama");
+    const mes  = getSelectedValue("mes");
+    // Clear dependent selects while loading
+    fillSelect("agrup", [], "— Seleccione —");
+    fillSelect("categoria", [], "— Seleccione —");
+    try{
+      setText("statusMsg", "Cargando escala...");
+      await loadPayloadFor(rama, mes);
+      refreshSelectors();
+      updateAutoFieldsFromSelection();
+      setText("statusMsg", "Maestro cargado.");
+    }catch(e){
+      console.error(e);
+      setText("statusMsg", "Error al cargar escala.");
+    }
+  }
 
-  const tr = document.createElement("tr");
 
-  const tdC = document.createElement("td");
-  tdC.textContent = concepto;
+  // -------- META (sin montos) --------
+  let META = null;
 
-  const tdB = document.createElement("td");
-  tdB.textContent = baseNum ? money(Number(baseNum) || 0) : "";
+  function applyMetaPatch(meta){
+    try{
+      if(!meta) return meta;
+      meta.agrupamientos = meta.agrupamientos || {};
+      meta.categorias = meta.categorias || {};
+      // merge agrupamientos
+      if(LOCAL_META_PATCH.agrupamientos){
+        for(const [rama, agrups] of Object.entries(LOCAL_META_PATCH.agrupamientos)){
+          if(!meta.agrupamientos[rama] || !Array.isArray(meta.agrupamientos[rama]) || meta.agrupamientos[rama].length===0){
+            meta.agrupamientos[rama] = agrups;
+          }
+        }
+      }
+      // merge categorias
+      if(LOCAL_META_PATCH.categorias){
+        for(const [rama, byAgrup] of Object.entries(LOCAL_META_PATCH.categorias)){
+          meta.categorias[rama] = meta.categorias[rama] || {};
+          for(const [agrup, cats] of Object.entries(byAgrup)){
+            if(!meta.categorias[rama][agrup] || !Array.isArray(meta.categorias[rama][agrup]) || meta.categorias[rama][agrup].length===0){
+              meta.categorias[rama][agrup] = cats;
+            } else {
+              // agrega categorías faltantes
+              for(const c of cats){
+                if(!meta.categorias[rama][agrup].includes(c)) meta.categorias[rama][agrup].push(c);
+              }
+            }
+          }
+        }
+      }
+      return meta;
+    }catch(e){
+      console.warn("applyMetaPatch error", e);
+      return meta;
+    }
+  }
 
-  const tdR = document.createElement("td");
-  tdR.textContent = money(r);
+  let PAYLOAD_ROWS = null;
+  let TREE = null;
 
-  const tdN = document.createElement("td");
-  tdN.textContent = money(n);
+  function fillSelect(selectEl, options, placeholder="— Seleccione —") {
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholder;
+    selectEl.appendChild(ph);
+    for (const opt of options) {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      selectEl.appendChild(o);
+    }
+  }
 
-  const tdD = document.createElement("td");
-  tdD.textContent = money(d);
-
-  tr.appendChild(tdC);
-  tr.appendChild(tdB);
-  tr.appendChild(tdR);
-  tr.appendChild(tdN);
-  tr.appendChild(tdD);
-
-  tbody.appendChild(tr);
+  function isDateLike(s){
+  if(!s) return false;
+  const t = String(s).trim();
+  if(/^(\d{4}-\d{2}-\d{2})/.test(t)) return true;
+  if(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(t)) return true;
+  return false;
 }
 
   function buildTree(rows){
@@ -1020,15 +1061,6 @@ async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
   if(conex > 0) url.searchParams.set("conexiones", String(conex));
 
   const data = await fetchJSON(url.toString());
-const items = data.items ?? data.filas ?? data.rows ?? [];
-const totRaw = data.totales ?? data.totals ?? {};
-const tot = {
-  rem:  Number(totRaw.rem ?? 0) || 0,
-  nr:   Number(totRaw.nr ?? 0) || 0,
-  ded:  Number(totRaw.ded ?? 0) || 0,
-  neto: Number(totRaw.neto ?? 0) || 0,
-};
-
 
   // Encabezado informativo
   document.getElementById("selInfo").textContent =
@@ -1163,21 +1195,136 @@ const tot = {
     try { setText("status", "Error al cargar maestro."); } catch(_) {}
     alert("Error al cargar maestro (/meta). Ver consola.");
   }
-// Auto-cargar bases cuando cambia selección
-const selR = document.getElementById("rama");
-const selA = document.getElementById("agrup");
-const selC = document.getElementById("categoria");
-const selM = document.getElementById("mes");
-[selR, selA, selC, selM].forEach(s => { if (s) s.addEventListener("change", refreshPayload); });
-
-// Si ya hay selección por defecto, traer bases
-await refreshPayload();
-
 }
 
 document.addEventListener("DOMContentLoaded", boot);
 </script>
 
+<script>
+/* --- Online helpers (sin lógica de cálculo en el front) --- */
+
+function setValIfExists(id, num){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = Number(num) || 0;
+  el.value = (Math.round(v * 100) / 100).toString();
+}
+
+async function refreshPayload(){
+  try{
+    const rama = val("rama");
+    const mes = val("mes");
+    const agrup = val("agrup") || "—";
+    const categoria = val("categoria") || "—";
+
+    if (!rama || !mes || rama === "—" || mes === "—") return;
+
+    const url = new URL(API_BASE + "/payload");
+    url.searchParams.set("rama", rama);
+    url.searchParams.set("mes", mes);
+    url.searchParams.set("agrup", agrup);
+    url.searchParams.set("categoria", categoria);
+
+    const p = await fetchJSON(url.toString());
+    if (!p || p.ok === false){
+      setText("status", "No se pudo cargar la base.");
+      return;
+    }
+
+    setValIfExists("basicoAuto",   p.basico ?? p.basico_base ?? 0);
+    setValIfExists("noRemAuto",    p.no_rem ?? p.no_rem_base ?? 0);
+    setValIfExists("sumaFijaAuto", p.suma_fija ?? p.suma_fija_base ?? 0);
+
+    const nrTotal = (Number(p.no_rem ?? 0) || 0) + (Number(p.suma_fija ?? 0) || 0);
+    setValIfExists("nrTotalAuto", nrTotal);
+
+    setText("status", "Listo.");
+  }catch(err){
+    console.error(err);
+    setText("status", "Error al cargar base (payload).");
+  }
+}
+
+// Override addRow: renderiza r/n/d/base del backend
+function addRow(tbodyId, it){
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+
+  const concepto = (it.concepto ?? it.c ?? it.nombre ?? "").toString();
+  const baseNum  = it.base ?? it.base_num ?? it.b ?? 0;
+
+  const r = Number(it.r ?? it.rem ?? it.remunerativo ?? 0) || 0;
+  const n = Number(it.n ?? it.nr ?? it.no_remunerativo ?? 0) || 0;
+  const d = Number(it.d ?? it.ded ?? it.desc ?? it.deduccion ?? 0) || 0;
+
+  const tr = document.createElement("tr");
+
+  const tdC = document.createElement("td");
+  tdC.textContent = concepto;
+
+  const tdB = document.createElement("td");
+  tdB.textContent = baseNum ? money(Number(baseNum) || 0) : "";
+
+  const tdR = document.createElement("td");
+  tdR.textContent = money(r);
+
+  const tdN = document.createElement("td");
+  tdN.textContent = money(n);
+
+  const tdD = document.createElement("td");
+  tdD.textContent = money(d);
+
+  tr.appendChild(tdC);
+  tr.appendChild(tdB);
+  tr.appendChild(tdR);
+  tr.appendChild(tdN);
+  tr.appendChild(tdD);
+
+  tbody.appendChild(tr);
+}
+
+// Override postCalculo: usa items/totales del backend y pinta columnas
+async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
+  const qs = new URLSearchParams(payload);
+  const url = new URL(API_BASE + "/calcular");
+  url.search = qs.toString();
+
+  const data = await fetchJSON(url.toString());
+
+  // Normalizar respuesta
+  const items = data.items ?? data.filas ?? data.rows ?? [];
+  const totRaw = data.totales ?? data.totals ?? data.tot ?? {};
+  const tot = {
+    rem:  Number(totRaw.rem ?? data.rem ?? 0) || 0,
+    nr:   Number(totRaw.nr  ?? data.nr  ?? 0) || 0,
+    ded:  Number(totRaw.ded ?? data.ded ?? 0) || 0,
+    neto: Number(totRaw.neto ?? data.neto ?? 0) || 0,
+  };
+
+  clearTbody(tbodyId);
+  for (const it of items){
+    addRow(tbodyId, it);
+  }
+
+  if (totalsIds){
+    if (totalsIds.rem)  setText(totalsIds.rem,  money(tot.rem));
+    if (totalsIds.nr)   setText(totalsIds.nr,   money(tot.nr));
+    if (totalsIds.ded)  setText(totalsIds.ded,  money(tot.ded));
+    if (totalsIds.neto) setText(totalsIds.neto, money(tot.neto));
+  }
+
+  if (modoLabel) setText("modoLabel", modoLabel);
+}
+
+// Wire auto payload on selection
+document.addEventListener("DOMContentLoaded", () => {
+  const selR = document.getElementById("rama");
+  const selA = document.getElementById("agrup");
+  const selC = document.getElementById("categoria");
+  const selM = document.getElementById("mes");
+  [selR, selA, selC, selM].forEach(s => { if (s) s.addEventListener("change", refreshPayload); });
+});
+</script>
 </body>
 
 
