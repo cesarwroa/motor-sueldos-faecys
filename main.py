@@ -6,6 +6,7 @@ from pathlib import Path
 from escalas import (
     get_meta,
     get_payload,
+    calcular_payload,
     get_adicionales_funebres,
     match_regla_conexiones,
     get_titulo_pct_por_nivel,
@@ -51,8 +52,18 @@ def meta():
 
 # ========= PAYLOAD =========
 @app.get("/payload")
-def payload(rama: str, mes: str):
-    return get_payload(rama, mes)
+def payload(rama: str, mes: str):    return calcular_payload(
+        rama=rama,
+        mes=mes,
+        agrup=agrup,
+        categoria=categoria,
+        jornada=jornada,
+        anios_antig=anios_antig,
+        osecac=osecac,
+        afiliado=afiliado,
+        sind_pct=sind_pct,
+        titulo_pct=titulo_pct,
+    )
 
 # ========= CALCULAR =========
 @app.get("/calcular")
@@ -68,7 +79,7 @@ def calcular(
     sind_pct: float = 0,
     titulo_pct: float = 0,
 ):
-    return get_payload(
+    return calcular_payload(
         rama=rama,
         mes=mes,
         agrup=agrup,
@@ -83,8 +94,8 @@ def calcular(
 
 # ========= FUNEBRES =========
 @app.get("/adicionales-funebres")
-def adicionales_funebres():
-    return get_adicionales_funebres()
+def adicionales_funebres(mes: str):
+    return get_adicionales_funebres(mes)
 
 # ========= AGUA POTABLE =========
 @app.get("/regla-conexiones")

@@ -258,17 +258,92 @@ def _build_index() -> Dict[str, Any]:
 def get_meta() -> Dict[str, Any]:
     return _build_index()["meta"]
 
-def get_payload(rama: str, agrup: str, categoria: str, mes: str) -> Dict[str, Any]:
+def get_payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—") -> Dict[str, Any]:
+    """Devuelve los valores base del maestro para la combinación dada.
+
+    Se usa en:
+      - /payload (solo rama + mes)
+      - /calcular (rama + mes + agrup + categoria) como base.
+    """
     idx = _build_index()
     key = (_norm(rama).upper(), _norm(agrup) or "—", _norm(categoria) or "—", _mes_to_key(mes))
     rec = idx["payload"].get(key)
+
     if not rec:
-        # fallback: algunos front mandan "—" en agrup/cat
+        # fallback: algunos front mandan "—" en agrup/cat o vienen vacíos
         key2 = (_norm(rama).upper(), "—", "—", _mes_to_key(mes))
         rec = idx["payload"].get(key2)
+
     if not rec:
-        return {"ok": False, "error": "No se encontró esa combinación en el maestro", "rama": _norm(rama).upper(), "agrup": _norm(agrup) or "—", "categoria": _norm(categoria) or "—", "mes": _mes_to_key(mes)}
+        return {
+            "ok": False,
+            "error": "No se encontró esa combinación en el maestro",
+            "rama": _norm(rama).upper(),
+            "agrup": _norm(agrup) or "—",
+            "categoria": _norm(categoria) or "—",
+            "mes": _mes_to_key(mes),
+        }
+
     return {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec}
+
+def calcular_payload(
+    rama: str,
+    agrup: str,
+    categoria: str,
+    mes: str,
+    jornada: float = 48,
+    anios_antig: float = 0,
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0,
+    titulo_pct: float = 0,
+) -> Dict[str, Any]:
+    """Cálculo mínimo del endpoint /calcular.
+
+    Hoy devuelve:
+      - valores base del maestro (basico/no_rem/suma_fija)
+      - valores prorrateados por jornada (sobre 48hs) para que el front pueda renderizar
+      - eco de parámetros recibidos
+
+    Nota: si más adelante querés mover TODO el cálculo al servidor, esta función es el lugar correcto.
+    """
+    base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+    if not base.get("ok"):
+        return base
+
+    j = float(jornada or 48)
+    factor = (j / 48.0) if 48.0 else 1.0
+
+    bas = float(base.get("basico", 0.0) or 0.0)
+    nr = float(base.get("no_rem", 0.0) or 0.0)
+    sf = float(base.get("suma_fija", 0.0) or 0.0)
+
+    # Prorrateo simple por jornada (si luego necesitás excepciones por rama, se agrega acá)
+    bas_j = bas * factor
+    nr_j = nr * factor
+    sf_j = sf * factor
+
+    return {
+        "ok": True,
+        "rama": base["rama"],
+        "agrup": base["agrup"],
+        "categoria": base["categoria"],
+        "mes": base["mes"],
+        "jornada": j,
+        "anios_antig": float(anios_antig or 0),
+        "osecac": bool(osecac),
+        "afiliado": bool(afiliado),
+        "sind_pct": float(sind_pct or 0),
+        "titulo_pct": float(titulo_pct or 0),
+        # base maestro
+        "basico_base": bas,
+        "no_rem_base": nr,
+        "suma_fija_base": sf,
+        # prorrateado
+        "basico": bas_j,
+        "no_rem": nr_j,
+        "suma_fija": sf_j,
+    }
 
 def get_adicionales_funebres(mes: str) -> List[Dict[str, Any]]:
     idx = _build_index()
@@ -332,14 +407,23 @@ def get_regla_cajero(tipo: str) -> Dict[str, Any]:
         return {"tipo": t, "pct": 48.0}
     return {"tipo": t, "pct": 0.0}
 
-def get_regla_km(rol: str, km_menor_igual_100: float, km_mas_100: float) -> Dict[str, Any]:
+def get_regla_km(categoria: str, km: float) -> Dict[str, Any]:
+    """Normaliza el input de KM para el endpoint /regla-km.
+
+    El motor (y/o el front) puede decidir si aplica la regla <=100 o >100.
+    Acá devolvemos ambos tramos ya separados.
     """
-    Regla Art. 36 (resumen): el cálculo real usa el básico inicial de categorías específicas.
-    En el motor online, la base exacta la resuelve main.py en base al payload del maestro.
-    Acá solo devolvemos 'inputs' normalizados.
-    """
+    try:
+        k = float(km or 0)
+    except Exception:
+        k = 0.0
+
+    km_le_100 = min(k, 100.0)
+    km_gt_100 = max(k - 100.0, 0.0)
+
     return {
-        "rol": _norm(rol),
-        "km_le_100": float(km_menor_igual_100 or 0),
-        "km_gt_100": float(km_mas_100 or 0),
+        "categoria": _norm(categoria),
+        "km": k,
+        "km_le_100": km_le_100,
+        "km_gt_100": km_gt_100,
     }
