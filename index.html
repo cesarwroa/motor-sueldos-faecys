@@ -1,4 +1,49 @@
 
+function setValIfExists(id, num){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const v = Number(num) || 0;
+  el.value = (Math.round(v * 100) / 100).toString();
+}
+
+async function refreshPayload(){
+  try{
+    const rama = val("rama");
+    const mes = val("mes");
+    const agrup = val("agrup") || "—";
+    const categoria = val("categoria") || "—";
+
+    if (!rama || !mes || rama === "—" || mes === "—"){
+      return;
+    }
+
+    const url = new URL(API_BASE + "/payload");
+    url.searchParams.set("rama", rama);
+    url.searchParams.set("mes", mes);
+    url.searchParams.set("agrup", agrup);
+    url.searchParams.set("categoria", categoria);
+
+    const p = await fetchJSON(url);
+    if (!p || p.ok === false){
+      setText("status", "No se pudo cargar la base.");
+      return;
+    }
+
+    // Completar campos auto debajo del selector
+    setValIfExists("basicoAuto", p.basico ?? p.basico_base ?? 0);
+    setValIfExists("noRemAuto", p.no_rem ?? p.no_rem_base ?? 0);
+    setValIfExists("sumaFijaAuto", p.suma_fija ?? p.suma_fija_base ?? 0);
+
+    const nrTotal = (Number(p.no_rem ?? 0) || 0) + (Number(p.suma_fija ?? 0) || 0);
+    setValIfExists("nrTotalAuto", nrTotal);
+
+    setText("status", "Listo.");
+  }catch(err){
+    console.error(err);
+    setText("status", "Error al cargar base (payload).");
+  }
+}
+
 <!DOCTYPE html>
 
 <html lang="es">
@@ -578,17 +623,18 @@ Recibo Mensual</div>
     const tb = $(tbodyId);
     if (tb) tb.innerHTML = "";
   }
-  function addRow(tbodyId, row){
+  function addRow(tbodyId, it){
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
+
+  const concepto = (it.concepto ?? it.c ?? it.nombre ?? "").toString();
+  const baseNum  = it.base ?? it.base_num ?? it.b ?? 0;
+
+  const r = Number(it.r ?? it.rem ?? it.remunerativo ?? 0) || 0;
+  const n = Number(it.n ?? it.nr ?? it.no_remunerativo ?? 0) || 0;
+  const d = Number(it.d ?? it.ded ?? it.desc ?? it.deduccion ?? 0) || 0;
+
   const tr = document.createElement("tr");
-
-  const concepto = (row.concepto ?? row.c ?? row.nombre ?? "").toString();
-  const baseNum = row.base ?? row.base_num ?? row.b ?? 0;
-
-  const r = Number(row.r ?? row.rem ?? row.remunerativo ?? 0) || 0;
-  const n = Number(row.n ?? row.nr ?? row.no_remunerativo ?? 0) || 0;
-  const d = Number(row.d ?? row.ded ?? row.desc ?? row.deduccion ?? 0) || 0;
 
   const tdC = document.createElement("td");
   tdC.textContent = concepto;
@@ -610,17 +656,9 @@ Recibo Mensual</div>
   tr.appendChild(tdR);
   tr.appendChild(tdN);
   tr.appendChild(tdD);
+
   tbody.appendChild(tr);
 }
-
-function setValIfExists(id, num){
-  const el = document.getElementById(id);
-  if (!el) return;
-  const v = Number(num) || 0;
-  // inputs muestran número sin formato moneda para evitar parseos raros
-  el.value = (Math.round(v * 100) / 100).toString();
-}
-
 
   function buildTree(rows){
     const tree = {};
@@ -931,180 +969,113 @@ function toggleRamaBlocks() {
 
   
 
-async function postCalculo(opts){
-  // opts: { tbodyId, ids: { info: {rama,agrup,cat,escala}, totRem, totNR, totDed, neto }, modo }
-  const payload = opts.payload || {};
+async function postCalculo(payload, tbodyId, totalsIds, modoLabel){
+  // Server-side: el backend devuelve "items" y "totales" listos.
   const url = new URL(`${API_BASE}/calcular`, window.location.href);
+  url.searchParams.set("rama", payload.rama);
+  url.searchParams.set("agrup", payload.agrup || "—");
+  url.searchParams.set("categoria", payload.categoria || "—");
+  url.searchParams.set("mes", payload.mes);
 
-  // Requeridos
-  url.searchParams.set("rama", payload.rama || val("rama"));
-  url.searchParams.set("agrup", payload.agrup || val("agrup") || "—");
-  url.searchParams.set("categoria", payload.categoria || val("categoria") || "—");
-  url.searchParams.set("mes", payload.mes || val("mes"));
+  // Jornada y antigüedad (si no existen, usa 48 y 0)
+  const hs = num("hs", 48);
+  const anios = num("antig", 0);
+  url.searchParams.set("jornada", String(hs));
+  url.searchParams.set("anios_antig", String(anios));
 
-  // Parámetros simples (sin lógica de cálculo en el front)
-  const hsEl = document.getElementById("hs");
-  const aniosEl = document.getElementById("anios");
-  const jornada = hsEl ? Number(hsEl.value || 48) : 48;
-  const anios_antig = aniosEl ? Number(aniosEl.value || 0) : 0;
+  // OSECAC
+  const osVal = (val("osecac") || "si").toLowerCase();
+  url.searchParams.set("osecac", String(osVal !== "no"));
 
-  url.searchParams.set("jornada", String(Number.isFinite(jornada) ? jornada : 48));
-  url.searchParams.set("anios_antig", String(Number.isFinite(anios_antig) ? anios_antig : 0));
-
-  const osVal = (val("osecac") || "true").toLowerCase();
-  url.searchParams.set("osecac", String(osVal !== "false" && osVal !== "no"));
-
-  const afiliado = !!(document.getElementById("afiliado") && document.getElementById("afiliado").checked);
-  const afiliadoSel = document.getElementById("afiliado_selector");
-  const sindPct = (afiliado && afiliadoSel) ? Number(afiliadoSel.value || 0) : 0;
+  // Sindicato
+  const afiliado = chk("afiliado");
+  const sindPct = afiliado ? num("afiliado_selector", 2) : 0;
   url.searchParams.set("afiliado", String(afiliado));
-  url.searchParams.set("sind_pct", String(Number.isFinite(sindPct) ? sindPct : 0));
+  url.searchParams.set("sind_pct", String(sindPct));
 
-  // Turismo título (si el backend lo usa solo por %)
+  // Título (Turismo): por nivel (maestro) o % manual (compat)
   const titNivel = (val("tituloNivel") || "").trim();
-  if (titNivel) url.searchParams.set("titulo_nivel", titNivel);
-  const titPctEl = document.getElementById("pctTitulo");
-  const titPct = titPctEl ? Number(titPctEl.value || 0) : 0;
-  url.searchParams.set("titulo_pct", String(Number.isFinite(titPct) ? titPct : 0));
+  if(titNivel){
+    url.searchParams.set("titulo_nivel", titNivel);
+    url.searchParams.set("titulo_pct", "0");
+  } else {
+    const titPct = num("pctTitulo", 0);
+    url.searchParams.set("titulo_pct", String(titPct));
+  }
 
-  // Opcionales (solo si están)
+  // Cajero Art.30 (opcional)
   const cajTipo = (val("cajeroTipo") || "").trim();
-  if (cajTipo) url.searchParams.set("cajero_tipo", cajTipo);
+  if(cajTipo){
+    url.searchParams.set("cajero_tipo", cajTipo);
+  }
 
-  const kmChEl = document.getElementById("kmChofer");
-  const kmAyEl = document.getElementById("kmAyudante");
-  const kmCh = kmChEl ? Number(kmChEl.value || 0) : 0;
-  const kmAy = kmAyEl ? Number(kmAyEl.value || 0) : 0;
-  if (Number.isFinite(kmCh) && kmCh > 0) url.searchParams.set("km_chofer", String(kmCh));
-  if (Number.isFinite(kmAy) && kmAy > 0) url.searchParams.set("km_ayudante", String(kmAy));
+  // KM Art.36 (opcional)
+  const kmCh = num("kmChofer", 0);
+  const kmAy = num("kmAyudante", 0);
+  if(kmCh > 0) url.searchParams.set("km_chofer", String(kmCh));
+  if(kmAy > 0) url.searchParams.set("km_ayudante", String(kmAy));
 
-
-  const conexEl = document.getElementById("aguaConex");
-  if (conexEl && conexEl.value) url.searchParams.set("conexiones", String(conexEl.value));
+  // Conexiones (Agua Potable)
+  const conex = num("aguaConex", 0);
+  if(conex > 0) url.searchParams.set("conexiones", String(conex));
 
   const data = await fetchJSON(url.toString());
-// Completar campos auto si existen
-setValIfExists("basicoAuto", data.basico ?? data.basico_base ?? 0);
-setValIfExists("noRemAuto", data.no_rem ?? data.no_rem_base ?? 0);
-setValIfExists("sumaFijaAuto", data.suma_fija ?? data.suma_fija_base ?? 0);
-setValIfExists("nrTotalAuto", (data.totales && data.totales.nr) ? data.totales.nr : (data.no_rem ?? 0) + (data.suma_fija ?? 0));
+const items = data.items ?? data.filas ?? data.rows ?? [];
+const totRaw = data.totales ?? data.totals ?? {};
+const tot = {
+  rem:  Number(totRaw.rem ?? 0) || 0,
+  nr:   Number(totRaw.nr ?? 0) || 0,
+  ded:  Number(totRaw.ded ?? 0) || 0,
+  neto: Number(totRaw.neto ?? 0) || 0,
+};
 
 
-  // Encabezado (usa IDs reales del HTML)
-  const info = (opts.ids && opts.ids.info) ? opts.ids.info : null;
-  if (info) {
-    setText(info.rama, data.rama ?? data.Rama ?? url.searchParams.get("rama"));
-    setText(info.agrup, data.agrup ?? data.Agrup ?? url.searchParams.get("agrup"));
-    setText(info.cat, data.categoria ?? data.Categoria ?? url.searchParams.get("categoria"));
-    const mm = data.mes ?? data.Mes ?? url.searchParams.get("mes");
-    setText(info.escala, mm ? `Escala ${mm}` : "");
-  }
-
-  // Normalización de respuesta (el front NO calcula: solo adapta formatos)
-  const items =
-    data.items ??
-    data.filas ??
-    data.rows ??
-    data.conceptos ??
-    data.detalle ??
-    [];
-
-  const totRaw =
-    data.totales ??
-    data.totals ??
-    {};
-
-  // Totales: soportar distintos nombres habituales
-  const tot = {
-    rem:  totRaw.rem  ?? totRaw.remunerativo ?? data.tot_rem ?? data.totRem ?? 0,
-    nr:   totRaw.nr   ?? totRaw.no_remunerativo ?? data.tot_nr ?? data.totNR ?? 0,
-    ded:  totRaw.ded  ?? totRaw.deducciones ?? data.tot_ded ?? data.totDed ?? 0,
-    neto: totRaw.neto ?? data.neto ?? data.total_neto ?? 0,
-  };
+  // Encabezado informativo
+  document.getElementById("selInfo").textContent =
+    `Rama: ${data.rama} · Agrup: ${data.agrup} · Cat: ${data.categoria} · Escala ${data.mes}`;
 
   // Tabla
-  clearTbody(opts.tbodyId);
-  for (const it of items) {
-    // Acepta {concepto,r,n,d} o {c,rem,nr,ded} etc.
-    const row = {
-      concepto: it.concepto ?? it.c ?? it.nombre ?? it.detalle ?? "",
-      r: it.r ?? it.rem ?? it.remunerativo ?? 0,
-      n: it.n ?? it.nr ?? it.no_remunerativo ?? 0,
-      d: it.d ?? it.ded ?? it.desc ?? it.deduccion ?? 0,
-    };
-    addRow(opts.tbodyId, row);
-  }
+  const tbody = document.getElementById(tbodyId);
+  resetTabla(tbodyId);
+  (data.items || []).forEach(it => addRow(tbody, it));
 
   // Totales
-  setText(opts.ids.totRem, money(tot.rem));
-  setText(opts.ids.totNR,  money(tot.nr));
-  setText(opts.ids.totDed, money(tot.ded));
-  setText(opts.ids.neto,   money(tot.neto));
+  const tot = data.totales || {};
+  document.getElementById(totalsIds.rem).textContent = money(tot.rem || 0);
+  document.getElementById(totalsIds.nr).textContent  = money(tot.nr || 0);
+  document.getElementById(totalsIds.ded).textContent = money(tot.ded || 0);
+  document.getElementById(totalsIds.neto).textContent= money(tot.neto || 0);
 
-  // Debug opcional: si no vinieron items, mostrar en consola
-  if (!items || items.length === 0) {
-    console.warn("Respuesta /calcular sin items/filas. JSON recibido:", data);
+  // Base total (informativa)
+  if(document.getElementById(totalsIds.base)){
+    document.getElementById(totalsIds.base).textContent = money(0);
   }
 
   return data;
 }
 
-// -------- Handlers públicos (sin lógica de cálculo local) --------
-window.calcularMensual = async function() {
-  try {
-    setText("status", "Calculando…");
-    await postCalculo({
-      payload: {
-        rama: val("rama"),
-        agrup: val("agrup"),
-        categoria: val("categoria"),
-        mes: val("mes"),
-      },
-      tbodyId: "tbodyMensual",
-      ids: {
-        info: { rama:"outRama", agrup:"outAgrup", cat:"outCat", escala:"outEscala" },
-        totRem: "totRem",
-        totNR: "totNR",
-        totDed:"totDed",
-        neto:  "neto",
-      },
-      modo: "mensual"
-    });
-    setText("status", "Listo.");
-  } catch (e) {
-    console.error(e);
-    setText("status", "Error al calcular.");
-    alert("Error al calcular. Mirá la consola.");
-  }
-};
 
-window.calcularFinal = async function() {
-  try {
-    setText("status", "Calculando…");
-    await postCalculo({
-      payload: {
-        rama: val("rama"),
-        agrup: val("agrup"),
-        categoria: val("categoria"),
-        mes: val("mes"),
-      },
-      tbodyId: "tbodyFinal",
-      ids: {
-        info: { rama:"lf_outRama", agrup:"lf_outAgrup", cat:"lf_outCat", escala:"outEscala" },
-        totRem: "lf_totRem",
-        totNR:  "lf_totNR",
-        totDed: "lf_totDed",
-        neto:   "lf_neto",
-      },
-      modo: "final"
-    });
-    setText("status", "Listo.");
-  } catch (e) {
-    console.error(e);
-    alert("Error al calcular Liquidación Final.");
-  }
-};
+// -------- Handlers públicos (usan IDs existentes) --------
+  window.calcularMensual = async function() {
+    try {
+      const payload = buildPayloadMensual();
+      await postCalculo(payload, "tbodyMensual", "totRem", "totNR", "totDed", "neto");
+    } catch (e) {
+      console.error(e);
+      alert("Error al calcular (API). Revisá conexión o datos.");
+      setText("status", "Error");
+    }
+  };
 
+  window.calcularFinal = async function() {
+    try {
+      const payload = buildPayloadFinal();
+      await postCalculo(payload, "tbodyFinal", "lf_totRem", "lf_totNR", "lf_totDed", "lf_neto");
+    } catch (e) {
+      console.error(e);
+      alert("Error al calcular Liquidación Final (API).");
+    }
+  };
 
   
   async function boot() {
@@ -1192,6 +1163,16 @@ window.calcularFinal = async function() {
     try { setText("status", "Error al cargar maestro."); } catch(_) {}
     alert("Error al cargar maestro (/meta). Ver consola.");
   }
+// Auto-cargar bases cuando cambia selección
+const selR = document.getElementById("rama");
+const selA = document.getElementById("agrup");
+const selC = document.getElementById("categoria");
+const selM = document.getElementById("mes");
+[selR, selA, selC, selM].forEach(s => { if (s) s.addEventListener("change", refreshPayload); });
+
+// Si ya hay selección por defecto, traer bases
+await refreshPayload();
+
 }
 
 document.addEventListener("DOMContentLoaded", boot);
