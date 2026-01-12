@@ -498,6 +498,9 @@ Recibo Mensual</div>
   };
 // nuevo endpoint
   const ENDPOINT_PAYLOAD = API_BASE + "/payload";
+  // Meta patch local (fallback) para ramas que el /meta no devuelve completas
+  const LOCAL_META_PATCH = {"agrupamientos": {"AGUA POTABLE": ["PERSONAL SUPERVISIÓN y JEFATURA", "PERSONAL TÉCNICO", "PERSONAL AUXILIAR / ADMINISTRATIVO", "MAESTRANZA"], "CALL CENTER": ["CALL CENTER"]}, "categorias": {"AGUA POTABLE": {"PERSONAL SUPERVISIÓN y JEFATURA": ["OPERADOR DE 1ra."], "PERSONAL TÉCNICO": ["OPERADOR DE 2da.", "OPERADOR DE 1ra."], "PERSONAL AUXILIAR / ADMINISTRATIVO": ["AYUDANTE", "MEDIO OFICIAL / ADMINISTRATIVO 2da.", "OFICIAL / ADMINISTRATIVO 1ra.", "OFICIAL ENCARGADO / ENCARGADO"], "MAESTRANZA": ["Maestranza C"]}, "CALL CENTER": {"CALL CENTER": ["CATEGORIA 3: OPERACION A 21hs"]}}};
+
 
   const $ = (id) => document.getElementById(id);
   const num = (id) => {
@@ -555,7 +558,13 @@ Recibo Mensual</div>
       method: "POST",
       headers: { "Content-Type":"application/json" },
       body: JSON.stringify(payload),
-    } : { method:"GET" };
+    }
+
+  // Alias compatibilidad (algunas funciones llaman fetchJson)
+  async function fetchJson(url, opts){
+    return await fetchJSON(url, opts);
+  }
+ : { method:"GET" };
     const res = await fetch(url, opt);
     if (!res.ok) {
       const t = await res.text().catch(()=> "");
@@ -593,6 +602,43 @@ Recibo Mensual</div>
 
   // -------- META (sin montos) --------
   let META = null;
+
+  function applyMetaPatch(meta){
+    try{
+      if(!meta) return meta;
+      meta.agrupamientos = meta.agrupamientos || {};
+      meta.categorias = meta.categorias || {};
+      // merge agrupamientos
+      if(LOCAL_META_PATCH.agrupamientos){
+        for(const [rama, agrups] of Object.entries(LOCAL_META_PATCH.agrupamientos)){
+          if(!meta.agrupamientos[rama] || !Array.isArray(meta.agrupamientos[rama]) || meta.agrupamientos[rama].length===0){
+            meta.agrupamientos[rama] = agrups;
+          }
+        }
+      }
+      // merge categorias
+      if(LOCAL_META_PATCH.categorias){
+        for(const [rama, byAgrup] of Object.entries(LOCAL_META_PATCH.categorias)){
+          meta.categorias[rama] = meta.categorias[rama] || {};
+          for(const [agrup, cats] of Object.entries(byAgrup)){
+            if(!meta.categorias[rama][agrup] || !Array.isArray(meta.categorias[rama][agrup]) || meta.categorias[rama][agrup].length===0){
+              meta.categorias[rama][agrup] = cats;
+            } else {
+              // agrega categorías faltantes
+              for(const c of cats){
+                if(!meta.categorias[rama][agrup].includes(c)) meta.categorias[rama][agrup].push(c);
+              }
+            }
+          }
+        }
+      }
+      return meta;
+    }catch(e){
+      console.warn("applyMetaPatch error", e);
+      return meta;
+    }
+  }
+
   let PAYLOAD_ROWS = null;
   let TREE = null;
 
