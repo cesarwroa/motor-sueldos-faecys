@@ -53,27 +53,11 @@ def meta():
 # ========= PAYLOAD =========
 @app.get("/payload")
 def payload(rama: str, mes: str):
-    return calcular_payload(rama, mes)
-
-# ========= CALCULAR =========
-@app.get("/calcular")
-def calcular(
-    rama: str,
-    agrup: str,
-    categoria: str,
-    mes: str,
-    jornada: float = 48,
-    anios_antig: float = 0,
-    osecac: bool = True,
-    afiliado: bool = False,
-    sind_pct: float = 0,
-    titulo_pct: float = 0,
-):
     return calcular_payload(
         rama=rama,
-        mes=mes,
         agrup=agrup,
         categoria=categoria,
+        mes=mes,
         jornada=jornada,
         anios_antig=anios_antig,
         osecac=osecac,

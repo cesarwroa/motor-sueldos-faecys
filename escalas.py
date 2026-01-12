@@ -298,148 +298,77 @@ def calcular_payload(
     sind_pct: float = 0,
     titulo_pct: float = 0,
 ) -> Dict[str, Any]:
-    """Cálculo completo para el endpoint /calcular (sin lógica en el frontend).
+    """Cálculo del endpoint /calcular (servidor).
 
-    Devuelve:
-      - items: lista de conceptos con columnas {concepto, r, n, d}
-      - totales: {rem, nr, ded, neto}
-      - eco de parámetros y bases del maestro
+    El front NO calcula: solo renderiza.
+    Devuelve items + totales numéricos para que el HTML muestre cada fila.
 
-    Importante: la UI (index.html) NO debe calcular; solo renderiza este JSON.
+    Versión núcleo (GENERAL): Básico, Antigüedad, Presentismo, NR base y descuentos principales.
     """
     base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
     if not base.get("ok"):
         return base
 
-    rama_u = base["rama"]
+    # -------- Bases prorrateadas (48hs) --------
     j = float(jornada or 48)
     factor = (j / 48.0) if 48.0 else 1.0
 
-    # Bases del maestro (jornada completa)
-    bas_full = float(base.get("basico", 0.0) or 0.0)
-    nr_full = float(base.get("no_rem", 0.0) or 0.0)
-    sf_full = float(base.get("suma_fija", 0.0) or 0.0)
+    bas_base = float(base.get("basico", 0.0) or 0.0)
+    nr_base = float(base.get("no_rem", 0.0) or 0.0)
+    sf_base = float(base.get("suma_fija", 0.0) or 0.0)
 
-    # Prorrateo por jornada (regla general; si una rama no prorratea algún concepto,
-    # esa excepción se agrega aquí en el backend)
-    bas = bas_full * factor
-    nr = nr_full * factor
-    sf = sf_full * factor
+    bas = bas_base * factor
+    nr = nr_base * factor
+    sf = sf_base * factor
 
-    # --- Helpers de cálculo ---
-    def antig_rate_for_rama(r: str) -> float:
-        # Agua Potable: 2% acumulativo
-        return 0.02 if _norm(r).upper() == "AGUA POTABLE" else 0.01
+    # -------- Cálculos núcleo --------
+    presentismo = bas / 12.0
+    antig = bas * (float(anios_antig or 0.0) * 0.01)
 
-    def antig_factor(r: str, years: float) -> float:
-        y = max(float(years or 0), 0.0)
-        rate = antig_rate_for_rama(r)
-        if _norm(r).upper() == "AGUA POTABLE":
-            # acumulativo (compuesto)
-            return (1.0 + rate) ** y - 1.0
-        # no acumulativo (lineal)
-        return rate * y
+    rem_total = bas + presentismo + antig
+    nr_total = nr + sf
 
-    def money_round(x: float) -> float:
-        try:
-            return float(round(float(x or 0.0), 2))
-        except Exception:
-            return 0.0
-
-    items: List[Dict[str, Any]] = []
-
-    # --- Remunerativos ---
-    antig_pct = antig_factor(rama_u, anios_antig)
-    antig_rem = bas * antig_pct
-    # Presentismo: 1/12 de la remuneración del mes (básico + antigüedad)
-    pres_rem = (bas + antig_rem) / 12.0
-
-    # Turismo: adicional por título (si se usa en tu UI)
-    tit_rem = 0.0
-    try:
-        tp = float(titulo_pct or 0.0)
-        if tp > 0:
-            tit_rem = bas * (tp / 100.0)
-    except Exception:
-        tit_rem = 0.0
-
-    # Items Rem
-    if bas:
-        items.append({"concepto": "Básico", "r": money_round(bas), "n": 0.0, "d": 0.0})
-    if antig_rem:
-        items.append({"concepto": "Antigüedad", "r": money_round(antig_rem), "n": 0.0, "d": 0.0})
-    if pres_rem:
-        items.append({"concepto": "Presentismo", "r": money_round(pres_rem), "n": 0.0, "d": 0.0})
-    if tit_rem:
-        items.append({"concepto": "Adic. Título", "r": money_round(tit_rem), "n": 0.0, "d": 0.0})
-
-    rem_total = bas + antig_rem + pres_rem + tit_rem
-
-    # --- No remunerativos ---
-    nr_base = nr + sf  # consolidamos
-    antig_nr = nr_base * antig_pct if nr_base else 0.0
-    pres_nr = (nr_base + antig_nr) / 12.0 if nr_base else 0.0
-
-    if nr_base:
-        # Mostrar separado si viene suma fija
-        if nr:
-            items.append({"concepto": "No Remunerativo", "r": 0.0, "n": money_round(nr), "d": 0.0})
-        if sf:
-            items.append({"concepto": "Suma Fija (NR)", "r": 0.0, "n": money_round(sf), "d": 0.0})
-        if antig_nr:
-            items.append({"concepto": "Antigüedad (NR)", "r": 0.0, "n": money_round(antig_nr), "d": 0.0})
-        if pres_nr:
-            items.append({"concepto": "Presentismo (NR)", "r": 0.0, "n": money_round(pres_nr), "d": 0.0})
-
-    nr_total = nr_base + antig_nr + pres_nr
-
-    # --- Deducciones (reglas estándar ComercioOnline) ---
-    # Jubilación y PAMI: solo sobre Remunerativos
     jub = rem_total * 0.11
     pami = rem_total * 0.03
-
-    # Obra Social (3%): sobre Rem + (NR si tiene OSECAC)
-    os_base = rem_total + (nr_total if bool(osecac) else 0.0)
-    obra = os_base * 0.03
-
-    # Aporte fijo OSECAC por relación (solo si tiene OSECAC)
+    os_aporte = rem_total * 0.03 if bool(osecac) else 0.0
     osecac_100 = 100.0 if bool(osecac) else 0.0
 
-    # Sindicato / FAECYS: solo si corresponde (controlado por el front con afiliado/sind_pct)
     sind = 0.0
-    try:
-        sp = float(sind_pct or 0.0)
-        if bool(afiliado) and sp > 0:
-            sind = (rem_total + nr_total) * (sp / 100.0)
-    except Exception:
-        sind = 0.0
+    if bool(afiliado) and float(sind_pct or 0) > 0:
+        sind = (rem_total + nr_total) * (float(sind_pct) / 100.0)
 
-    faecys = 0.0
-    if bool(afiliado):
-        faecys = (rem_total + nr_total) * 0.005  # 0,5%
-
-    # Items Ded
-    if jub:
-        items.append({"concepto": "Jubilación 11%", "r": 0.0, "n": 0.0, "d": money_round(jub)})
-    if pami:
-        items.append({"concepto": "Ley 19.032 (PAMI) 3%", "r": 0.0, "n": 0.0, "d": money_round(pami)})
-    if obra:
-        items.append({"concepto": "Obra Social 3%", "r": 0.0, "n": 0.0, "d": money_round(obra)})
-    if osecac_100:
-        items.append({"concepto": "OSECAC $100", "r": 0.0, "n": 0.0, "d": money_round(osecac_100)})
-    if faecys:
-        items.append({"concepto": "FAECYS 0,5%", "r": 0.0, "n": 0.0, "d": money_round(faecys)})
-    if sind:
-        items.append({"concepto": "Sindicato", "r": 0.0, "n": 0.0, "d": money_round(sind)})
-
-    ded_total = jub + pami + obra + osecac_100 + faecys + sind
+    ded_total = jub + pami + os_aporte + osecac_100 + sind
     neto = (rem_total + nr_total) - ded_total
 
-    # Normalizar floats
-    rem_total = money_round(rem_total)
-    nr_total = money_round(nr_total)
-    ded_total = money_round(ded_total)
-    neto = money_round(neto)
+    def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
+        out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
+        if base_num:
+            out["base"] = float(base_num)
+        return out
+
+    items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas)]
+
+    if antig:
+        items.append(item("Antigüedad", r=antig, base_num=bas))
+
+    items.append(item("Presentismo", r=presentismo, base_num=bas + antig))
+
+    if nr:
+        items.append(item("No Rem (variable)", n=nr))
+    if sf:
+        items.append(item("Suma Fija (NR)", n=sf))
+
+    items.append(item("Jubilación 11%", d=jub, base_num=rem_total))
+    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_total))
+
+    if bool(osecac):
+        items.append(item("Obra Social 3%", d=os_aporte, base_num=rem_total))
+        items.append(item("OSECAC $100", d=osecac_100))
+    else:
+        items.append(item("Obra Social 3%", d=0.0, base_num=rem_total))
+
+    if sind:
+        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_total + nr_total)))
 
     return {
         "ok": True,
@@ -453,21 +382,21 @@ def calcular_payload(
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
         "titulo_pct": float(titulo_pct or 0),
-        # bases maestro jornada completa
-        "basico_base": money_round(bas_full),
-        "no_rem_base": money_round(nr_full),
-        "suma_fija_base": money_round(sf_full),
-        # prorrateado (auto)
-        "basico": money_round(bas),
-        "no_rem": money_round(nr),
-        "suma_fija": money_round(sf),
-        # recibo
+
+        "basico_base": float(bas_base),
+        "no_rem_base": float(nr_base),
+        "suma_fija_base": float(sf_base),
+
+        "basico": float(bas),
+        "no_rem": float(nr),
+        "suma_fija": float(sf),
+
         "items": items,
         "totales": {
-            "rem": rem_total,
-            "nr": nr_total,
-            "ded": ded_total,
-            "neto": neto,
+            "rem": float(rem_total),
+            "nr": float(nr_total),
+            "ded": float(ded_total),
+            "neto": float(neto),
         },
     }
 
