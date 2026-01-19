@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 import datetime as dt
 import math
 
-import pandas as pd
+from openpyxl import load_workbook
 
 from escalas import MAESTRO_PATH, find_row
 
@@ -77,23 +77,40 @@ def _vac_anuales_por_antig(anios: int) -> int:
     return 35
 
 
-def _load_sheet(name: str) -> pd.DataFrame:
+def _load_sheet(name: str) -> list[dict]:
+    """Lee una hoja del maestro sin pandas (Render-friendly).
+    Devuelve lista de dicts con encabezados en la primera fila.
+    """
     try:
-        return pd.read_excel(MAESTRO_PATH, sheet_name=name, engine="openpyxl")
+        wb = load_workbook(MAESTRO_PATH, data_only=True, read_only=True)
+        if name not in wb.sheetnames:
+            return []
+        ws = wb[name]
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return []
+        headers = [str(h).strip() if h is not None else '' for h in rows[0]]
+        out = []
+        for r in rows[1:]:
+            if all(v is None or str(v).strip()=='' for v in r):
+                continue
+            d = {headers[i]: r[i] if i < len(r) else None for i in range(len(headers))}
+            out.append(d)
+        return out
     except Exception:
-        return pd.DataFrame()
+        return []
 
 
 def _funebres_adicionales(mes: str, flags: Dict[str, Any]) -> float:
-    df = _load_sheet("Adicionales")
-    if df.empty:
+    rows = _load_sheet("Adicionales")
+    if not rows:
         return 0.0
 
     def v(concepto: str) -> float:
-        x = df[(df.get("Mes") == mes) & (df.get("Concepto") == concepto)]
-        if x.empty:
-            return 0.0
-        return _f(x.iloc[0].get("Valor"))
+        for r in rows:
+            if str(r.get("Mes") or "") == mes and str(r.get("Concepto") or "") == concepto:
+                return _f(r.get("Valor"))
+        return 0.0
 
     total = 0.0
     if bool(flags.get("funAdic1")):
@@ -108,11 +125,11 @@ def _funebres_adicionales(mes: str, flags: Dict[str, Any]) -> float:
 
 
 def _conex_pct(conex: int) -> float:
-    df = _load_sheet("ReglasConexiones")
-    if df.empty or conex <= 0:
+    rows = _load_sheet("ReglasConexiones")
+    if not rows or conex <= 0:
         return 0.0
 
-    for _, r in df.iterrows():
+    for r in rows:
         det = str(r.get("Detalle") or "").lower()
         pct = _f(r.get("Porcentaje"))
         # "0 a 200 conexiones"

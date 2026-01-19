@@ -483,3 +483,33 @@ def get_regla_km(categoria: str, km: float) -> Dict[str, Any]:
         "km_le_100": km_le_100,
         "km_gt_100": km_gt_100,
     }
+
+# ---------------------------
+# Compat helpers (para calculo.py)
+# ---------------------------
+
+def find_row(rama: str, mes: str, agrup: str = "—", categoria: str = "—") -> Dict[str, float]:
+    """Compat con el motor offline.
+
+    Devuelve un dict con claves: basico, no_rem, suma_fija.
+    Si no existe combinación exacta, intenta fallback a agrup "—".
+    """
+    idx = _build_index()
+    payload = idx.get("payload", {})
+
+    rama_u = _norm(rama).upper()
+    agrup_u = _norm(agrup) if _norm(agrup) else "—"
+    cat_u = _norm(categoria) if _norm(categoria) else "—"
+    mes_k = _mes_to_key(mes)
+
+    row = payload.get((rama_u, agrup_u, cat_u, mes_k))
+    if row is None and agrup_u != "—":
+        row = payload.get((rama_u, "—", cat_u, mes_k))
+    if row is None:
+        return {"basico": 0.0, "no_rem": 0.0, "suma_fija": 0.0}
+
+    return {
+        "basico": float(row.get("basico", 0.0) or 0.0),
+        "no_rem": float(row.get("no_rem", 0.0) or 0.0),
+        "suma_fija": float(row.get("suma_fija", 0.0) or 0.0),
+    }
