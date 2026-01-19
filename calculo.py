@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Optional
 import datetime as dt
 import math
 
-from openpyxl import load_workbook
+import escalas
 
-from escalas import MAESTRO_PATH, find_row
+from escalas import find_row
 
 
 def _f(x: Any) -> float:
@@ -77,74 +77,36 @@ def _vac_anuales_por_antig(anios: int) -> int:
     return 35
 
 
-def _load_sheet(name: str) -> list[dict]:
-    """Lee una hoja del maestro sin pandas (Render-friendly).
-    Devuelve lista de dicts con encabezados en la primera fila.
+# (sin pandas)
+
+def _funebres_adicionales(mes: str, flags: Dict[str, Any], basico_prorrateado: float, factor_hs: float) -> float:
+    """Suma adicionales Fúnebres según maestro y flags del frontend (funAdic1..N).
+
+    - Si el item es porcentaje: se aplica sobre el básico prorrateado.
+    - Si el item es monto: se prorratea por factor_hs.
     """
-    try:
-        wb = load_workbook(MAESTRO_PATH, data_only=True, read_only=True)
-        if name not in wb.sheetnames:
-            return []
-        ws = wb[name]
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
-            return []
-        headers = [str(h).strip() if h is not None else '' for h in rows[0]]
-        out = []
-        for r in rows[1:]:
-            if all(v is None or str(v).strip()=='' for v in r):
-                continue
-            d = {headers[i]: r[i] if i < len(r) else None for i in range(len(headers))}
-            out.append(d)
-        return out
-    except Exception:
-        return []
-
-
-def _funebres_adicionales(mes: str, flags: Dict[str, Any]) -> float:
-    rows = _load_sheet("Adicionales")
-    if not rows:
-        return 0.0
-
-    def v(concepto: str) -> float:
-        for r in rows:
-            if str(r.get("Mes") or "") == mes and str(r.get("Concepto") or "") == concepto:
-                return _f(r.get("Valor"))
-        return 0.0
-
+    data = escalas.get_adicionales_funebres(mes)
+    items = data.get("items") or []
     total = 0.0
-    if bool(flags.get("funAdic1")):
-        total += v("Adicional General (todo el personal, incluidos choferes)")
-    if bool(flags.get("funAdic2")):
-        total += v("Adicional Personal no incluido en inciso 1")
-    if bool(flags.get("funAdic3")):
-        total += v("Adicional Chofer/Furgonero (vehículos)")
-    if bool(flags.get("funAdic4")):
-        total += v("Adicional por Indumentaria")
+    for i, it in enumerate(items, start=1):
+        flag = flags.get(f"funAdic{i}")
+        if isinstance(flag, str):
+            flag = flag.lower() in ("1", "true", "si", "sí", "on")
+        if not bool(flag):
+            continue
+        tipo = (it.get("tipo") or "monto").lower()
+        if tipo == "pct":
+            total += basico_prorrateado * (float(it.get("pct") or 0.0) / 100.0)
+        else:
+            total += float(it.get("monto") or 0.0) * factor_hs
     return total
 
 
 def _conex_pct(conex: int) -> float:
-    rows = _load_sheet("ReglasConexiones")
-    if not rows or conex <= 0:
+    res = escalas.match_regla_conexiones(int(conex or 0))
+    if not res.get("ok"):
         return 0.0
-
-    for r in rows:
-        det = str(r.get("Detalle") or "").lower()
-        pct = _f(r.get("Porcentaje"))
-        # "0 a 200 conexiones"
-        import re
-        m = re.search(r"(\d+)\s*a\s*(\d+)\s*conex", det)
-        if m:
-            a, b = int(m.group(1)), int(m.group(2))
-            if a <= conex <= b:
-                return pct
-        m = re.search(r"a\s*partir\s*de\s*(\d+)\s*conex", det)
-        if m:
-            a = int(m.group(1))
-            if conex >= a:
-                return pct
-    return 0.0
+    return float(res.get("pct") or 0.0)
 
 
 def _ant_factor(rama: str, anios: int) -> float:
@@ -156,17 +118,49 @@ def _ant_factor(rama: str, anios: int) -> float:
     return 0.01 * anios
 
 
+def _find_basico_ref(mes: str, rama_pref: str, cats: List[str]) -> float:
+    """Básicos de referencia para adicionales históricos (CCT 130/75 - Acuerdo 26/09/1983).
+
+    Se intenta en la rama actual y luego en GENERAL. Para cada rama,
+    se prueba en agrups comunes (GENERAL y —) y con las variantes de categorías.
+    """
+    rama_pref_u = _u(rama_pref)
+    ramas_try = [rama_pref_u]
+    if rama_pref_u != "GENERAL":
+        ramas_try.append("GENERAL")
+    for rr in ramas_try:
+        for agr in ("GENERAL", "—"):
+            for cat in cats:
+                row = find_row(rr, agr, cat, mes)
+                if row:
+                    return _f(row.get("basico"))
+    return 0.0
+
+
 def _base_aportes(rem: float, nr: float, viaticos_nr: float) -> float:
     # Viáticos NR se excluyen de aportes
     return max(0.0, (rem + nr) - viaticos_nr)
 
 
-def _add(items: List[Dict[str, Any]], concepto: str, rem=0.0, nr=0.0, ded=0.0, base=0.0):
+def _add(items: List[Dict[str, Any]], concepto: str, rem=0.0, nr=0.0, ind=0.0, ded=0.0, base=0.0):
+    """Agrega una fila al recibo.
+
+    Compatibilidad con el HTML (campos r/n/i/d) + nombres explícitos.
+    """
     items.append({
         "concepto": concepto,
-        "base": _r2(base if base else (rem or nr or ded)),
+        "base": _r2(base if base else (rem or nr or ind or ded)),
+
+        # === Compat (HTML) ===
+        "r": _r2(rem),
+        "n": _r2(nr),
+        "i": _r2(ind),
+        "d": _r2(ded),
+
+        # === Nombres explícitos (por si el front cambia) ===
         "remunerativo": _r2(rem),
         "no_remunerativo": _r2(nr),
+        "indemnizatorio": _r2(ind),
         "deduccion": _r2(ded),
     })
 
@@ -201,10 +195,12 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     zona_pct = _f(payload.get("zona_pct") or 0)
     presentismo_ok = bool(payload.get("presentismo", True))
 
-    basico = _f(row["basico"])
-    nr1 = _f(row["no_rem_1"])
-    nr2 = _f(row["no_rem_2"])
-    nr_base = nr1 + nr2
+    basico = _f(row.get("basico") or 0.0)
+    # Maestro actual: NR consolidado en "suma_fija" (y opcionalmente "no_rem")
+    nr_base = _f(row.get("no_rem") or 0.0)
+    suma_fija = _f(row.get("suma_fija") or 0.0)
+    nr1 = 0.0
+    nr2 = suma_fija
 
     # Prorrateo por hs: Call Center y Menores Cereales NO
     factor_hs = 1.0
@@ -215,6 +211,41 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     nr_base *= factor_hs
     nr1 *= factor_hs
     nr2 *= factor_hs
+
+    # ---- Adicionales históricos (CCT 130/75 - Acuerdo 26/09/1983)
+    # Vidrierista (3,83% sobre básico inicial Vendedor B)
+    armado_vidriera = bool(payload.get("armado_vidriera"))
+    armado_rem = 0.0
+    if armado_vidriera:
+        base_vend_b = _find_basico_ref(mes, rama, ["Vendedor B", "VENDEDOR B"])
+        armado_rem = base_vend_b * 0.0383 * factor_hs
+
+    # Cajeros (Art. 30): A/C 12,25% sobre básico inicial Cajeros A; B 48% sobre básico inicial Cajeros B
+    manejo_caja = bool(payload.get("manejo_caja"))
+    cajero_tipo = str(payload.get("cajero_tipo") or "").strip().upper()
+    manejo_caja_rem = 0.0
+    if manejo_caja and cajero_tipo in ("A", "B", "C"):
+        if cajero_tipo == "B":
+            base_caj = _find_basico_ref(mes, rama, ["Cajeros B", "CAJEROS B"])
+            manejo_caja_rem = base_caj * 0.48 * factor_hs
+        else:
+            base_caj = _find_basico_ref(mes, rama, ["Cajeros A", "CAJEROS A"])
+            manejo_caja_rem = base_caj * 0.1225 * factor_hs
+
+    # Chofer/Ayudante (Art. 36): porcentaje por km sobre básicos iniciales de categorías referencia
+    km_tipo = str(payload.get("km_tipo") or "").strip().upper()
+    km_menos100 = int(_f(payload.get("km_menos100") or 0) or 0)
+    km_mas100 = int(_f(payload.get("km_mas100") or 0) or 0)
+    km_rem = 0.0
+    if km_tipo in ("AY", "CH") and (km_menos100 > 0 or km_mas100 > 0):
+        if km_tipo == "AY":
+            b1 = _find_basico_ref(mes, rama, ["Auxiliar A", "PERSONAL AUXILIAR A"])
+            b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado A", "AUXILIAR ESPECIALIZADO A"])
+            km_rem = (b1 * (0.0082 / 100.0) * km_menos100 + b2 * (0.01 / 100.0) * km_mas100) * factor_hs
+        else:
+            b1 = _find_basico_ref(mes, rama, ["Auxiliar B", "PERSONAL AUXILIAR B"])
+            b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado B", "AUXILIAR ESPECIALIZADO B"])
+            km_rem = (b1 * (0.01 / 100.0) * km_menos100 + b2 * (0.0115 / 100.0) * km_mas100) * factor_hs
 
     ant_fac = _ant_factor(rama, anios)
     ant_rem = basico * ant_fac
@@ -246,7 +277,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     # Horas extras + nocturnas (cálculo sobre “hora” de rem y de nr)
     # Divisor 200 (mensualizado 48hs)
-    base_pre = basico + ant_rem + zona_rem + a_cuenta + tit_rem + conex_rem + fun_rem
+    base_pre = basico + ant_rem + zona_rem + a_cuenta + tit_rem + conex_rem + fun_rem + armado_rem + manejo_caja_rem + km_rem
     base_nr_pre = nr_base + ant_nr + tit_nr + conex_nr
 
     hora_rem = (base_pre / 200.0) if base_pre else 0.0
@@ -331,6 +362,12 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
         _add(items, f"Adicional por conexiones ({conex})", rem=conex_rem, nr=conex_nr, base=basico + nr_base)
     if fun_rem:
         _add(items, "Adicionales Fúnebres", rem=fun_rem, base=fun_rem)
+    if armado_rem:
+        _add(items, "Armado de vidriera (3,83%)", rem=armado_rem, base=armado_rem)
+    if manejo_caja_rem:
+        _add(items, f"Manejo de Caja (Art. 30 - {cajero_tipo})", rem=manejo_caja_rem, base=manejo_caja_rem)
+    if km_rem:
+        _add(items, "Adicional por KM (Art. 36)", rem=km_rem, base=km_rem)
 
     if nr1:
         _add(items, "No Rem (variable)", nr=nr1, base=nr1)
@@ -384,31 +421,48 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
             "no_remunerativo": _r2(total_nr),
             "deducciones": _r2(total_ded),
             "neto": _r2(neto),
+
+            # compat HTML
+            "rem": _r2(total_rem),
+            "nr": _r2(total_nr),
+            "ind": _r2(0.0),
+            "ded": _r2(total_ded),
         },
     }
 
 
 def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
-    # Insumos
-    rama = p.get("rama")
-    mes = p.get("mes")
-    hs = _f(p.get("hs") or 48) or 48
-    hs = max(1.0, min(48.0, hs))
-    anios = int(_f(p.get("anios") or 0) or 0)
+    """Liquidación final (Renuncia / Despido con o sin causa).
 
-    ingreso = _parse_date(p.get("lf_ingreso"))
-    egreso = _parse_date(p.get("lf_egreso"))
+    Devuelve compat con el HTML:
+      - items: concepto + columnas r/n/i/d
+      - totales: rem/nr/ind/ded/neto
+
+    Criterio:
+      - Indemnización Art. 245 -> indemnizatorio (i) y NO integra base de aportes.
+      - Preaviso e Integración -> remunerativo (r).
+      - Vacaciones no gozadas y SAC proporcionales -> remunerativo (r).
+      - Base (MEJOR SALARIO) se toma desde lf_mrmnh si viene; si no, se aproxima.
+    """
+
+    rama = p.get('rama')
+    mes = p.get('mes')
+    hs = _f(p.get('hs') or 48) or 48
+    hs = max(1.0, min(48.0, hs))
+    anios = int(_f(p.get('anios') or 0) or 0)
+
+    ingreso = _parse_date(p.get('lf_ingreso'))
+    egreso = _parse_date(p.get('lf_egreso'))
     if not ingreso or not egreso:
         return {"ok": False, "error": "Liquidación final: faltan lf_ingreso / lf_egreso"}
 
-    # Para base mensual, el front debe enviar mrmnh si quiere (si no, lo aproximamos con basico del mes elegido)
-    mrmnh = _f(p.get("lf_mrmnh") or 0)
+    # Base indemnizatoria / mejor salario (incluye NR según política del sistema)
+    mrmnh = _f(p.get('lf_mrmnh') or 0)
     if mrmnh <= 0:
-        # aproximación: usar el básico del mes elegido (si hay)
-        row = find_row(p.get("rama"), p.get("agrup") or "—", p.get("categoria"), p.get("mes"))
+        row = find_row(p.get('rama'), p.get('agrup') or '—', p.get('categoria'), p.get('mes'))
         if row:
-            basico = _f(row["basico"])
-            nr = _f(row["no_rem_1"]) + _f(row["no_rem_2"])
+            basico = _f(row.get('basico') or 0.0)
+            nr = _f(row.get('no_rem', 0)) + _f(row.get('suma_fija', 0))
             factor_hs = 1.0
             if not _is_call(rama):
                 factor_hs = hs / 48.0
@@ -419,13 +473,12 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
         else:
             mrmnh = 0.0
 
-    # días mes egreso
+    # Días del mes de egreso
     first = egreso.replace(day=1)
     last = (first.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
     dias_mes = last.day
     dias_trab = egreso.day
 
-    # base diaria 30
     dia_30 = mrmnh / 30.0 if mrmnh else 0.0
     dias_trab_total = dia_30 * dias_trab
 
@@ -433,53 +486,63 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     vac_anuales = _vac_anuales_por_antig(anios)
     dias_anno = (egreso - dt.date(egreso.year, 1, 1)).days + 1
     vac_prop = (vac_anuales * dias_anno) / 365.0
-    vac_dias = math.floor(vac_prop + 1e-9)
-    vac_total = (mrmnh / 25.0) * vac_dias if vac_dias else 0.0
+    vac_dias = int(vac_prop)  # piso
+    vac_total = (mrmnh / 25.0) * vac_dias if (vac_dias and mrmnh) else 0.0
 
-    # SAC proporcional (simple)
+    # SAC proporcional
     sem_start = dt.date(egreso.year, 1, 1) if egreso.month <= 6 else dt.date(egreso.year, 7, 1)
     dias_sem = (egreso - sem_start).days + 1
-    sac_prop = (mrmnh / 12.0) * (dias_sem / 182.5)
+    sac_prop = (mrmnh / 12.0) * (dias_sem / 182.5) if mrmnh else 0.0
 
-    tipo = _u(p.get("lf_tipo") or "RENUNCIA")
+    tipo = _u(p.get('lf_tipo') or 'RENUNCIA')
     ind245 = 0.0
-    if tipo in ("DESPIDO_SIN_CAUSA", "DESPIDO SIN CAUSA"):
-        ind245 = mrmnh * max(1, anios)
+    anios_indemn = 0
+    if tipo in ('DESPIDO_SIN_CAUSA', 'DESPIDO SIN CAUSA'):
+        anios_indemn = max(1, anios)
+        ind245 = mrmnh * anios_indemn if mrmnh else 0.0
 
-    preav_dias = int(_f(p.get("lf_preaviso") or 0) or 0)
+    preav_dias = int(_f(p.get('lf_preaviso') or 0) or 0)
     preav = dia_30 * preav_dias if preav_dias else 0.0
-    sac_pre = (preav / 12.0) if bool(p.get("lf_sac_pre")) else 0.0
+    sac_pre = (preav / 12.0) if (preav and bool(p.get('lf_sac_pre'))) else 0.0
 
-    integ = bool(p.get("lf_integracion"))
+    integ = bool(p.get('lf_integracion'))
     integ_dias = (dias_mes - egreso.day) if integ else 0
     integ_total = dia_30 * integ_dias if integ_dias else 0.0
-    sac_int = (integ_total / 12.0) if bool(p.get("lf_sac_int")) else 0.0
+    sac_int = (integ_total / 12.0) if (integ_total and bool(p.get('lf_sac_int'))) else 0.0
 
     items: List[Dict[str, Any]] = []
     _add(items, f"Días trabajados ({dias_trab})", rem=dias_trab_total)
     if vac_dias:
         _add(items, f"Vacaciones no gozadas ({vac_dias})", rem=vac_total)
-    _add(items, "SAC proporcional", rem=sac_prop)
+    if sac_prop:
+        _add(items, 'SAC proporcional', rem=sac_prop)
+
     if ind245:
-        _add(items, "Indemnización Art. 245", rem=ind245)
+        _add(items, 'Indemnización Art. 245', ind=ind245)
+
     if preav:
         _add(items, f"Preaviso ({preav_dias} días)", rem=preav)
         if sac_pre:
-            _add(items, "SAC s/ Preaviso", rem=sac_pre)
+            _add(items, 'SAC s/ Preaviso', rem=sac_pre)
+
     if integ_total:
         _add(items, f"Integración mes despido ({integ_dias} días)", rem=integ_total)
         if sac_int:
-            _add(items, "SAC s/ Integración", rem=sac_int)
+            _add(items, 'SAC s/ Integración', rem=sac_int)
 
-    total_rem = sum(i["remunerativo"] for i in items)
-    total_nr = 0.0
+    # Totales antes de deducciones
+    total_rem = sum(it.get('r', 0.0) for it in items)
+    total_nr = sum(it.get('n', 0.0) for it in items)
+    total_ind = sum(it.get('i', 0.0) for it in items)
 
-    # Deducciones (mismas reglas)
-    jubilado = bool(p.get("jubilado"))
-    afiliado = bool(p.get("afiliado"))
-    osecac = bool(p.get("osecac", True))
+    # Deducciones (mismas reglas):
+    # - Jubilación/PAMI solo sobre Remunerativo
+    # - OSECAC/FAECYS/Sindicato sobre Rem + NR (sin viáticos)
+    jubilado = bool(p.get('jubilado'))
+    afiliado = bool(p.get('afiliado'))
+    osecac = bool(p.get('osecac', True))
 
-    viaticos_nr = _f(p.get("viaticos_nr") or 0)
+    viaticos_nr = _f(p.get('viaticos_nr') or 0)
     base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
 
     jub = 0.0 if jubilado else total_rem * 0.11
@@ -490,25 +553,159 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     sind_solid = base_ap * 0.02
     sind_af = base_ap * 0.02 if afiliado else 0.0
 
-    if jub: _add(items, "Jubilación (11%)", ded=jub, base=total_rem)
-    if pami: _add(items, "Ley 19.032 (3%)", ded=pami, base=total_rem)
-    if os_3: _add(items, "Obra Social (3%)", ded=os_3, base=base_ap)
-    if os_100: _add(items, "Aporte fijo OSECAC", ded=os_100, base=os_100)
-    if faecys: _add(items, "FAECYS (0,5%)", ded=faecys, base=base_ap)
-    if sind_solid: _add(items, "Sindicato (2%)", ded=sind_solid, base=base_ap)
-    if sind_af: _add(items, "Afiliación (2%)", ded=sind_af, base=base_ap)
+    if jub:
+        _add(items, 'Jubilación (11%)', ded=jub, base=total_rem)
+    if pami:
+        _add(items, 'Ley 19.032 (3%)', ded=pami, base=total_rem)
+    if os_3:
+        _add(items, 'Obra Social (3%)', ded=os_3, base=base_ap)
+    if os_100:
+        _add(items, 'Aporte fijo OSECAC', ded=os_100, base=os_100)
+    if faecys:
+        _add(items, 'FAECYS (0,5%)', ded=faecys, base=base_ap)
+    if sind_solid:
+        _add(items, 'Sindicato (2%)', ded=sind_solid, base=base_ap)
+    if sind_af:
+        _add(items, 'Afiliación (2%)', ded=sind_af, base=base_ap)
 
     total_ded = jub + pami + os_3 + os_100 + faecys + sind_solid + sind_af
-    neto = (total_rem + total_nr) - total_ded
+    neto = (total_rem + total_nr + total_ind) - total_ded
 
     return {
-        "ok": True,
-        "modo": "FINAL",
-        "items": items,
-        "totales": {
-            "remunerativo": _r2(total_rem),
-            "no_remunerativo": _r2(total_nr),
-            "deducciones": _r2(total_ded),
-            "neto": _r2(neto),
+        'ok': True,
+        'modo': 'FINAL',
+        'base_indemnizatoria': _r2(mrmnh),
+        'anios_indemn': int(anios_indemn),
+        'items': items,
+        'totales': {
+            'remunerativo': _r2(total_rem),
+            'no_remunerativo': _r2(total_nr),
+            'indemnizatorio': _r2(total_ind),
+            'deducciones': _r2(total_ded),
+            'neto': _r2(neto),
+
+            # compat HTML
+            'rem': _r2(total_rem),
+            'nr': _r2(total_nr),
+            'ind': _r2(total_ind),
+            'ded': _r2(total_ded),
         },
     }
+
+
+# -----------------
+# Wrappers (compat con el HTML)
+# -----------------
+
+def _norm(s: Any) -> str:
+    return str(s or "").strip()
+
+
+def _u2(s: Any) -> str:
+    return _norm(s).upper()
+
+
+def _b(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    s = str(v or "").strip().lower()
+    return s in ("1", "true", "si", "sí", "s", "on", "yes")
+
+
+def _mes_key(v: Any) -> str:
+    if isinstance(v, (dt.date, dt.datetime)):
+        return v.strftime("%Y-%m")
+    s = _norm(v)
+    if len(s) >= 7 and s[4] == "-":
+        return s[:7]
+    return s
+
+
+def calcular_mensual_desde_query(qp: Dict[str, Any]) -> Dict[str, Any]:
+    rama = _u2(qp.get("rama"))
+    mes = _mes_key(qp.get("mes"))
+    if not rama or not mes:
+        return {"ok": False, "error": "Faltan parametros: rama y mes"}
+
+    agrup = _norm(qp.get("agrup") or "—")
+    categoria = _norm(qp.get("categoria") or "—")
+
+    hs = _f(qp.get("jornada") or qp.get("hs") or 48)
+    anios = _f(qp.get("anios_antig") or qp.get("anios") or 0)
+    zona_pct = _f(qp.get("zona") or qp.get("zona_pct") or 0)
+
+    # turismo titulo
+    tur_titulo_pct = _f(qp.get("titulo_pct") or 0)
+    if not tur_titulo_pct:
+        tur_titulo_pct = float(escalas.get_titulo_pct_por_nivel(_norm(qp.get("tituloNivel"))))
+
+    # agua conexiones
+    agua_conex = int(_f(qp.get("conex") or qp.get("agua_conex") or 0) or 0)
+
+    payload: Dict[str, Any] = {
+        "modo": "MENSUAL",
+        "rama": rama,
+        "agrup": agrup,
+        "categoria": categoria,
+        "mes": mes,
+        "hs": hs,
+        "anios": anios,
+        "zona_pct": zona_pct,
+        "presentismo": _b(qp.get("presentismo", True)),
+        "tur_titulo_pct": tur_titulo_pct,
+        "agua_conex": agua_conex,
+        "armado_vidriera": _b(qp.get("armadoAuto") or qp.get("armado_vidriera")),
+        "manejo_caja": _b(qp.get("manejoCaja") or qp.get("manejo_caja")),
+        "cajero_tipo": _norm(qp.get("cajero_tipo") or qp.get("cajeroTipo") or qp.get("cajero_tipo2")),
+        "km_tipo": _norm(qp.get("kmTipo") or qp.get("km_tipo")),
+        "km_menos100": _f(qp.get("kmMenos100") or qp.get("km_menos100") or 0),
+        "km_mas100": _f(qp.get("kmMas100") or qp.get("km_mas100") or 0),
+        "a_cuenta": _f(qp.get("aCuentaNR") or qp.get("a_cuenta") or 0),
+        "viaticos_nr": _f(qp.get("viaticosNR") or qp.get("viaticos_nr") or 0),
+        "hex50": _f(qp.get("hex50") or 0),
+        "hex100": _f(qp.get("hex100") or 0),
+        "noct": _f(qp.get("noct") or qp.get("nocturnas") or 0),
+        "fer_si": _f(qp.get("ferTrab") or qp.get("fer_si") or 0),
+        "fer_no": _f(qp.get("ferNoTrab") or qp.get("fer_no") or 0),
+        "vac_goz": _f(qp.get("vacGoz") or qp.get("vac_goz") or 0),
+        "lic_sg": _f(qp.get("licSG") or qp.get("lic_sg") or 0),
+        "aus": _f(qp.get("aus") or 0),
+        "faltante": _f(qp.get("faltante") or 0),
+        "embargo": _f(qp.get("embargo") or 0) + _f(qp.get("adelanto") or qp.get("adelantoSueldo") or 0),
+        "jubilado": _b(qp.get("jubilado")),
+        "afiliado": _b(qp.get("afiliado")),
+        "osecac": _b(qp.get("osecac", True)),
+    }
+
+    # flags fúnebres (funAdic1..N)
+    for k, v in qp.items():
+        if str(k).startswith("funAdic"):
+            payload[str(k)] = v
+
+    return calcular_recibo(payload)
+
+
+def calcular_final_desde_query(qp: Dict[str, Any]) -> Dict[str, Any]:
+    # Para final usamos el mismo motor interno (_calcular_final)
+    payload: Dict[str, Any] = {
+        "modo": "FINAL",
+        "lf_ingreso": _norm(qp.get("ingreso") or qp.get("alta") or qp.get("lf_ingreso")),
+        "lf_egreso": _norm(qp.get("egreso") or qp.get("baja") or qp.get("lf_egreso")),
+        "lf_tipo": _norm(qp.get("tipo") or qp.get("causal") or qp.get("lf_tipo") or "RENUNCIA"),
+        "lf_mrmnh": _f(qp.get("mejor_salario") or qp.get("lf_mrmnh") or 0),
+        "lf_preaviso": _f(qp.get("preaviso") or qp.get("lf_preaviso") or 0),
+        "lf_sac_pre": _b(qp.get("sac_preaviso") or qp.get("lf_sac_pre")),
+        "lf_integracion": _b(qp.get("integracion") or qp.get("lf_integracion")),
+        "lf_sac_int": _b(qp.get("sac_integracion") or qp.get("lf_sac_int")),
+        "jubilado": _b(qp.get("jubilado")),
+        "afiliado": _b(qp.get("afiliado")),
+        "osecac": _b(qp.get("osecac", True)),
+        "viaticos_nr": _f(qp.get("viaticosNR") or qp.get("viaticos_nr") or 0),
+    }
+
+    # compat: si mandan rama/mes/categoria, se guardan (no son obligatorios para final)
+    for k in ("rama", "agrup", "categoria", "mes"):
+        if k in qp:
+            payload[k] = qp.get(k)
+
+    return calcular_recibo(payload)

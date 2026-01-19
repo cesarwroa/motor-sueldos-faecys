@@ -1,157 +1,192 @@
 # -*- coding: utf-8 -*-
+"""escalas.py (sin pandas)
+
+Lee el maestro Excel con openpyxl y provee:
+- Meta (ramas, agrupamientos, categorias, meses globales y por rama)
+- Lookup de base (basico, no_rem, suma_fija)
+- Adicionales (Fúnebres) y reglas (Agua Potable conexiones)
+
+El backend usa este archivo para evitar dependencias pesadas (pandas) que suelen romper en deploy.
 """
-escalas.py (sin pandas)
-Lee el maestro Excel con openpyxl y expone helpers para:
-- /meta (ramas, meses, agrupamientos, categorias)
-- /payload (básico / no_rem / suma_fija)
-- reglas: conexiones Agua Potable, adicionales Fúnebres, título Turismo, cajero, KM
-"""
+
 from __future__ import annotations
 
+import datetime as dt
 import os
-import datetime as _dt
 from functools import lru_cache
-from typing import Dict, Tuple, List, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import openpyxl
 
 
-# ---------------------------
-# Config
-# ---------------------------
-
 def _default_maestro_path() -> str:
-    # Preferimos SIEMPRE data/maestro_actualizado.xlsx (evita conflicto con un maestro en raíz)
-    p1 = os.path.join("data", "maestro_actualizado.xlsx")
+    # Preferimos siempre data/maestro_actualizado.xlsx
+    here = os.path.dirname(os.path.abspath(__file__))
+    p1 = os.path.join(here, "data", "maestro_actualizado.xlsx")
     if os.path.exists(p1):
         return p1
-    # fallback
-    p2 = os.path.join("data", "maestro.xlsx")
+    p2 = os.path.join(here, "maestro_actualizado.xlsx")
     if os.path.exists(p2):
         return p2
-    return "maestro.xlsx"
+    # fallbacks
+    p3 = os.path.join(here, "data", "maestro.xlsx")
+    if os.path.exists(p3):
+        return p3
+    return os.path.join(here, "maestro.xlsx")
 
 
 MAESTRO_PATH = os.getenv("MAESTRO_PATH", _default_maestro_path())
 
+# CO: Limite inferior del selector de meses (inclusive).
+# Default: 2025-12 para evitar que el selector muestre meses viejos.
+# Para permitir meses anteriores, setear env MIN_MES_SELECT=YYYY-MM.
+MIN_MES_SELECT = os.getenv('MIN_MES_SELECT', '2025-12').strip()
 
-# ---------------------------
-# Utils
-# ---------------------------
+def _filter_meses(meses):
+    mm = MIN_MES_SELECT
+    if mm and len(mm)==7 and mm[4]=='-':
+        return [m for m in meses if m >= mm]
+    return meses
+
+
+
+def _norm(x: Any) -> str:
+    return str(x or "").strip()
+
+
+def _u(x: Any) -> str:
+    return _norm(x).upper()
+
 
 def _mes_to_key(v: Any) -> str:
-    if isinstance(v, (_dt.datetime, _dt.date)):
-        return v.strftime("%Y-%m")
+    """Convierte una celda de mes a clave YYYY-MM y filtra basura (p.ej. 'MES - AÑO')."""
+
+    def _valid_ym(s: str) -> bool:
+        if len(s) != 7 or s[4] != '-':
+            return False
+        y, m = s[:4], s[5:7]
+        if not (y.isdigit() and m.isdigit()):
+            return False
+        mm = int(m)
+        return 1 <= mm <= 12
+
+    if isinstance(v, (dt.datetime, dt.date)):
+        s = v.strftime('%Y-%m')
+        return s if _valid_ym(s) else ''
     if v is None:
-        return ""
-    s = str(v).strip()
-    # admite "2026-04-01 00:00:00"
-    if len(s) >= 7 and s[4] == "-" and s[6].isdigit():
-        return s[:7]
-    return s
+        return ''
+    s = _norm(v)
+    # admite '2026-04-01 00:00:00'
+    if len(s) >= 7 and s[4] == '-':
+        s = s[:7]
+    return s if _valid_ym(s) else ''
+
 
 def _to_float(v: Any) -> float:
     if v is None or v == "":
         return 0.0
-    if isinstance(v, (int, float)):
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
         return float(v)
-    s = str(v).strip()
-    # números argentinos: "1.176.516" o "1.176.516,50"
+    s = _norm(v)
+    if not s:
+        return 0.0
+    # formato AR: 1.234.567,89
+    s = s.replace("$", "").replace(" ", "")
     s = s.replace(".", "").replace(",", ".")
     try:
         return float(s)
     except Exception:
         return 0.0
 
-def _norm(s: Any) -> str:
-    return str(s).strip() if s is not None else ""
-
-
-# ---------------------------
-# Maestro loader / parser
-# ---------------------------
 
 @lru_cache(maxsize=1)
 def _load_wb() -> openpyxl.Workbook:
+    if not os.path.exists(MAESTRO_PATH):
+        raise FileNotFoundError(f"No se encontró el maestro: {MAESTRO_PATH}")
     return openpyxl.load_workbook(MAESTRO_PATH, data_only=True)
 
+
 @lru_cache(maxsize=1)
-def _build_index() -> Dict[str, Any]:
+def _build() -> Dict[str, Any]:
     wb = _load_wb()
 
-    # salida
     payload: Dict[Tuple[str, str, str, str], Dict[str, float]] = {}
     ramas_set = set()
     meses_set = set()
     agrup_by_rama: Dict[str, set] = {}
-    cat_by_rama_agrup: Dict[Tuple[str, str], set] = {}
+    cat_by_rama_agr: Dict[Tuple[str, str], set] = {}
     meses_by_rama: Dict[str, set] = {}
+    meses_by_combo: Dict[Tuple[str, str, str], set] = {}
 
-    def add_row(rama: str, agrup: str, cat: str, mes: str, bas: float, nr: float, sf: float):
-        rama_u = _norm(rama).upper()
-        agrup_u = _norm(agrup) if _norm(agrup) else "—"
-        cat_u = _norm(cat) if _norm(cat) else "—"
-
-        # Fix maestro FUNEBRES: a veces las categorías quedaron en "Agrupamiento" y "Categoria" viene vacío.
-        if rama_u == "FUNEBRES" and (cat_u == "—" or cat_u == "") and agrup_u not in ("—", ""):
-            cat_u = agrup_u
-            agrup_u = "—"
+    def add_row(rama: str, agrup: Any, categoria: Any, mes: Any, bas: float, nr: float, sf: float):
+        rama_u = _u(rama)
+        if not rama_u:
+            return
+        agr = _norm(agrup) or "—"
+        cat = _norm(categoria) or "—"
         mes_k = _mes_to_key(mes)
-
-        if not rama_u or not mes_k:
+        if not mes_k:
             return
 
-        payload[(rama_u, agrup_u, cat_u, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
+        # Fix maestro: en FUNEBRES a veces la categoria quedo en Agrupamiento
+        if rama_u == "FUNEBRES" and (cat in ("—", "") and agr not in ("—", "")):
+            cat = agr
+            agr = "—"
+
+        payload[(rama_u, agr, cat, mes_k)] = {"basico": float(bas), "no_rem": float(nr), "suma_fija": float(sf)}
+
         ramas_set.add(rama_u)
         meses_set.add(mes_k)
-        agrup_by_rama.setdefault(rama_u, set()).add(agrup_u)
-        cat_by_rama_agrup.setdefault((rama_u, agrup_u), set()).add(cat_u)
+        agrup_by_rama.setdefault(rama_u, set()).add(agr)
+        cat_by_rama_agr.setdefault((rama_u, agr), set()).add(cat)
         meses_by_rama.setdefault(rama_u, set()).add(mes_k)
+        meses_by_combo.setdefault((rama_u, agr, cat), set()).add(mes_k)
 
-    # --- Tabulares (GENERAL, TURISMO, FUNEBRES, CEREALES, CALL CENTER)
-    for sh_name in wb.sheetnames:
-        if not sh_name.startswith("Categorias_"):
+    # ---- Hojas tabulares Categorias_* (excepto Agua Potable)
+    for sh in wb.sheetnames:
+        if not sh.startswith("Categorias_"):
             continue
-        if sh_name == "Categorias_Agua_Potable":
-            continue  # parse especial abajo
+        if sh == "Categorias_Agua_Potable":
+            continue
 
-        ws = wb[sh_name]
-        # headers en fila 1
-        headers = [_norm(ws.cell(1, c).value).lower() for c in range(1, 10)]
-        # buscamos indices
-        def idx(name: str) -> Optional[int]:
-            for i,h in enumerate(headers, start=1):
+        ws = wb[sh]
+        headers = [_norm(ws.cell(1, c).value).lower() for c in range(1, 15)]
+
+        def col(name: str, fallback: int) -> int:
+            for i, h in enumerate(headers, start=1):
                 if h == name:
                     return i
-            return None
+            return fallback
 
-        i_rama = idx("rama") or 1
-        i_agr = idx("agrupamiento") or 2
-        i_cat = idx("categoria") or 3
-        i_mes = idx("mes") or 4
-        i_bas = idx("basico") or 5
-        i_nr  = idx("no_rem") or 6
-        i_sf  = idx("suma_fija") or 7
+        c_rama = col("rama", 1)
+        c_agr = col("agrupamiento", 2)
+        c_cat = col("categoria", 3)
+        c_mes = col("mes", 4)
+        c_bas = col("basico", 5)
+        c_nr = col("no_rem", 6)
+        c_sf = col("suma_fija", 7)
 
         for r in range(2, ws.max_row + 1):
-            rama = ws.cell(r, i_rama).value
+            rama = ws.cell(r, c_rama).value
             if rama is None:
                 continue
-            mes = ws.cell(r, i_mes).value
-            rama_u = _norm(rama).upper()
-            agrup = ws.cell(r, i_agr).value
-            cat = ws.cell(r, i_cat).value
-            bas = _to_float(ws.cell(r, i_bas).value)
-            nr  = _to_float(ws.cell(r, i_nr).value)
-            sf  = _to_float(ws.cell(r, i_sf).value)
-            add_row(rama_u, agrup, cat, mes, bas, nr, sf)
+            mes = ws.cell(r, c_mes).value
+            add_row(
+                rama=rama,
+                agrup=ws.cell(r, c_agr).value,
+                categoria=ws.cell(r, c_cat).value,
+                mes=mes,
+                bas=_to_float(ws.cell(r, c_bas).value),
+                nr=_to_float(ws.cell(r, c_nr).value),
+                sf=_to_float(ws.cell(r, c_sf).value),
+            )
 
-    # --- AGUA POTABLE (sheet no tabular, por bloques)
+    # ---- Agua Potable: formato por bloques
     if "Categorias_Agua_Potable" in wb.sheetnames:
         ws = wb["Categorias_Agua_Potable"]
         rama_u = "AGUA POTABLE"
         current_agr = "—"
-        current_cat = ""
+        current_cat = "—"
         in_table = False
 
         for r in range(1, ws.max_row + 1):
@@ -160,356 +195,210 @@ def _build_index() -> Dict[str, Any]:
             c = ws.cell(r, 3).value
             d = ws.cell(r, 4).value
 
-            a_s = _norm(a)
-
-            # AGRUPAMIENTO:
-            if isinstance(a, str) and a_s.upper().startswith("AGRUPAMIENTO"):
-                # el valor puede venir en col 2
-                current_agr = _norm(b) if _norm(b) else "—"
+            a_s = _u(a)
+            if isinstance(a, str) and a_s.startswith("AGRUPAMIENTO"):
+                current_agr = _norm(b) or "—"
                 in_table = False
                 continue
-
-            # Categoría:
-            if isinstance(a, str) and a_s.upper().startswith("CATEGOR"):
-                current_cat = _norm(b)
+            if isinstance(a, str) and a_s.startswith("CATEGOR"):
+                current_cat = _norm(b) or "—"
                 in_table = False
                 continue
-
-            # header MES - AÑO
-            if isinstance(a, str) and a_s.upper().startswith("MES"):
+            if isinstance(a, str) and a_s.startswith("MES"):
                 in_table = True
                 continue
-
             if not in_table:
                 continue
 
-            # filas de mes
             mes_k = _mes_to_key(a)
             if not mes_k or mes_k.lower().startswith("mes"):
                 continue
 
             bas = _to_float(b)
-            # En Agua Potable, los NR vienen como 2 columnas (incrementos NR) => los consolidamos en "suma_fija"
+            # Agua: NR en 2 columnas -> consolidamos en suma_fija
             sf = _to_float(c) + _to_float(d)
-            nr = 0.0
+            add_row(rama_u, current_agr, current_cat, mes_k, bas, 0.0, sf)
 
-            add_row(rama_u, current_agr or "—", current_cat or "—", mes_k, bas, nr, sf)
-
-    # ---------------------------
-    # Adicionales Fúnebres
-    # ---------------------------
-    funebres_adic: Dict[str, List[Dict[str, Any]]] = {}  # mes -> list
+    # ---- Adicionales Fúnebres
+    funebres_adic: Dict[str, List[Dict[str, Any]]] = {}
     if "Adicionales" in wb.sheetnames:
         ws = wb["Adicionales"]
-        # headers: Rama, Concepto, Mes, Tipo, Monto, % , Observación
         for r in range(2, ws.max_row + 1):
-            rama = _norm(ws.cell(r, 1).value)
-            if rama.lower() not in ["funebres", "fúnebres"]:
+            rama = _u(ws.cell(r, 1).value)
+            if rama not in ("FUNEBRES", "FÚNEBRES"):
                 continue
             concepto = _norm(ws.cell(r, 2).value)
             mes = _mes_to_key(ws.cell(r, 3).value)
-            tipo = _norm(ws.cell(r, 4).value).lower()  # "monto" o "porcentaje"
+            tipo = _u(ws.cell(r, 4).value)
             monto = _to_float(ws.cell(r, 5).value)
             pct = _to_float(ws.cell(r, 6).value)
             obs = _norm(ws.cell(r, 7).value)
             if not mes or not concepto:
                 continue
-            funebres_adic.setdefault(mes, []).append({
-                "id": concepto,        # id simple
-                "label": concepto,     # label
-                "tipo": "pct" if "por" in tipo else "monto",
-                "monto": monto,
-                "pct": pct,
-                "obs": obs,
-            })
+            funebres_adic.setdefault(mes, []).append(
+                {
+                    "id": concepto,
+                    "label": concepto,
+                    "tipo": "pct" if "POR" in tipo else "monto",
+                    "monto": monto,
+                    "pct": pct,
+                    "obs": obs,
+                }
+            )
 
-    # ---------------------------
-    # Build meta
-    # ---------------------------
+    # ---- Reglas conexiones (Agua Potable)
+    reglas_conex: List[Dict[str, Any]] = []
+    if "ReglasConexiones" in wb.sheetnames:
+        ws = wb["ReglasConexiones"]
+        headers = [_norm(ws.cell(1, c).value).lower() for c in range(1, 10)]
+        def _c(name: str) -> Optional[int]:
+            for i, h in enumerate(headers, start=1):
+                if h == name:
+                    return i
+            return None
+        c_base = _c("base") or 1
+        c_pct = _c("porcentaje") or 2
+        c_det = _c("detalle") or 3
+        for r in range(2, ws.max_row + 1):
+            base = int(_to_float(ws.cell(r, c_base).value))
+            pct = _to_float(ws.cell(r, c_pct).value)
+            det = _norm(ws.cell(r, c_det).value)
+            if base <= 0:
+                continue
+            reglas_conex.append({"base": base, "pct": pct, "detalle": det})
+        reglas_conex.sort(key=lambda x: x["base"])
+
     ramas = sorted(ramas_set)
     meses = sorted(meses_set)
+    meses = _filter_meses(meses)
 
     agrupamientos: Dict[str, List[str]] = {}
     categorias: Dict[str, Dict[str, List[str]]] = {}
-
     for rama in ramas:
         agrupamientos[rama] = sorted(list(agrup_by_rama.get(rama, set())))
         categorias[rama] = {}
         for agr in agrupamientos[rama]:
-            categorias[rama][agr] = sorted(list(cat_by_rama_agrup.get((rama, agr), set())))
+            categorias[rama][agr] = sorted(list(cat_by_rama_agr.get((rama, agr), set())))
 
     return {
         "payload": payload,
         "meta": {
             "ramas": ramas,
-            "meses": meses,
+            "meses": _filter_meses(meses),
+            "meses_por_rama": {k: _filter_meses(sorted(list(v))) for k, v in meses_by_rama.items()},
             "agrupamientos": agrupamientos,
             "categorias": categorias,
         },
-        "meses_by_rama": {k: sorted(list(v)) for k, v in meses_by_rama.items()},
         "funebres_adic": funebres_adic,
+        "reglas_conex": reglas_conex,
+        "meses_combo": meses_by_combo,
     }
 
 
-# ---------------------------
-# Public API (used by main.py)
-# ---------------------------
+# -----------------
+# Public helpers
+# -----------------
+
+def get_meta_full() -> Dict[str, Any]:
+    d = _build()["meta"]
+    return {"ok": True, **d}
+
 
 def get_meta() -> Dict[str, Any]:
-    return _build_index()["meta"]
+    # compat
+    return _build()["meta"]
+
+
+def list_meses_combo(rama: str, agrup: str = "—", categoria: str = "—") -> Dict[str, Any]:
+    r = _u(rama)
+    a = _norm(agrup) or "—"
+    c = _norm(categoria) or "—"
+    m = _build().get("meses_combo", {})
+    meses = sorted(list(m.get((r, a, c), set())))
+    if not meses and a != "—":
+        # fallback: algunos maestros usan agrup "—"
+        meses = sorted(list(m.get((r, "—", c), set())))
+    meses = _filter_meses(meses)
+    return {"ok": True, "rama": r, "agrup": a, "categoria": c, "meses": meses}
+
+
+def find_row(rama: str, agrup: str, categoria: str, mes: str) -> Optional[Dict[str, Any]]:
+    key = (_u(rama), _norm(agrup) or "—", _norm(categoria) or "—", _mes_to_key(mes))
+    rec = _build()["payload"].get(key)
+    if rec:
+        return {"rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec}
+    # fallback agrup "—"
+    key2 = (_u(rama), "—", _norm(categoria) or "—", _mes_to_key(mes))
+    rec2 = _build()["payload"].get(key2)
+    if rec2:
+        return {"rama": key2[0], "agrup": key2[1], "categoria": key2[2], "mes": key2[3], **rec2}
+    return None
+
 
 def get_payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—") -> Dict[str, Any]:
-    """Devuelve los valores base del maestro para la combinación dada.
-
-    Se usa en:
-      - /payload (solo rama + mes)
-      - /calcular (rama + mes + agrup + categoria) como base.
-    """
-    idx = _build_index()
-    key = (_norm(rama).upper(), _norm(agrup) or "—", _norm(categoria) or "—", _mes_to_key(mes))
-    rec = idx["payload"].get(key)
-
-    if not rec:
-        # fallback: algunos front mandan "—" en agrup/cat o vienen vacíos
-        key2 = (_norm(rama).upper(), "—", "—", _mes_to_key(mes))
-        rec = idx["payload"].get(key2)
-
-    if not rec:
+    hit = find_row(rama=rama, agrup=agrup, categoria=categoria, mes=mes)
+    if not hit:
         return {
             "ok": False,
             "error": "No se encontró esa combinación en el maestro",
-            "rama": _norm(rama).upper(),
+            "rama": _u(rama),
             "agrup": _norm(agrup) or "—",
             "categoria": _norm(categoria) or "—",
             "mes": _mes_to_key(mes),
         }
-
-    return {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec}
-
-def calcular_payload(
-    rama: str,
-    agrup: str,
-    categoria: str,
-    mes: str,
-    jornada: float = 48,
-    anios_antig: float = 0,
-    osecac: bool = True,
-    afiliado: bool = False,
-    sind_pct: float = 0,
-    titulo_pct: float = 0,
-) -> Dict[str, Any]:
-    """Cálculo del endpoint /calcular (servidor).
-
-    El front NO calcula: solo renderiza.
-    Devuelve items + totales numéricos para que el HTML muestre cada fila.
-
-    Versión núcleo (GENERAL): Básico, Antigüedad, Presentismo, NR base y descuentos principales.
-    """
-    base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
-    if not base.get("ok"):
-        return base
-
-    # -------- Bases prorrateadas (48hs) --------
-    j = float(jornada or 48)
-    factor = (j / 48.0) if 48.0 else 1.0
-
-    bas_base = float(base.get("basico", 0.0) or 0.0)
-    nr_base = float(base.get("no_rem", 0.0) or 0.0)
-    sf_base = float(base.get("suma_fija", 0.0) or 0.0)
-
-    bas = bas_base * factor
-    nr = nr_base * factor
-    sf = sf_base * factor
-
-    # -------- Cálculos núcleo --------
-    presentismo = bas / 12.0
-    antig = bas * (float(anios_antig or 0.0) * 0.01)
-
-    rem_total = bas + presentismo + antig
-    nr_total = nr + sf
-
-    jub = rem_total * 0.11
-    pami = rem_total * 0.03
-    os_aporte = rem_total * 0.03 if bool(osecac) else 0.0
-    osecac_100 = 100.0 if bool(osecac) else 0.0
-
-    sind = 0.0
-    if bool(afiliado) and float(sind_pct or 0) > 0:
-        sind = (rem_total + nr_total) * (float(sind_pct) / 100.0)
-
-    ded_total = jub + pami + os_aporte + osecac_100 + sind
-    neto = (rem_total + nr_total) - ded_total
-
-    def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
-        out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
-        if base_num:
-            out["base"] = float(base_num)
-        return out
-
-    items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas)]
-
-    if antig:
-        items.append(item("Antigüedad", r=antig, base_num=bas))
-
-    items.append(item("Presentismo", r=presentismo, base_num=bas + antig))
-
-    if nr:
-        items.append(item("No Rem (variable)", n=nr))
-    if sf:
-        items.append(item("Suma Fija (NR)", n=sf))
-
-    items.append(item("Jubilación 11%", d=jub, base_num=rem_total))
-    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_total))
-
-    if bool(osecac):
-        items.append(item("Obra Social 3%", d=os_aporte, base_num=rem_total))
-        items.append(item("OSECAC $100", d=osecac_100))
-    else:
-        items.append(item("Obra Social 3%", d=0.0, base_num=rem_total))
-
-    if sind:
-        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_total + nr_total)))
-
-    return {
-        "ok": True,
-        "rama": base["rama"],
-        "agrup": base["agrup"],
-        "categoria": base["categoria"],
-        "mes": base["mes"],
-        "jornada": j,
-        "anios_antig": float(anios_antig or 0),
-        "osecac": bool(osecac),
-        "afiliado": bool(afiliado),
-        "sind_pct": float(sind_pct or 0),
-        "titulo_pct": float(titulo_pct or 0),
-
-        "basico_base": float(bas_base),
-        "no_rem_base": float(nr_base),
-        "suma_fija_base": float(sf_base),
-
-        "basico": float(bas),
-        "no_rem": float(nr),
-        "suma_fija": float(sf),
-
-        "items": items,
-        "totales": {
-            "rem": float(rem_total),
-            "nr": float(nr_total),
-            "ded": float(ded_total),
-            "neto": float(neto),
-        },
-    }
+    return {"ok": True, **hit}
 
 
-def get_adicionales_funebres(mes: str) -> List[Dict[str, Any]]:
-    idx = _build_index()
+def get_adicionales_funebres(mes: str) -> Dict[str, Any]:
     mes_k = _mes_to_key(mes)
-    return idx["funebres_adic"].get(mes_k, [])
+    items = _build()["funebres_adic"].get(mes_k, [])
+    return {"ok": True, "mes": mes_k, "items": items}
 
-def match_regla_conexiones(conexiones: int) -> Dict[str, Any]:
-    """
-    Agua Potable: reglas por umbrales (según tu UI):
-    A: hasta 500
-    B: 501-1000
-    C: 1001-1600
-    D: más de 1600
-    El % es 7% encadenado (A=0%, B=7%, C=14,49%, D=22,5043%).
-    """
+
+def match_regla_conexiones(cantidad: int) -> Dict[str, Any]:
+    regs = _build()["reglas_conex"]
+    if not regs:
+        return {"ok": False, "error": "No hay reglas de conexiones en el maestro"}
     try:
-        n = int(conexiones)
+        n = int(cantidad)
     except Exception:
-        n = 0
-    if n <= 0:
-        return {"cat": None, "pct": 0.0, "label": None}
+        return {"ok": False, "error": "Cantidad inválida"}
 
-    if n <= 500:
-        level = 0
-        cat = "A"
-        label = "A (hasta 500)"
-    elif n <= 1000:
-        level = 1
-        cat = "B"
-        label = "B (501 a 1000)"
-    elif n <= 1600:
-        level = 2
-        cat = "C"
-        label = "C (1001 a 1600)"
-    else:
-        level = 3
-        cat = "D"
-        label = "D (más de 1600)"
+    best = None
+    for r in regs:
+        if n >= int(r["base"]):
+            best = r
+        else:
+            break
+    if not best:
+        best = regs[0]
+    return {"ok": True, "cantidad": n, **best}
 
-    pct = (1.07 ** level) - 1.0  # level 0 => 0
-    return {"cat": cat, "pct": pct, "label": label}
 
 def get_titulo_pct_por_nivel(nivel: str) -> float:
-    n = _norm(nivel).lower()
-    if n in ["terciario", "terciario_turismo", "terciario (2.5%)", "2.5", "2,5"]:
+    n = _u(nivel)
+    if n in ("TERCIARIO", "TERCIARY"):
         return 2.5
-    if n in ["universitario", "licenciatura", "universitario (5%)", "5"]:
+    if n in ("UNIVERSITARIO", "LICENCIATURA", "UNIVERSITY"):
         return 5.0
     return 0.0
 
+
 def get_regla_cajero(tipo: str) -> Dict[str, Any]:
-    """
-    Regla (CCT 130/75 - Acuerdo 26/09/1983):
-      - Cajeros A y C: 12,25% sobre básico inicial Cajeros A
-      - Cajeros B: 48% sobre básico inicial Cajeros B
-    """
-    t = _norm(tipo).upper()
-    if t in ["A", "CAJERO A", "CAJEROS A", "CAJERO C", "CAJEROS C", "C"]:
-        return {"tipo": t, "pct": 12.25}
-    if t in ["B", "CAJERO B", "CAJEROS B"]:
-        return {"tipo": t, "pct": 48.0}
-    return {"tipo": t, "pct": 0.0}
+    # Regla histórica (Acuerdo 26/09/1983) - porcentajes
+    t = _u(tipo)
+    if t in ("A", "C"):
+        return {"ok": True, "tipo": t, "pct": 12.25}
+    if t == "B":
+        return {"ok": True, "tipo": t, "pct": 48.0}
+    return {"ok": False, "error": "Tipo inválido"}
+
 
 def get_regla_km(categoria: str, km: float) -> Dict[str, Any]:
-    """Normaliza el input de KM para el endpoint /regla-km.
-
-    El motor (y/o el front) puede decidir si aplica la regla <=100 o >100.
-    Acá devolvemos ambos tramos ya separados.
-    """
+    # En el HTML actual se calcula directo; dejamos endpoint por compatibilidad
     try:
-        k = float(km or 0)
+        kmv = float(km)
     except Exception:
-        k = 0.0
+        return {"ok": False, "error": "km inválido"}
+    return {"ok": True, "categoria": _u(categoria), "km": kmv}
 
-    km_le_100 = min(k, 100.0)
-    km_gt_100 = max(k - 100.0, 0.0)
-
-    return {
-        "categoria": _norm(categoria),
-        "km": k,
-        "km_le_100": km_le_100,
-        "km_gt_100": km_gt_100,
-    }
-
-# ---------------------------
-# Compat helpers (para calculo.py)
-# ---------------------------
-
-def find_row(rama: str, mes: str, agrup: str = "—", categoria: str = "—") -> Dict[str, float]:
-    """Compat con el motor offline.
-
-    Devuelve un dict con claves: basico, no_rem, suma_fija.
-    Si no existe combinación exacta, intenta fallback a agrup "—".
-    """
-    idx = _build_index()
-    payload = idx.get("payload", {})
-
-    rama_u = _norm(rama).upper()
-    agrup_u = _norm(agrup) if _norm(agrup) else "—"
-    cat_u = _norm(categoria) if _norm(categoria) else "—"
-    mes_k = _mes_to_key(mes)
-
-    row = payload.get((rama_u, agrup_u, cat_u, mes_k))
-    if row is None and agrup_u != "—":
-        row = payload.get((rama_u, "—", cat_u, mes_k))
-    if row is None:
-        return {"basico": 0.0, "no_rem": 0.0, "suma_fija": 0.0}
-
-    return {
-        "basico": float(row.get("basico", 0.0) or 0.0),
-        "no_rem": float(row.get("no_rem", 0.0) or 0.0),
-        "suma_fija": float(row.get("suma_fija", 0.0) or 0.0),
-    }

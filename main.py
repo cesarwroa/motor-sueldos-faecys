@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from typing import Any, Dict
 
-from escalas import get_meta, get_payload
-from calculo import calcular_recibo
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+
+import escalas
+import calculo
 
 app = FastAPI(title="motor-sueldos-faecys")
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,40 +23,79 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
+
 @app.get("/", include_in_schema=False)
 def home():
+    # Servimos index.html desde raíz (recomendado)
     p = BASE_DIR / "index.html"
     if p.exists():
         return FileResponse(p)
+
+    # fallback
     p2 = BASE_DIR / "static" / "index.html"
     if p2.exists():
         return FileResponse(p2)
+
     return {"ok": True, "error": "index.html no encontrado"}
+
 
 @app.get("/health")
 def health():
     return {"ok": True, "servicio": "motor-sueldos-faecys"}
 
+
 @app.get("/meta")
 def meta():
-    return get_meta()
+    try:
+        return escalas.get_meta_full()
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+
+
+@app.get("/meses")
+def meses(rama: str, agrup: str = "—", categoria: str = "—"):
+    try:
+        return escalas.list_meses_combo(rama=rama, agrup=agrup, categoria=categoria)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+
 
 @app.get("/payload")
 def payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—"):
-    return get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+    # Devuelve base del maestro (básico + NR + suma fija) para la combinación.
+    return escalas.get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+
 
 @app.get("/calcular")
 def calcular(request: Request):
-    # Tomar TODOS los query params y delegar el cálculo a calculo.py
-    qp = dict(request.query_params)
+    # Acepta cualquier query param (no hay que tocar backend por cada campo nuevo del HTML)
+    try:
+        qp: Dict[str, Any] = dict(request.query_params)
+        return calculo.calcular_mensual_desde_query(qp)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
-    # Compat: el front viejo manda jornada/anios_antig
-    if "jornada" in qp and "hs" not in qp:
-        qp["hs"] = qp["jornada"]
-    if "anios_antig" in qp and "anios" not in qp:
-        qp["anios"] = qp["anios_antig"]
 
-    # Compat: el front viejo manda titulo_pct/sind_pct pero el cálculo usa tur_titulo_pct
-    # (lo dejamos, no rompe)
+@app.get("/calcular-final")
+def calcular_final(request: Request):
+    try:
+        qp: Dict[str, Any] = dict(request.query_params)
+        return calculo.calcular_final_desde_query(qp)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
-    return calcular_recibo(qp)
+
+@app.get("/adicionales-funebres")
+def adicionales_funebres(mes: str):
+    return escalas.get_adicionales_funebres(mes)
+
+
+@app.get("/regla-conexiones")
+def regla_conexiones(cantidad: int):
+    return escalas.match_regla_conexiones(cantidad)
+
+
+@app.get("/titulo-pct")
+def titulo_pct(nivel: str):
+    return escalas.get_titulo_pct_por_nivel(nivel)
+
