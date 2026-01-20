@@ -439,20 +439,58 @@ Recibo Mensual</div>
   }
 
   let META = null;
+  let ALL_MESES = [];
+
+  function normRama(r){
+    try{
+      return (r||"").toString().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    }catch{
+      return (r||"").toString().toUpperCase().trim();
+    }
+  }
+
+  function mesesPorRama(rama){
+    const r = normRama(rama);
+    // Reglas pedidas (Etapa 2):
+    // - GENERAL / FUNEBRES / AGUA / CALL: 2026-01 a 2026-04
+    // - TURISMO: 2026-01 a 2026-05
+    // - CEREALES: 2026-01 a 2026-03
+    if(r === "TURISMO") return ["2026-01","2026-02","2026-03","2026-04","2026-05"];
+    if(r === "CEREALES") return ["2026-01","2026-02","2026-03"];
+    if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04"];
+    // Fallback: desde 2026-01 en adelante (hasta lo disponible)
+    return (ALL_MESES||[]).filter(m => /^2026-/.test(m));
+  }
+
+  function refreshMesesForRama(rama){
+    const pref = mesesPorRama(rama);
+    const disponibles = (pref||[]).filter(m => (ALL_MESES||[]).includes(m));
+    fillSelect($("mes"), disponibles, "Mes");
+    const sel = $("mes");
+    if(!sel) return;
+    // si no quedó seleccionado, usar el último disponible
+    if(sel.value === "—" && disponibles.length){
+      sel.value = disponibles[disponibles.length-1];
+    }
+  }
 
   async function loadMeta(){
     setText("status", "Cargando maestro…");
     META = await fetchJSON(`${API_BASE}/meta`);
     // META esperado: {ramas:{}, meses:{}, ...} o {ramas:[...], meses:[...]}
     const ramas = Array.isArray(META.ramas) ? META.ramas : Object.keys(META.ramas||{}).filter(k => META.ramas[k]);
-    const meses = Array.isArray(META.meses) ? META.meses : Object.keys(META.meses||{}).filter(k => META.meses[k]);
+    const mesesRaw = Array.isArray(META.meses) ? META.meses : Object.keys(META.meses||{}).filter(k => META.meses[k]);
+    // normalizar meses válidos AAAA-MM y ordenar
+    ALL_MESES = (mesesRaw||[]).filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
 
     fillSelect($("rama"), ramas, "Rama");
-    fillSelect($("mes"), meses, "Mes");
 
     // defaults
     if(ramas.includes("GENERAL")) $("rama").value = "GENERAL";
-    if(meses.includes("2026-04")) $("mes").value = "2026-04";
+    refreshMesesForRama($("rama")?.value || "GENERAL");
 
     await refreshAgrupCat();
     setText("status", "Listo.");
@@ -474,6 +512,9 @@ Recibo Mensual</div>
   async function refreshAgrupCat(){
     const rama = $("rama")?.value || "—";
     if(!META || rama === "—"){ return; }
+
+    // Meses por rama (Etapa 2)
+    refreshMesesForRama(rama);
 
     const agrups = getAgrupsForRama(rama);
     fillSelect($("agrup"), agrups, "Agrupamiento");
