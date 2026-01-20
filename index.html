@@ -126,9 +126,14 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="card" id="paneMensual">
 <div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div class="note" id="aguaBlock" style="display:none">
-  <strong>Agua Potable:</strong> Cantidad de conexiones
-  <input id="aguaConexiones" type="number" min="0" step="1" value="0" style="max-width:140px; margin-left:6px"/>
-  <span id="aguaConexDesc" style="margin-left:8px;color:#334155"></span>
+  <strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D
+  <select id="aguaConexCat" style="max-width:180px; margin-left:6px">
+    <option value="">—</option>
+    <option value="A">A (hasta 500)</option>
+    <option value="B">B (+7% s/A)</option>
+    <option value="C">C (+7% s/B)</option>
+    <option value="D">D (+7% s/C)</option>
+  </select>
 </div>
 <div class="note" id="funBlock" style="display:none">
 <strong>Fúnebres:</strong> Adicionales mensuales (desde “Adicionales” del maestro)
@@ -449,33 +454,9 @@ Recibo Mensual</div>
     return normRama(r) === 'TURISMO';
   }
 
-  function pctAR(frac){
-    const n = Number(frac);
-    if(!Number.isFinite(n)) return '0%';
-    return (n*100).toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + '%';
-  }
-
-  async function updateAguaConexInfo(){
-    const rama = $('rama')?.value || '';
-    if(!isAguaRama(rama)){
-      setText('aguaConexDesc','');
-      return;
-    }
-    const el = $('aguaConexiones');
-    if(!el){ setText('aguaConexDesc',''); return; }
-    const cantidad = Math.max(0, parseInt(el.value || '0', 10) || 0);
-    if(!cantidad){ setText('aguaConexDesc',''); return; }
-    try{
-      const info = await fetchJSON(`${API_BASE}/regla-conexiones?cantidad=${encodeURIComponent(String(cantidad))}`);
-      if(info && info.cat){
-        const txt = `Adicional por conexiones (${cantidad}) – Categoría ${info.cat}: +${pctAR(info.pct)}${info.label ? ' ('+info.label+')' : ''}`;
-        setText('aguaConexDesc', txt);
-      }else{
-        setText('aguaConexDesc','');
-      }
-    }catch(e){
-      setText('aguaConexDesc','');
-    }
+  // Agua Potable: selector A/B/C/D (no muestra texto extra)
+  function updateAguaConexInfo(){
+    // placeholder por si a futuro querés mostrar algo; hoy no mostramos nada.
   }
 
   function applyBranchUI(){
@@ -491,9 +472,8 @@ Recibo Mensual</div>
 
     // limpiar valores cuando no aplica
     if(!showAgua){
-      const a = $('aguaConexiones');
-      if(a) a.value = '0';
-      setText('aguaConexDesc','');
+      const a = $('aguaConexCat');
+      if(a) a.value = '';
     }
     else{ try{ updateAguaConexInfo(); }catch{} }
     if(!showTur){
@@ -605,6 +585,12 @@ Recibo Mensual</div>
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("jornada", String(jornada));
+      // Agua Potable: selector de conexiones A/B/C/D (impacta en básicos y NR)
+      const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
+      if(isAgua){
+        const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+        if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+      }
 
       const p = await fetchJSON(url.toString());
       if(!p || p.ok === false) throw new Error((p && p.status) ? p.status : "payload error");
@@ -674,7 +660,9 @@ Recibo Mensual</div>
       const zona_pct = num($('zona')?.value || 0) || 0;
       const sind_pct = 0;
       const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
-      const conexiones = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE") ? Math.max(0, parseInt($("aguaConexiones")?.value || "0", 10) || 0) : 0;
+      const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
+        ? String($("aguaConexCat")?.value || "").trim()
+        : "";
 
       const url = new URL(`${API_BASE}/calcular`);
       url.searchParams.set("rama", rama);
@@ -682,6 +670,12 @@ Recibo Mensual</div>
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("mes", mes);
       url.searchParams.set("jornada", String(jornada));
+      // Agua Potable: selector de conexiones A/B/C/D (impacta en básicos y NR)
+      const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
+      if(isAgua){
+        const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+        if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+      }
       url.searchParams.set("anios_antig", String(anios_antig));
       url.searchParams.set("osecac", osecac ? "true" : "false");
       url.searchParams.set("afiliado", afiliado ? "true" : "false");
@@ -691,7 +685,7 @@ Recibo Mensual</div>
       url.searchParams.set("fer_no_trab", String(fer_no_trab));
       url.searchParams.set("fer_trab", String(fer_trab));
       url.searchParams.set("aus_inj", String(aus_inj));
-      url.searchParams.set("conexiones", String(conexiones));
+      url.searchParams.set("conex_cat", conex_cat);
 
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");
@@ -852,8 +846,8 @@ Recibo Mensual</div>
     $("mes")?.addEventListener("change", refreshPayload);
     $("hs")?.addEventListener("change", refreshPayload);
 
-    // Agua: actualizar etiqueta de categoría/pct
-    $("aguaConexiones")?.addEventListener("input", () => { updateAguaConexInfo(); });
+    // Agua: selector de conexiones A/B/C/D
+    $("aguaConexCat")?.addEventListener("change", () => { refreshPayload(); });
 
     // Turismo: si cambia título, recalcular base al vuelo (no recalcula recibo hasta que toques Calcular)
     $("turTitulo")?.addEventListener("change", () => { /* opcional */ });

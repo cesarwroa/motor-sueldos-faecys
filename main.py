@@ -77,6 +77,8 @@ def calcular(
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
+    # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
+    conex_cat: str = "",
     conexiones: int = 0,
 ):
     return calcular_payload(
@@ -94,6 +96,7 @@ def calcular(
         fer_no_trab=fer_no_trab,
         fer_trab=fer_trab,
         aus_inj=aus_inj,
+        conex_cat=conex_cat,
         conexiones=conexiones,
     )
 
@@ -104,7 +107,10 @@ def adicionales_funebres(mes: str):
 
 # ========= AGUA POTABLE =========
 @app.get("/regla-conexiones")
-def regla_conexiones(cantidad: int):
+def regla_conexiones(cantidad: int = 0, nivel: str = ""):
+    # Si el front manda nivel (A/B/C/D), devolvemos la misma estructura.
+    if nivel:
+        return match_regla_conexiones(nivel)
     return match_regla_conexiones(cantidad)
 
 # ========= TURISMO =========

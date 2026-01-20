@@ -336,6 +336,8 @@ def calcular_payload(
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
+    # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
+    conex_cat: str = "",
     conexiones: int = 0,
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
@@ -356,6 +358,18 @@ def calcular_payload(
     bas_base = float(base.get("basico", 0.0) or 0.0)
     nr_base = float(base.get("no_rem", 0.0) or 0.0)
     sf_base = float(base.get("suma_fija", 0.0) or 0.0)
+
+    # Agua Potable: Conexiones (A/B/C/D) NO se muestra como adicional;
+    # modifica directamente el valor del Básico y de los No Rem.
+    is_agua = norm_rama(rama) in ("AGUA POTABLE", "AGUA", "AGUAPOTABLE")
+    if is_agua:
+        nivel = _norm(conex_cat).upper() if conex_cat else ""
+        info = match_regla_conexiones(nivel if nivel else conexiones)
+        fac = float(info.get("factor", 1.0) or 1.0)
+        if fac and fac != 1.0:
+            bas_base *= fac
+            nr_base *= fac
+            sf_base *= fac
 
     bas = bas_base * factor
     nr = nr_base * factor
@@ -415,26 +429,6 @@ def calcular_payload(
         titulo_nr = round2(sf * (titulo_pct_f / 100.0)) if sf else 0.0
         rem_total = round2(rem_total + titulo_rem)
         nr_total = round2(nr_total + titulo_nr)
-
-    # -------- AGUA POTABLE: Adicional por Conexiones --------
-    conex_rem = 0.0
-    conex_nr = 0.0
-    conex_info: Dict[str, Any] = {"cat": None, "pct": 0.0, "label": None}
-    conex_concepto = ""
-    if base["rama"] == "AGUA POTABLE":
-        conex_info = match_regla_conexiones(int(conexiones or 0))
-        pct_con = float(conex_info.get("pct") or 0.0)
-        if pct_con > 0:
-            ncon = int(conexiones or 0)
-            cat_con = conex_info.get("cat")
-            pct_txt = f"{pct_con*100:.2f}".replace(".", ",")
-            if cat_con:
-                conex_concepto = f"Adicional por conexiones ({ncon}) – Categoría {cat_con}: +{pct_txt}%"
-            conex_rem = round2(bas * pct_con) if bas else 0.0
-            # En Agua Potable, NR consolidado vive en suma_fija (sf)
-            conex_nr = round2(sf * pct_con) if sf else 0.0
-            rem_total = round2(rem_total + conex_rem)
-            nr_total = round2(nr_total + conex_nr)
 
     # -------- Feriados --------
     fer_no = max(0, int(fer_no_trab or 0))
@@ -518,16 +512,7 @@ def calcular_payload(
             base_num=sf,
         ))
 
-    # Conexiones (Agua Potable)
-    if (conex_rem or conex_nr) and conex_info and conex_info.get('cat'):
-        pct_txt = float(conex_info.get('pct') or 0.0) * 100.0
-        cat = str(conex_info.get('cat'))
-        # Nota: usamos dos filas para respetar columna Base (REM vs NR)
-        concepto_base = f"Adicional por conexiones ({int(conexiones or 0)}) – Categoría {cat}: +{pct_txt:.2f}%"
-        if conex_rem:
-            items.append(item(concepto_base, r=conex_rem, base_num=bas))
-        if conex_nr:
-            items.append(item(concepto_base + ' (NR)', n=conex_nr, base_num=sf))
+    # Conexiones (Agua Potable): no se agrega fila, porque el selector modifica el básico y los NR.
     # Feriados (REM)
     if fer_no_rem:
         items.append(item(
@@ -634,7 +619,7 @@ def get_adicionales_funebres(mes: str) -> List[Dict[str, Any]]:
     mes_k = _mes_to_key(mes)
     return idx["funebres_adic"].get(mes_k, [])
 
-def match_regla_conexiones(conexiones: int) -> Dict[str, Any]:
+def match_regla_conexiones(conexiones_o_nivel) -> Dict[str, Any]:
     """
     Agua Potable: reglas por umbrales (según tu UI):
     A: hasta 500
@@ -643,32 +628,58 @@ def match_regla_conexiones(conexiones: int) -> Dict[str, Any]:
     D: más de 1600
     El % es 7% encadenado (A=0%, B=7%, C=14,49%, D=22,5043%).
     """
-    try:
-        n = int(conexiones)
-    except Exception:
-        n = 0
-    if n <= 0:
-        return {"cat": None, "pct": 0.0, "label": None}
+    # Soporta dos entradas:
+    # 1) cantidad (int) -> determina A/B/C/D por umbral
+    # 2) nivel directo ("A"/"B"/"C"/"D") -> usa ese nivel
+    level = 0
+    cat = None
+    label = None
+    if isinstance(conexiones_o_nivel, str) and conexiones_o_nivel.strip():
+        c = _norm(conexiones_o_nivel).upper()
+        if c in ["A", "B", "C", "D"]:
+            cat = c
+            level = {"A": 0, "B": 1, "C": 2, "D": 3}[c]
+            label = {
+                "A": "A (hasta 500)",
+                "B": "B (+7% s/A)",
+                "C": "C (+7% s/B)",
+                "D": "D (+7% s/C)",
+            }[c]
+        else:
+            # Si viene un texto no esperado, intentamos tratarlo como número
+            try:
+                conexiones_o_nivel = int(c)
+            except Exception:
+                conexiones_o_nivel = 0
 
-    if n <= 500:
-        level = 0
-        cat = "A"
-        label = "A (hasta 500)"
-    elif n <= 1000:
-        level = 1
-        cat = "B"
-        label = "B (501 a 1000)"
-    elif n <= 1600:
-        level = 2
-        cat = "C"
-        label = "C (1001 a 1600)"
-    else:
-        level = 3
-        cat = "D"
-        label = "D (más de 1600)"
+    if cat is None:
+        try:
+            n = int(conexiones_o_nivel)
+        except Exception:
+            n = 0
+        if n <= 0:
+            return {"cat": None, "pct": 0.0, "factor": 1.0, "label": None}
 
-    pct = (1.07 ** level) - 1.0  # level 0 => 0
-    return {"cat": cat, "pct": pct, "label": label}
+        if n <= 500:
+            level = 0
+            cat = "A"
+            label = "A (hasta 500)"
+        elif n <= 1000:
+            level = 1
+            cat = "B"
+            label = "B (501 a 1000)"
+        elif n <= 1600:
+            level = 2
+            cat = "C"
+            label = "C (1001 a 1600)"
+        else:
+            level = 3
+            cat = "D"
+            label = "D (más de 1600)"
+
+    factor = 1.07 ** level
+    pct = factor - 1.0  # level 0 => 0
+    return {"cat": cat, "pct": pct, "factor": factor, "label": label}
 
 def get_titulo_pct_por_nivel(nivel: str) -> float:
     n = _norm(nivel).lower()
