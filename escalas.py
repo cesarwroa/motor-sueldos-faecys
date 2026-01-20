@@ -362,16 +362,25 @@ def calcular_payload(
     # -------- Cálculos núcleo --------
     # Remunerativos
     pct_ant = float(anios_antig or 0.0) * 0.01
-    presentismo = round2(bas / 12.0)
     antig = round2(bas * pct_ant)
+
+    # Regla Presentismo: se pierde con 2 (dos) o más ausencias injustificadas.
+    aus_dias = max(0, int(aus_inj or 0))
+    presentismo_habil = (aus_dias < 2)
+    presentismo = round2(bas / 12.0) if presentismo_habil else 0.0
 
     rem_total = round2(bas + presentismo + antig)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     nr_base_total = round2(nr + sf)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
-    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR
-    presentismo_nr = round2((nr_base_total + antig_nr) / 12.0) if nr_base_total else 0.0
+    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR.
+    # Se pierde también si corresponde pérdida de presentismo por ausencias.
+    presentismo_nr = (
+        round2((nr_base_total + antig_nr) / 12.0)
+        if (nr_base_total and presentismo_habil)
+        else 0.0
+    )
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr)
 
@@ -380,18 +389,24 @@ def calcular_payload(
     fer_si = max(0, int(fer_trab or 0))
     base_fer_rem = round2(bas + antig)
     base_fer_nr = round2(nr_base_total + antig_nr)
-    vdia_rem = round2(base_fer_rem / 25.0) if base_fer_rem else 0.0
-    vdia_nr = round2(base_fer_nr / 25.0) if base_fer_nr else 0.0
+    # Para mensualizados:
+    # - Feriado NO trabajado: se suma la diferencia entre día feriado (1/25) y día normal incluido en el mensual (1/30).
+    # - Feriado trabajado: se suma 1 día feriado (1/25).
+    vdia25_rem = round2(base_fer_rem / 25.0) if base_fer_rem else 0.0
+    vdia30_rem = round2(base_fer_rem / 30.0) if base_fer_rem else 0.0
+    vdia25_nr = round2(base_fer_nr / 25.0) if base_fer_nr else 0.0
+    vdia30_nr = round2(base_fer_nr / 30.0) if base_fer_nr else 0.0
 
-    fer_no_rem = round2(fer_no * vdia_rem) if fer_no else 0.0
-    fer_si_rem = round2(fer_si * vdia_rem) if fer_si else 0.0
-    fer_si_nr = round2(fer_si * vdia_nr) if fer_si else 0.0
+    fer_no_rem = round2(fer_no * (vdia25_rem - vdia30_rem)) if fer_no else 0.0
+    fer_si_rem = round2(fer_si * vdia25_rem) if fer_si else 0.0
+
+    fer_no_nr = round2(fer_no * (vdia25_nr - vdia30_nr)) if fer_no else 0.0
+    fer_si_nr = round2(fer_si * vdia25_nr) if fer_si else 0.0
 
     rem_total = round2(rem_total + fer_no_rem + fer_si_rem)
-    nr_total = round2(nr_total + fer_si_nr)
+    nr_total = round2(nr_total + fer_no_nr + fer_si_nr)
 
     # -------- Ausencias injustificadas (descuento) --------
-    aus_dias = max(0, int(aus_inj or 0))
     base_dia_aus = round2((bas + antig) / 30.0) if (bas or antig) else 0.0
     aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
 
@@ -424,7 +439,12 @@ def calcular_payload(
     if antig:
         items.append(item("Antigüedad", r=antig, base_num=bas))
 
-    items.append(item("Presentismo", r=presentismo, base_num=bas + antig))
+    # Presentismo: puede ser 0 si se pierde por 2+ ausencias injustificadas
+    items.append(item(
+        "Presentismo" if presentismo_habil else "Presentismo (perdido por ausencias)",
+        r=presentismo,
+        base_num=bas + antig,
+    ))
 
     # Feriados (REM)
     if fer_no_rem:
@@ -450,10 +470,21 @@ def calcular_payload(
     # Derivados sobre NR (desglosado como filas NR)
     if antig_nr:
         items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total))
-    if presentismo_nr:
-        items.append(item("Presentismo (NR)", n=presentismo_nr, base_num=(nr_base_total + antig_nr)))
+    # Presentismo sobre NR: si se pierde por ausencias, se muestra igual en 0 para dejarlo transparente.
+    if presentismo_nr or (nr_base_total and not presentismo_habil):
+        items.append(item(
+            "Presentismo (NR)" if presentismo_habil else "Presentismo (NR) (perdido por ausencias)",
+            n=presentismo_nr,
+            base_num=(nr_base_total + antig_nr),
+        ))
 
     # Feriados (NR)
+    if fer_no_nr:
+        items.append(item(
+            f"Feriado no trabajado (NR) ({fer_no} día{'s' if fer_no != 1 else ''})",
+            n=fer_no_nr,
+            base_num=base_fer_nr,
+        ))
     if fer_si_nr:
         items.append(item(
             f"Feriado trabajado (NR) ({fer_si} día{'s' if fer_si != 1 else ''})",
