@@ -6,8 +6,6 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Recibo de Sueldo</title>
-<!-- Evita 404 de /favicon.ico en algunos hosts -->
-<link rel="icon" href="data:," />
 <style>
 :root{ --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --grid:#e2e8f0; }
 *{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
@@ -127,10 +125,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="note" id="status">Cargando maestro…</div>
 </div>
 <div class="card" id="paneMensual">
-<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label>No Rem (variable) — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label>Suma Fija (NR) — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div class="note" id="aguaBlock" style="display:none">
-  <strong>Agua Potable:</strong> Cantidad de conexiones (ej: 1600). El sistema busca la regla y aplica el %.
-  <input id="aguaConex" type="number" min="0" step="1" value="0" style="max-width:160px; margin-left:8px"/>
+<strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D (aplica 7% encadenado a Básico + Suma Fija)
+      <select id="aguaConex"><option value="A">A (hasta 500)</option><option value="B">B (+7% s/ A)</option><option value="C">C (+7% s/ B)</option><option value="D">D (+7% s/ C)</option></select>
 </div>
 <div class="note" id="funBlock" style="display:none">
 <strong>Fúnebres:</strong> Adicionales mensuales (desde “Adicionales” del maestro)
@@ -224,7 +222,7 @@ Recibo Mensual</div>
 <div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
 <div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
 <div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
-<div><label>MEJOR SALARIO (MRMNH)</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
+<div><label>MRMNH (mejor mensual) *</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><div class="campo tipo-lf">
@@ -247,7 +245,7 @@ Recibo Mensual</div>
 <div><label>Vacaciones proporcionales</label><input class="readonly" disabled="" id="lf_vac_calc" readonly="" type="number" value="0"/></div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
 </div>
-<div class="note small">Base indemnizatoria (MRMNH) = Remunerativo + No Remunerativo (sin viáticos exentos).</div>
+<div class="note small">* Usá “Sugerir MRMNH” para proponer un mejor mensual (editable) con NR + antigüedad + presentismo.</div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Título (Turismo)</label>
 <select id="tituloNivel">
@@ -268,6 +266,7 @@ Recibo Mensual</div>
 <div><label>KM Ayudante</label><input id="kmAyudante" min="0" step="1" type="number" value="0"/></div>
 </div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
 <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
 <button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
 <span id="diagFinal" style="color:#64748b"></span>
@@ -408,35 +407,6 @@ Recibo Mensual</div>
     return n.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
   };
 
-  // Lee montos escritos como "$ 1.234,56" / "1234,56" / "1234.56" y devuelve número.
-  function parseMoneyInput(v){
-    if(v == null) return 0;
-    if(typeof v === "number") return Number.isFinite(v) ? v : 0;
-    let s = String(v).trim();
-    if(!s) return 0;
-    // mantener signo
-    const neg = s.startsWith("-");
-    s = s.replace(/[^0-9,\.]/g, "");
-    if(!s) return 0;
-    if(s.includes(",") && s.includes(".")){
-      // 1.234,56 => 1234.56
-      s = s.replace(/\./g, "").replace(/,/g, ".");
-    } else if(s.includes(",") && !s.includes(".")){
-      // 1234,56 => 1234.56
-      s = s.replace(/,/g, ".");
-    } else {
-      // 1.234.567 => 1234567 (si hay multiples puntos)
-      const parts = s.split(".");
-      if(parts.length > 2) s = parts.join("");
-    }
-    const n = Number(s);
-    if(!Number.isFinite(n)) return 0;
-    return neg ? -n : n;
-  }
-
-  // por si algún handler lo usa desde el HTML inline
-  window.parseMoneyInput = parseMoneyInput;
-
   async function fetchJSON(url){
     const res = await fetch(url, { credentials:"omit" });
     const txt = await res.text();
@@ -470,89 +440,19 @@ Recibo Mensual</div>
 
   let META = null;
 
-  // === Control de meses por rama (pedido César) ===
-  // GENERAL / FUNEBRES / AGUA POTABLE / CALL CENTER: 2026-01 .. 2026-04
-  // TURISMO: 2026-01 .. 2026-05
-  // CEREALES: 2026-01 .. 2026-03
-  function _ramaKeyMeses(rama){
-    const r = String(rama||"").toUpperCase().trim();
-    if(r === "FÚNEBRES") return "FUNEBRES";
-    if(r === "CENTRO DE LLAMADAS") return "CALL CENTER";
-    return r;
-  }
-
-  function _monthRange(startYm, endYm){
-    // startYm / endYm: "YYYY-MM" inclusive
-    const out = [];
-    const sy = parseInt(startYm.slice(0,4),10), sm = parseInt(startYm.slice(5,7),10);
-    const ey = parseInt(endYm.slice(0,4),10), em = parseInt(endYm.slice(5,7),10);
-    let y = sy, m = sm;
-    while(y < ey || (y === ey && m <= em)){
-      out.push(`${y}-${String(m).padStart(2,'0')}`);
-      m += 1;
-      if(m === 13){ m = 1; y += 1; }
-    }
-    return out;
-  }
-
-  function mesesPermitidosPorRama(rama){
-    const r = _ramaKeyMeses(rama);
-    const start = "2026-01";
-    const endBy = {
-      "GENERAL": "2026-04",
-      "FUNEBRES": "2026-04",
-      "AGUA POTABLE": "2026-04",
-      "CALL CENTER": "2026-04",
-      "TURISMO": "2026-05",
-      "CEREALES": "2026-03",
-    };
-    const end = endBy[r];
-    return end ? _monthRange(start, end) : null;
-  }
-  function getMesesFallback(){
-    // Evitar “sobran meses”: usamos SOLO meses_por_rama si existe
-    const m = META && (META.meses_por_rama || META.mesesPorRama || META.meses_by_rama);
-    const rama = $("rama")?.value || "—";
-    if(m && rama!=="—" && Array.isArray(m[rama])) return m[rama];
-    return [];
-  }
-
-  async function refreshMeses(){
-    const rama = $("rama")?.value || "—";
-    if(rama === "—") return;
-    const cur = $("mes")?.value || "—";
-
-    // 1) Regla fija por rama (prioridad)
-    let meses = mesesPermitidosPorRama(rama);
-
-    // 2) Fallback: si algún día agregás ramas nuevas, usamos lo que venga de /meta
-    if(!meses){
-      if(META && Array.isArray(META.meses)) meses = META.meses;
-      else if(META && META.meses && typeof META.meses === 'object') meses = Object.keys(META.meses||{}).filter(k => META.meses[k]);
-      else meses = [];
-      meses = (meses||[]).map(x => String(x).slice(0,7)).filter(Boolean).sort();
-    }
-
-    fillSelect($("mes"), meses, "Mes");
-
-    // Seteo selección
-    const prefer = "2026-01";
-    if(cur !== "—" && meses.includes(cur)) $("mes").value = cur;
-    else if(meses.includes(prefer)) $("mes").value = prefer;
-    else if(meses.length) $("mes").value = meses[0];
-  }
-
   async function loadMeta(){
     setText("status", "Cargando maestro…");
     META = await fetchJSON(`${API_BASE}/meta`);
     // META esperado: {ramas:{}, meses:{}, ...} o {ramas:[...], meses:[...]}
     const ramas = Array.isArray(META.ramas) ? META.ramas : Object.keys(META.ramas||{}).filter(k => META.ramas[k]);
-    fillSelect($("rama"), ramas, "Rama");
+    const meses = Array.isArray(META.meses) ? META.meses : Object.keys(META.meses||{}).filter(k => META.meses[k]);
 
-    // defaults de rama
+    fillSelect($("rama"), ramas, "Rama");
+    fillSelect($("mes"), meses, "Mes");
 
     // defaults
     if(ramas.includes("GENERAL")) $("rama").value = "GENERAL";
+    if(meses.includes("2026-04")) $("mes").value = "2026-04";
 
     await refreshAgrupCat();
     setText("status", "Listo.");
@@ -584,7 +484,6 @@ Recibo Mensual</div>
     fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
     if(cats.length) $("categoria").value = cats[0];
-    await refreshMeses();
 
     await refreshPayload();
   }
@@ -596,7 +495,6 @@ Recibo Mensual</div>
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     if(cats.length) $("categoria").value = cats[0];
-    await refreshMeses();
     await refreshPayload();
   }
 
@@ -646,6 +544,18 @@ Recibo Mensual</div>
       const nrTot = num(p.no_rem_base ?? p.no_rem ?? 0) + num(p.suma_fija_base ?? p.suma_fija ?? 0);
       setVal("nrTotal", nrTot);
 
+      // Labels oficiales NR por rama
+      if(p.labels){
+        if(p.labels.no_rem) setText("lblNrVar", p.labels.no_rem);
+        if(p.labels.suma_fija) setText("lblNrSF", p.labels.suma_fija);
+      }
+
+      // Encabezado de recibo
+      setText("outRama", rama);
+      setText("outAgrup", agrup);
+      setText("outCat", categoria);
+      setText("outEscala", `Escala ${mes}`);
+
       setText("status", "Listo.");
     }catch(err){
       console.error(err);
@@ -685,28 +595,8 @@ Recibo Mensual</div>
 
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
-      const sind_pct = 0; // reservado (por ahora el backend usa solo afiliado sí/no)
-      const titulo_pct = num($("turTitulo")?.value || 0) || 0;
-      const zona = num($("zona")?.value || 0) || 0;
-      const aCuentaNR = num($("aCuentaNR")?.value || 0) || 0;
-      const viaticosNR = num($("viaticosNR")?.value || 0) || 0;
-      const hex50 = num($("hex50")?.value || 0) || 0;
-      const hex100 = num($("hex100")?.value || 0) || 0;
-      const hsNoct = num($("hsNoct")?.value || 0) || 0;
-      const ferNoTrab = num($("ferNoTrab")?.value || 0) || 0;
-      const ferTrab = num($("ferTrab")?.value || 0) || 0;
-      const vacGoz = num($("coVacGoz")?.value || 0) || 0;
-      const licSG = num($("coLicSG")?.value || 0) || 0;
-      const aus = num($("coAus")?.value || 0) || 0;
-      const embargo = num($("coEmbargo")?.value || 0) || 0;
-      const faltante = parseMoneyInput($("faltanteCajaInput")?.value || "0");
-      const aguaConex = num($("aguaConex")?.value || 0) || 0;
-      const armadoAuto = $("armadoAuto")?.checked ? 1 : 0;
-      const manejoCaja = $("manejoCaja")?.checked ? 1 : 0;
-      const cajero_tipo = $("cajero_tipo")?.value || "";
-      const kmTipo = $("kmTipo")?.value || "";
-      const kmMenos100 = num($("kmMenos100")?.value || 0) || 0;
-      const kmMas100 = num($("kmMas100")?.value || 0) || 0;
+      const sind_pct = 0;
+      const titulo_pct = 0;
 
       const url = new URL(`${API_BASE}/calcular`);
       url.searchParams.set("rama", rama);
@@ -719,32 +609,6 @@ Recibo Mensual</div>
       url.searchParams.set("afiliado", afiliado ? "true" : "false");
       url.searchParams.set("sind_pct", String(sind_pct));
       url.searchParams.set("titulo_pct", String(titulo_pct));
-      url.searchParams.set("zona", String(zona));
-      url.searchParams.set("aCuentaNR", String(aCuentaNR));
-      url.searchParams.set("viaticosNR", String(viaticosNR));
-      url.searchParams.set("hex50", String(hex50));
-      url.searchParams.set("hex100", String(hex100));
-      url.searchParams.set("noct", String(hsNoct));
-      url.searchParams.set("ferNoTrab", String(ferNoTrab));
-      url.searchParams.set("ferTrab", String(ferTrab));
-      url.searchParams.set("vacGoz", String(vacGoz));
-      url.searchParams.set("licSG", String(licSG));
-      url.searchParams.set("aus", String(aus));
-      url.searchParams.set("embargo", String(embargo));
-      url.searchParams.set("faltante", String(faltante));
-      url.searchParams.set("conex", String(aguaConex));
-      url.searchParams.set("armadoAuto", String(armadoAuto));
-      url.searchParams.set("manejoCaja", String(manejoCaja));
-      if(cajero_tipo) url.searchParams.set("cajero_tipo", cajero_tipo);
-      if(kmTipo) url.searchParams.set("kmTipo", kmTipo);
-      url.searchParams.set("kmMenos100", String(kmMenos100));
-      url.searchParams.set("kmMas100", String(kmMas100));
-
-      // Flags Fúnebres
-      for(const k of ["funAdic1","funAdic2","funAdic3","funAdic4"]) {
-        const el = $(k);
-        if(el && el.checked) url.searchParams.set(k, "true");
-      }
 
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");
@@ -758,6 +622,16 @@ Recibo Mensual</div>
       setText("totDed", money(t.ded || 0));
       setText("neto", money(t.neto || 0));
 
+      // Encabezado + labels desde API
+      setText("outRama", data.rama || rama);
+      setText("outAgrup", data.agrup || agrup);
+      setText("outCat", data.categoria || categoria);
+      setText("outEscala", `Escala ${data.mes || mes}`);
+      if(data.labels){
+        if(data.labels.no_rem) setText("lblNrVar", data.labels.no_rem);
+        if(data.labels.suma_fija) setText("lblNrSF", data.labels.suma_fija);
+      }
+
       setText("status", "Calculado.");
     }catch(err){
       console.error(err);
@@ -769,100 +643,10 @@ Recibo Mensual</div>
   // Exponer para botones existentes
   window.calcularMensual = calcularMensual;
 
-  function addRowFinal(concepto, r, n, i, d){
-    const tb = $("tbodyFinal");
-    if(!tb) return;
-    const tr = document.createElement("tr");
-    const tdC = document.createElement("td"); tdC.textContent = concepto;
-    const tdR = document.createElement("td"); tdR.textContent = money(r||0);
-    const tdN = document.createElement("td"); tdN.textContent = money(n||0);
-    const tdI = document.createElement("td"); tdI.textContent = money(i||0);
-    const tdD = document.createElement("td"); tdD.textContent = money(d||0);
-    tr.append(tdC, tdR, tdN, tdI, tdD);
-    tb.appendChild(tr);
-  }
-
-  async function calcularFinal(){
-    try{
-      const rama = $("rama")?.value || "—";
-      const mes = $("mes")?.value || "—";
-      const agrup = $("agrup")?.value || "—";
-      const categoria = $("categoria")?.value || "—";
-      if([rama,mes,agrup,categoria].some(v => v==="—")){
-        alert("Elegí Rama/Agrup/Categoría/Mes.");
-        return;
-      }
-
-      const jornada = num($("hs")?.value || 48) || 48;
-      const anios_antig = num($("anios")?.value || 0) || 0;
-      const osecac = parseOsecacBool();
-      const afiliado = parseAfiliadoBool();
-
-      const ingreso = $("lf_ingreso")?.value || "";
-      const egreso = $("lf_egreso")?.value || "";
-      if(!ingreso || !egreso){
-        alert("Completá Fecha de ingreso y egreso.");
-        return;
-      }
-      const tipo = $("lf_tipo")?.value || "RENUNCIA";
-      const mejor = num($("lf_mrmnh")?.value || 0) || 0;
-      const preaviso = num($("lf_preaviso")?.value || 0) || 0;
-      const integracion = $("lf_integracion")?.checked ? "true" : "false";
-      const sac_pre = $("lf_sac_pre")?.checked ? "true" : "false";
-      const sac_int = $("lf_sac_int")?.checked ? "true" : "false";
-
-      const url = new URL(`${API_BASE}/calcular-final`);
-      url.searchParams.set("rama", rama);
-      url.searchParams.set("agrup", agrup);
-      url.searchParams.set("categoria", categoria);
-      url.searchParams.set("mes", mes);
-      url.searchParams.set("jornada", String(jornada));
-      url.searchParams.set("anios_antig", String(anios_antig));
-      url.searchParams.set("osecac", osecac ? "true" : "false");
-      url.searchParams.set("afiliado", afiliado ? "true" : "false");
-      url.searchParams.set("ingreso", ingreso);
-      url.searchParams.set("egreso", egreso);
-      url.searchParams.set("tipo", tipo);
-      url.searchParams.set("mejor_salario", String(mejor));
-      url.searchParams.set("preaviso", String(preaviso));
-      url.searchParams.set("integracion", integracion);
-      url.searchParams.set("sac_preaviso", sac_pre);
-      url.searchParams.set("sac_integracion", sac_int);
-
-      const data = await fetchJSON(url.toString());
-      clearTbody("tbodyFinal");
-
-      $("lf_outRama").textContent = rama;
-      $("lf_outAgrup").textContent = agrup;
-      $("lf_outCat").textContent = categoria;
-
-      if(data.base_indemnizatoria != null) setVal("lf_mrmnh", data.base_indemnizatoria);
-      if(data.anios_indemn != null) setVal("lf_anios", data.anios_indemn);
-
-      const items = Array.isArray(data.items) ? data.items : [];
-      items.forEach(it => addRowFinal(it.concepto, it.r, it.n, it.i, it.d));
-
-      const t = data.totales || {};
-      setText("lf_totRem", money(t.rem || 0));
-      setText("lf_totNR", money(t.nr || 0));
-      setText("lf_totInd", money(t.ind || 0));
-      setText("lf_totDed", money(t.ded || 0));
-      setText("lf_neto", money(t.neto || 0));
-
-      setText("diagFinal", "Calculado.");
-    }catch(err){
-      console.error(err);
-      setText("diagFinal", "Error al calcular.");
-      alert("Error al calcular liquidación final (API). Revisá consola.");
-    }
-  }
-
-  window.calcularFinal = calcularFinal;
-
   function wire(){
-    $("rama")?.addEventListener("change", async () => { await refreshAgrupCat(); });
+    $("rama")?.addEventListener("change", refreshAgrupCat);
     $("agrup")?.addEventListener("change", refreshCatsOnly);
-    $("categoria")?.addEventListener("change", async () => { await refreshMeses(); await refreshPayload(); });
+    $("categoria")?.addEventListener("change", refreshPayload);
     $("mes")?.addEventListener("change", refreshPayload);
     $("hs")?.addEventListener("change", refreshPayload);
   }

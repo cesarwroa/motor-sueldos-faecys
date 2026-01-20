@@ -1,14 +1,18 @@
-from __future__ import annotations
-
-from pathlib import Path
-from typing import Any, Dict
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
 
-import escalas
-import calculo
+from escalas import (
+    get_meta,
+    get_payload,
+    calcular_payload,
+    get_adicionales_funebres,
+    match_regla_conexiones,
+    get_titulo_pct_por_nivel,
+    get_regla_cajero,
+    get_regla_km,
+)
 
 app = FastAPI(title="motor-sueldos-faecys")
 
@@ -23,79 +27,87 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-
+# ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
-    # Servimos index.html desde raíz (recomendado)
     p = BASE_DIR / "index.html"
     if p.exists():
         return FileResponse(p)
 
-    # fallback
     p2 = BASE_DIR / "static" / "index.html"
     if p2.exists():
         return FileResponse(p2)
 
     return {"ok": True, "error": "index.html no encontrado"}
 
-
+# ========= HEALTH =========
 @app.get("/health")
 def health():
     return {"ok": True, "servicio": "motor-sueldos-faecys"}
 
-
+# ========= META =========
 @app.get("/meta")
 def meta():
-    try:
-        return escalas.get_meta_full()
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+    return get_meta()
 
-
-@app.get("/meses")
-def meses(rama: str, agrup: str = "—", categoria: str = "—"):
-    try:
-        return escalas.list_meses_combo(rama=rama, agrup=agrup, categoria=categoria)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
-
-
+# ========= PAYLOAD (bases del maestro) =========
 @app.get("/payload")
-def payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—"):
-    # Devuelve base del maestro (básico + NR + suma fija) para la combinación.
-    return escalas.get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+def payload(
+    rama: str,
+    mes: str,
+    agrup: str = "—",
+    categoria: str = "—",
+):
+    return get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
 
-
+# ========= CALCULAR (recibo completo) =========
 @app.get("/calcular")
-def calcular(request: Request):
-    # Acepta cualquier query param (no hay que tocar backend por cada campo nuevo del HTML)
-    try:
-        qp: Dict[str, Any] = dict(request.query_params)
-        return calculo.calcular_mensual_desde_query(qp)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+def calcular(
+    rama: str,
+    agrup: str,
+    categoria: str,
+    mes: str,
+    jornada: float = 48,
+    anios_antig: float = 0,
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0,
+    titulo_pct: float = 0,
+):
+    return calcular_payload(
+        rama=rama,
+        agrup=agrup,
+        categoria=categoria,
+        mes=mes,
+        jornada=jornada,
+        anios_antig=anios_antig,
+        osecac=osecac,
+        afiliado=afiliado,
+        sind_pct=sind_pct,
+        titulo_pct=titulo_pct,
+    )
 
-
-@app.get("/calcular-final")
-def calcular_final(request: Request):
-    try:
-        qp: Dict[str, Any] = dict(request.query_params)
-        return calculo.calcular_final_desde_query(qp)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
-
-
+# ========= FUNEBRES =========
 @app.get("/adicionales-funebres")
 def adicionales_funebres(mes: str):
-    return escalas.get_adicionales_funebres(mes)
+    return get_adicionales_funebres(mes)
 
-
+# ========= AGUA POTABLE =========
 @app.get("/regla-conexiones")
 def regla_conexiones(cantidad: int):
-    return escalas.match_regla_conexiones(cantidad)
+    return match_regla_conexiones(cantidad)
 
-
+# ========= TURISMO =========
 @app.get("/titulo-pct")
 def titulo_pct(nivel: str):
-    return escalas.get_titulo_pct_por_nivel(nivel)
+    return get_titulo_pct_por_nivel(nivel)
 
+# ========= CAJEROS =========
+@app.get("/regla-cajero")
+def regla_cajero(tipo: str):
+    return get_regla_cajero(tipo)
+
+# ========= KM =========
+@app.get("/regla-km")
+def regla_km(categoria: str, km: float):
+    return get_regla_km(categoria, km)
