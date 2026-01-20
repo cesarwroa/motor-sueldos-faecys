@@ -336,6 +336,7 @@ def calcular_payload(
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
+    conexiones: int = 0,
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
 
@@ -397,6 +398,43 @@ def calcular_payload(
     )
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr)
+
+    # -------- TURISMO: Adicional por Título --------
+    # Se aplica sobre el básico (REM) y sobre el NR de $40.000 (en nuestro maestro = suma_fija).
+    try:
+        titulo_pct_f = float(titulo_pct or 0.0)
+    except Exception:
+        titulo_pct_f = 0.0
+    titulo_pct_f = max(0.0, titulo_pct_f)
+
+    titulo_rem = 0.0
+    titulo_nr = 0.0
+    if base["rama"] == "TURISMO" and titulo_pct_f > 0:
+        titulo_rem = round2(bas * (titulo_pct_f / 100.0)) if bas else 0.0
+        # Turismo: $40.000 NR corresponde a suma_fija (sf)
+        titulo_nr = round2(sf * (titulo_pct_f / 100.0)) if sf else 0.0
+        rem_total = round2(rem_total + titulo_rem)
+        nr_total = round2(nr_total + titulo_nr)
+
+    # -------- AGUA POTABLE: Adicional por Conexiones --------
+    conex_rem = 0.0
+    conex_nr = 0.0
+    conex_info: Dict[str, Any] = {"cat": None, "pct": 0.0, "label": None}
+    conex_concepto = ""
+    if base["rama"] == "AGUA POTABLE":
+        conex_info = match_regla_conexiones(int(conexiones or 0))
+        pct_con = float(conex_info.get("pct") or 0.0)
+        if pct_con > 0:
+            ncon = int(conexiones or 0)
+            cat_con = conex_info.get("cat")
+            pct_txt = f"{pct_con*100:.2f}".replace(".", ",")
+            if cat_con:
+                conex_concepto = f"Adicional por conexiones ({ncon}) – Categoría {cat_con}: +{pct_txt}%"
+            conex_rem = round2(bas * pct_con) if bas else 0.0
+            # En Agua Potable, NR consolidado vive en suma_fija (sf)
+            conex_nr = round2(sf * pct_con) if sf else 0.0
+            rem_total = round2(rem_total + conex_rem)
+            nr_total = round2(nr_total + conex_nr)
 
     # -------- Feriados --------
     fer_no = max(0, int(fer_no_trab or 0))
@@ -464,6 +502,32 @@ def calcular_payload(
             base_num=base_pres,
         ))
 
+
+
+    # -------- Etapa 12: Mostrar adicionales (Turismo Título / Agua Conexiones) --------
+    if titulo_rem:
+        items.append(item(
+            'Adicional por Título',
+            r=titulo_rem,
+            base_num=bas,
+        ))
+    if titulo_nr:
+        items.append(item(
+            'Adicional por Título (NR)',
+            n=titulo_nr,
+            base_num=sf,
+        ))
+
+    # Conexiones (Agua Potable)
+    if (conex_rem or conex_nr) and conex_info and conex_info.get('cat'):
+        pct_txt = float(conex_info.get('pct') or 0.0) * 100.0
+        cat = str(conex_info.get('cat'))
+        # Nota: usamos dos filas para respetar columna Base (REM vs NR)
+        concepto_base = f"Adicional por conexiones ({int(conexiones or 0)}) – Categoría {cat}: +{pct_txt:.2f}%"
+        if conex_rem:
+            items.append(item(concepto_base, r=conex_rem, base_num=bas))
+        if conex_nr:
+            items.append(item(concepto_base + ' (NR)', n=conex_nr, base_num=sf))
     # Feriados (REM)
     if fer_no_rem:
         items.append(item(
