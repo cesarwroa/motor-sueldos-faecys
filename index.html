@@ -660,7 +660,23 @@ Recibo Mensual</div>
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");
 
-      const items = Array.isArray(data.items) ? data.items : [];
+      // Etapa 9: dedupe visual (evita filas duplicadas por render/bugs)
+      const rawItems = Array.isArray(data.items) ? data.items : [];
+      const seen = new Set();
+      const items = [];
+      for(const it of rawItems){
+        const concepto = (it && it.concepto != null) ? String(it.concepto).trim() : "";
+        const sig = [
+          concepto,
+          num(it?.base).toFixed(2),
+          num(it?.r).toFixed(2),
+          num(it?.n).toFixed(2),
+          num(it?.d).toFixed(2)
+        ].join("|");
+        if(seen.has(sig)) continue;
+        seen.add(sig);
+        items.push(it);
+      }
       items.forEach(it => addRowMensual(it.concepto, it.base, it.r, it.n, it.d));
 
       const t = data.totales || {};

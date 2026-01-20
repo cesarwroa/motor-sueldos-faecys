@@ -439,12 +439,13 @@ def calcular_payload(
     if antig:
         items.append(item("Antigüedad", r=antig, base_num=bas))
 
-    # Presentismo: puede ser 0 si se pierde por 2+ ausencias injustificadas
-    items.append(item(
-        "Presentismo" if presentismo_habil else "Presentismo (perdido por ausencias)",
-        r=presentismo,
-        base_num=bas + antig,
-    ))
+    # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
+    if presentismo_habil and presentismo:
+        items.append(item(
+            "Presentismo",
+            r=presentismo,
+            base_num=bas + antig,
+        ))
 
     # Feriados (REM)
     if fer_no_rem:
@@ -470,10 +471,10 @@ def calcular_payload(
     # Derivados sobre NR (desglosado como filas NR)
     if antig_nr:
         items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total))
-    # Presentismo sobre NR: si se pierde por ausencias, se muestra igual en 0 para dejarlo transparente.
-    if presentismo_nr or (nr_base_total and not presentismo_habil):
+    # Presentismo sobre NR: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila.
+    if presentismo_habil and presentismo_nr:
         items.append(item(
-            "Presentismo (NR)" if presentismo_habil else "Presentismo (NR) (perdido por ausencias)",
+            "Presentismo (NR)",
             n=presentismo_nr,
             base_num=(nr_base_total + antig_nr),
         ))
