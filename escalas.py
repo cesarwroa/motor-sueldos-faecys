@@ -338,15 +338,26 @@ def calcular_payload(
     sf = sf_base * factor
 
     # -------- Cálculos núcleo --------
+    # Remunerativos
     presentismo = bas / 12.0
     antig = bas * (float(anios_antig or 0.0) * 0.01)
 
     rem_total = bas + presentismo + antig
-    nr_total = nr + sf
 
+    # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
+    nr_base_total = nr + sf
+    antig_nr = nr_base_total * (float(anios_antig or 0.0) * 0.01) if nr_base_total else 0.0
+    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR
+    presentismo_nr = (nr_base_total + antig_nr) / 12.0 if nr_base_total else 0.0
+
+    nr_total = nr_base_total + antig_nr + presentismo_nr
+
+    # Descuentos
     jub = rem_total * 0.11
     pami = rem_total * 0.03
-    os_aporte = rem_total * 0.03 if bool(osecac) else 0.0
+    # Si tiene OSECAC, Obra Social 3% también se calcula sobre NR (criterio del sistema)
+    os_base = (rem_total + nr_total) if bool(osecac) else rem_total
+    os_aporte = os_base * 0.03 if bool(osecac) else 0.0
     osecac_100 = 100.0 if bool(osecac) else 0.0
 
     sind = 0.0
@@ -376,14 +387,20 @@ def calcular_payload(
     if sf:
         items.append(item(labels.get("suma_fija", "Suma Fija (NR)"), n=sf))
 
+    # Derivados sobre NR (desglosado como filas NR)
+    if antig_nr:
+        items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total))
+    if presentismo_nr:
+        items.append(item("Presentismo (NR)", n=presentismo_nr, base_num=(nr_base_total + antig_nr)))
+
     items.append(item("Jubilación 11%", d=jub, base_num=rem_total))
     items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_total))
 
     if bool(osecac):
-        items.append(item("Obra Social 3%", d=os_aporte, base_num=rem_total))
+        items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
         items.append(item("OSECAC $100", d=osecac_100))
     else:
-        items.append(item("Obra Social 3%", d=0.0, base_num=rem_total))
+        items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
 
     if sind:
         items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_total + nr_total)))
