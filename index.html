@@ -766,16 +766,12 @@ Recibo Mensual</div>
       const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
       const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
         ? String($("aguaConexCat")?.value || "").trim()
-        : "";
-
-      // Fúnebres: adicionales seleccionados (ids)
-      let fun_adic = "";
-      if(isFunebresRama(rama)){
-        const checked = Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
-          .map(el => (el && el.value != null) ? String(el.value) : "")
-          .filter(v => v);
-        fun_adic = checked.join(',');
-      }
+        : "";      // Fúnebres: adicionales seleccionados (ids)
+      const fun_adics = (isFunebresRama(rama))
+        ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
+            .map(el => (el && el.value != null) ? String(el.value) : "")
+            .filter(v => v)
+        : [];
 
       const url = new URL(`${API_BASE}/calcular`);
       url.searchParams.set("rama", rama);
@@ -799,7 +795,7 @@ Recibo Mensual</div>
       url.searchParams.set("fer_trab", String(fer_trab));
       url.searchParams.set("aus_inj", String(aus_inj));
       url.searchParams.set("conex_cat", conex_cat);
-      if(fun_adic) url.searchParams.set("fun_adic", fun_adic);
+      for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");

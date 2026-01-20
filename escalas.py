@@ -488,7 +488,9 @@ def calcular_payload(
     if base["rama"] == "FUNEBRES":
         sel_raw = (fun_adic or "").strip()
         if sel_raw:
-            sel_ids = [s.strip() for s in sel_raw.replace(";", ",").split(",") if s.strip()]
+            # IMPORTANTE: NO cortar por coma, porque algunos IDs contienen comas
+            # (p.ej. "incluidos choferes"). Usamos solo ";" como separador.
+            sel_ids = [s.strip() for s in sel_raw.split(";") if s.strip()]
             if sel_ids:
                 defs = get_adicionales_funebres(mes)
                 by_id = {str(d.get("id")): d for d in defs}

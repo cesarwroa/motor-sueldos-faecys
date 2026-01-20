@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
+from typing import List, Optional
 from escalas import (
     get_meta,
     get_payload,
@@ -90,7 +91,7 @@ def calcular(
     conex_cat: str = "",
     conexiones: int = 0,
     # Fúnebres: ids de adicionales seleccionados (coma-separados)
-    fun_adic: str = "",
+    fun_adic: Optional[List[str]] = Query(None),
 ):
     return calcular_payload(
         rama=rama,
@@ -109,7 +110,7 @@ def calcular(
         aus_inj=aus_inj,
         conex_cat=conex_cat,
         conexiones=conexiones,
-        fun_adic=fun_adic,
+        fun_adic=(";".join(fun_adic) if fun_adic else ""),
     )
 
 # ========= FUNEBRES =========
