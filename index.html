@@ -438,43 +438,6 @@ Recibo Mensual</div>
   }
 
 
-  // =====================
-  // Etapa 12: UI condicional (Agua conexiones / Turismo título)
-  // =====================
-  function setDisplay(id, on){
-    const el = $(id);
-    if(!el) return;
-    el.style.display = on ? '' : 'none';
-  }
-
-  async function updateAguaConexInfo(){
-    const rama = $("rama")?.value || "";
-    const r = normRama(rama);
-    const isAgua = (r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE");
-    const infoEl = $("aguaConexDesc");
-    if(!isAgua || !infoEl) return;
-
-    const n = Math.max(0, parseInt($("aguaConexiones")?.value || '0', 10) || 0);
-    if(n <= 0){ infoEl.textContent = '—'; return; }
-
-    try{
-      const url = new URL(`${API_BASE}/regla-conexiones`);
-      url.searchParams.set('cantidad', String(n));
-      const data = await fetchJSON(url.toString());
-      const cat = data?.cat || '—';
-      const pct = Number(data?.pct || 0) * 100;
-      const pctStr = pct.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
-      infoEl.textContent = `Cat ${cat} · +${pctStr}%`;
-    }catch{
-      infoEl.textContent = '—';
-    }
-  }
-
-    if(!isTur){
-      const sel = $("turTitulo");
-      if(sel) sel.value = '0';
-    }
-  }
 
 
   function isAguaRama(r){
