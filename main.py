@@ -89,6 +89,8 @@ def calcular(
     # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
+    # Fúnebres: ids de adicionales seleccionados (coma-separados)
+    fun_adic: str = "",
 ):
     return calcular_payload(
         rama=rama,
@@ -107,6 +109,7 @@ def calcular(
         aus_inj=aus_inj,
         conex_cat=conex_cat,
         conexiones=conexiones,
+        fun_adic=fun_adic,
     )
 
 # ========= FUNEBRES =========

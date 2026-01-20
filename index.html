@@ -136,11 +136,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   </select>
 </div>
 <div class="note" id="funBlock" style="display:none">
-<strong>Fúnebres:</strong> Adicionales mensuales (desde “Adicionales” del maestro)
-      <div><label><input id="funAdic1" type="checkbox"/> Manipulación de cadáveres</label>
-<label><input id="funAdic2" type="checkbox"/> Resto del personal</label>
-<label><input id="funAdic3" type="checkbox"/> Chofer/Furgonero</label>
-<label><input id="funAdic4" type="checkbox"/> Indumentaria</label></div>
+  <strong>Fúnebres:</strong> Adicionales (según escala)
+  <div id="funList" class="grid cols-4" style="margin-top:6px"></div>
+  <div id="funHint" style="margin-top:6px; color:#64748b"></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px"><div class="grid cols-4" style="margin-top:8px">
 </div><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
@@ -454,6 +452,71 @@ Recibo Mensual</div>
     return normRama(r) === 'TURISMO';
   }
 
+  function isFunebresRama(r){
+    const rr = normRama(r);
+    return rr === 'FUNEBRES' || rr === 'FÚNEBRES' || rr === 'FUNEBRES '; // tolerante
+  }
+
+  function clearFunebresAdics(){
+    const box = document.getElementById('funList');
+    if(box) box.innerHTML = '';
+    setText('funHint', '');
+  }
+
+  async function loadFunebresAdicionales(){
+    try{
+      const rama = document.getElementById('rama')?.value || '';
+      const mes = document.getElementById('mes')?.value || '';
+      if(!isFunebresRama(rama) || !/^\d{4}-\d{2}$/.test(mes)){
+        clearFunebresAdics();
+        return;
+      }
+
+      const rows = await fetchJSON(`${API_BASE}/adicionales-funebres?mes=${encodeURIComponent(mes)}`);
+      const box = document.getElementById('funList');
+      if(!box) return;
+      box.innerHTML = '';
+
+      if(!Array.isArray(rows) || rows.length === 0){
+        setText('funHint', 'No hay adicionales configurados para ese mes.');
+        return;
+      }
+
+      // Render checkboxes
+      for(const it of rows){
+        const id = (it && it.id != null) ? String(it.id) : '';
+        const label = (it && it.label != null) ? String(it.label) : id;
+        const tipo = (it && it.tipo != null) ? String(it.tipo).toLowerCase() : '';
+        const monto = num(it?.monto);
+        const pct = num(it?.pct);
+        const obs = (it && it.obs) ? String(it.obs) : '';
+
+        const wrap = document.createElement('label');
+        wrap.style.display = 'flex';
+        wrap.style.alignItems = 'flex-start';
+        wrap.style.gap = '6px';
+        wrap.style.lineHeight = '1.2';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = id;
+
+        const txt = document.createElement('div');
+        const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
+        txt.innerHTML = `<div>${escapeHtml(label)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs)}</div>` : '');
+
+        wrap.appendChild(cb);
+        wrap.appendChild(txt);
+        box.appendChild(wrap);
+      }
+
+      setText('funHint', 'Marcá los adicionales que correspondan.');
+    }catch(err){
+      console.error(err);
+      setText('funHint', 'No se pudieron cargar los adicionales de Fúnebres.');
+    }
+  }
+
   // Agua Potable: selector A/B/C/D (no muestra texto extra)
   function updateAguaConexInfo(){
     // placeholder por si a futuro querés mostrar algo; hoy no mostramos nada.
@@ -463,12 +526,16 @@ Recibo Mensual</div>
     const rama = $('rama')?.value || '';
     const showAgua = isAguaRama(rama);
     const showTur = isTurismoRama(rama);
+    const showFun = isFunebresRama(rama);
 
     const aguaBlock = $('aguaBlock');
     if(aguaBlock) aguaBlock.style.display = showAgua ? '' : 'none';
 
     const boxTitulo = $('boxTitulo');
     if(boxTitulo) boxTitulo.style.display = showTur ? '' : 'none';
+
+    const funBlock = $('funBlock');
+    if(funBlock) funBlock.style.display = showFun ? '' : 'none';
 
     // limpiar valores cuando no aplica
     if(!showAgua){
@@ -479,6 +546,13 @@ Recibo Mensual</div>
     if(!showTur){
       const t = $('turTitulo');
       if(t) t.value = '0';
+    }
+
+    if(!showFun){
+      clearFunebresAdics();
+    }else{
+      // cargar para el mes seleccionado
+      loadFunebresAdicionales();
     }
   }
 
@@ -613,6 +687,11 @@ Recibo Mensual</div>
       setText("outCat", categoria);
       setText("outEscala", `Escala ${mes}`);
 
+      // Fúnebres: refrescar lista de adicionales al cambiar mes/categoría
+      if(isFunebresRama(rama)){
+        try{ await loadFunebresAdicionales(); }catch{}
+      }
+
       setText("status", "Listo.");
     }catch(err){
       console.error(err);
@@ -664,6 +743,15 @@ Recibo Mensual</div>
         ? String($("aguaConexCat")?.value || "").trim()
         : "";
 
+      // Fúnebres: adicionales seleccionados (ids)
+      let fun_adic = "";
+      if(isFunebresRama(rama)){
+        const checked = Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
+          .map(el => (el && el.value != null) ? String(el.value) : "")
+          .filter(v => v);
+        fun_adic = checked.join(',');
+      }
+
       const url = new URL(`${API_BASE}/calcular`);
       url.searchParams.set("rama", rama);
       url.searchParams.set("agrup", agrup);
@@ -686,6 +774,7 @@ Recibo Mensual</div>
       url.searchParams.set("fer_trab", String(fer_trab));
       url.searchParams.set("aus_inj", String(aus_inj));
       url.searchParams.set("conex_cat", conex_cat);
+      if(fun_adic) url.searchParams.set("fun_adic", fun_adic);
 
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");

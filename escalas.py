@@ -303,6 +303,7 @@ def get_payload(
     categoria: str = "—",
     conex_cat: str = "",
     conexiones: int = 0,
+    fun_adic: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """Devuelve los valores base del maestro para la combinación dada.
 
@@ -367,6 +368,8 @@ def calcular_payload(
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
+    # Fúnebres: ids de adicionales seleccionados (coma-separados)
+    fun_adic: str = "",
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
 
@@ -440,6 +443,39 @@ def calcular_payload(
     )
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr)
+
+    # -------- FUNEBRES: Adicionales (según maestro) --------
+    fun_rows: List[Dict[str, Any]] = []
+    if base["rama"] == "FUNEBRES":
+        sel_raw = (fun_adic or "").strip()
+        if sel_raw:
+            sel_ids = [s.strip() for s in sel_raw.replace(";", ",").split(",") if s.strip()]
+            if sel_ids:
+                defs = get_adicionales_funebres(mes)
+                by_id = {str(d.get("id")): d for d in defs}
+                for sid in sel_ids:
+                    d = by_id.get(str(sid))
+                    if not d:
+                        continue
+                    label = str(d.get("label") or sid)
+                    tipo = str(d.get("tipo") or "").strip().lower()
+                    monto = float(d.get("monto") or 0.0)
+                    pct = float(d.get("pct") or 0.0)
+
+                    val = 0.0
+                    base_num = 0.0
+                    if tipo in ("monto", "importe", "fijo") and monto:
+                        # prorrateo por jornada
+                        val = round2(monto * factor)
+                    elif pct:
+                        base_num = float(bas)
+                        val = round2(bas * (pct / 100.0))
+                    elif monto:
+                        val = round2(monto * factor)
+
+                    if val:
+                        fun_rows.append({"label": label, "val": float(val), "base": float(base_num)})
+                        rem_total = round2(rem_total + val)
 
     # -------- TURISMO: Adicional por Título --------
     # Se aplica sobre el básico (REM) y sobre el NR de $40.000 (en nuestro maestro = suma_fija).
@@ -523,6 +559,15 @@ def calcular_payload(
             r=presentismo,
             base_num=base_pres,
         ))
+
+    # Fúnebres: adicionales seleccionados (según maestro)
+    if fun_rows:
+        for fr in fun_rows:
+            items.append(item(
+                str(fr.get("label") or "Adicional"),
+                r=float(fr.get("val") or 0.0),
+                base_num=float(fr.get("base") or 0.0),
+            ))
 
 
 
