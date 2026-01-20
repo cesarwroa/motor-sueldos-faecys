@@ -332,6 +332,7 @@ def calcular_payload(
     afiliado: bool = False,
     sind_pct: float = 0,
     titulo_pct: float = 0,
+    zona_pct: float = 0,
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
@@ -362,14 +363,27 @@ def calcular_payload(
     # -------- Cálculos núcleo --------
     # Remunerativos
     pct_ant = float(anios_antig or 0.0) * 0.01
-    antig = round2(bas * pct_ant)
+
+    # Zona desfavorable (porcentaje sobre Básico prorrateado)
+    try:
+        zona_pct_f = float(zona_pct or 0.0)
+    except Exception:
+        zona_pct_f = 0.0
+    zona_pct_f = max(0.0, zona_pct_f)
+    zona = round2(bas * (zona_pct_f / 100.0)) if zona_pct_f else 0.0
+
+    # Antigüedad: base incluye Zona (criterio del sistema para cálculos generales)
+    base_ant = round2(bas + zona)
+    antig = round2(base_ant * pct_ant)
 
     # Regla Presentismo: se pierde con 2 (dos) o más ausencias injustificadas.
     aus_dias = max(0, int(aus_inj or 0))
     presentismo_habil = (aus_dias < 2)
-    presentismo = round2(bas / 12.0) if presentismo_habil else 0.0
+    # Presentismo: doceava parte de (Básico + Zona + Antigüedad)
+    base_pres = round2(bas + zona + antig)
+    presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
 
-    rem_total = round2(bas + presentismo + antig)
+    rem_total = round2(bas + zona + presentismo + antig)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     nr_base_total = round2(nr + sf)
@@ -387,7 +401,7 @@ def calcular_payload(
     # -------- Feriados --------
     fer_no = max(0, int(fer_no_trab or 0))
     fer_si = max(0, int(fer_trab or 0))
-    base_fer_rem = round2(bas + antig)
+    base_fer_rem = round2(bas + zona + antig)
     base_fer_nr = round2(nr_base_total + antig_nr)
     # Para mensualizados:
     # - Feriado NO trabajado: se suma la diferencia entre día feriado (1/25) y día normal incluido en el mensual (1/30).
@@ -407,7 +421,7 @@ def calcular_payload(
     nr_total = round2(nr_total + fer_no_nr + fer_si_nr)
 
     # -------- Ausencias injustificadas (descuento) --------
-    base_dia_aus = round2((bas + antig) / 30.0) if (bas or antig) else 0.0
+    base_dia_aus = round2((bas + zona + antig) / 30.0) if (bas or zona or antig) else 0.0
     aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
 
     # Base imponible para aportes: REM - ausencias
@@ -436,15 +450,18 @@ def calcular_payload(
 
     items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas)]
 
+    if zona:
+        items.append(item("Zona desfavorable", r=zona, base_num=bas))
+
     if antig:
-        items.append(item("Antigüedad", r=antig, base_num=bas))
+        items.append(item("Antigüedad", r=antig, base_num=base_ant))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
     if presentismo_habil and presentismo:
         items.append(item(
             "Presentismo",
             r=presentismo,
-            base_num=bas + antig,
+            base_num=base_pres,
         ))
 
     # Feriados (REM)
@@ -525,6 +542,7 @@ def calcular_payload(
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
         "titulo_pct": float(titulo_pct or 0),
+        "zona_pct": float(zona_pct_f),
 
         "labels": labels,
 
@@ -533,6 +551,7 @@ def calcular_payload(
         "suma_fija_base": float(sf_base),
 
         "basico": float(bas),
+        "zona": float(zona),
         "no_rem": float(nr),
         "suma_fija": float(sf),
 

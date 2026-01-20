@@ -600,6 +600,7 @@ Recibo Mensual</div>
 
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
+      const zona_pct = num($('zona')?.value || 0) || 0;
       const sind_pct = 0;
       const titulo_pct = 0;
 
@@ -614,6 +615,7 @@ Recibo Mensual</div>
       url.searchParams.set("afiliado", afiliado ? "true" : "false");
       url.searchParams.set("sind_pct", String(sind_pct));
       url.searchParams.set("titulo_pct", String(titulo_pct));
+      url.searchParams.set("zona_pct", String(zona_pct));
       url.searchParams.set("fer_no_trab", String(fer_no_trab));
       url.searchParams.set("fer_trab", String(fer_trab));
       url.searchParams.set("aus_inj", String(aus_inj));
