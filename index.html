@@ -136,7 +136,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   </select>
 </div>
 <div class="note" id="funBlock" style="display:none">
-  <strong>Fúnebres:</strong> Adicionales (según escala)
+  <strong>Fúnebres:</strong> Adicionales mensuales
   <div id="funList" class="grid cols-4" style="margin-top:6px"></div>
   <div id="funHint" style="margin-top:6px; color:#64748b"></div>
 </div>
@@ -381,25 +381,33 @@ Recibo Mensual</div>
     }
     return data;
   }
-
   function fillSelect(sel, items, placeholder="—"){
     if(!sel) return;
     const cur = sel.value;
     sel.innerHTML = "";
+
+    // Placeholder: value vacío para no chocar con valores reales como "—"
     const opt0 = document.createElement("option");
-    opt0.value = "—";
+    opt0.value = "";
     opt0.textContent = placeholder;
     sel.appendChild(opt0);
+
     (items||[]).forEach((it) => {
       const o = document.createElement("option");
       o.value = it;
       o.textContent = it;
       sel.appendChild(o);
     });
-    // mantener selección si existe
-    if(items && items.includes(cur)) sel.value = cur;
-    if(!sel.value) sel.value = "—";
+
+    // Mantener selección si existe; si no, seleccionar el primer ítem real
+    if(items && items.length){
+      if(items.includes(cur)) sel.value = cur;
+      else sel.value = items[0];
+    }else{
+      sel.value = "";
+    }
   }
+
 
   let META = null;
   let ALL_MESES = [];
@@ -410,6 +418,22 @@ Recibo Mensual</div>
     }catch{
       return (r||"").toString().toUpperCase().trim();
     }
+  }
+
+  // Etiquetas cortas para los adicionales de Fúnebres (solo visual)
+  function prettifyFunLabel(raw){
+    const s = (raw ?? "").toString().trim();
+    if(!s) return "";
+
+    const up = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    // Mapeo a los nombres que usás en el modelo de referencia
+    if(up.includes("GENERAL") && up.includes("TODO EL PERSONAL")) return "Manipulación de cadáveres";
+    if(up.includes("PERSONAL NO INCLUIDO") || up.includes("INCISO 1")) return "Resto del personal";
+    if(up.includes("CHOFER") || up.includes("FURGONERO")) return "Chofer/Furgonero";
+    if(up.includes("INDUMENTARIA")) return "Indumentaria";
+
+    // Fallback genérico
+    return s.replace(/^Adicional\s+/i, "").replace(/\s*\([^)]*\)\s*/g, " ").trim();
   }
 
   function mesesPorRama(rama){
@@ -435,7 +459,7 @@ Recibo Mensual</div>
     const sel = $("mes");
     if(!sel) return;
     // si no quedó seleccionado, usar el último disponible
-    if(sel.value === "—" && disponibles.length){
+    if(!sel.value && disponibles.length){
       sel.value = disponibles[disponibles.length-1];
     }
   }
@@ -503,7 +527,8 @@ Recibo Mensual</div>
 
         const txt = document.createElement('div');
         const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
-        txt.innerHTML = `<div>${escapeHtml(label)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs)}</div>` : '');
+        const prettyLabel = prettifyFunLabel(label);
+        txt.innerHTML = `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs)}</div>` : '');
 
         wrap.appendChild(cb);
         wrap.appendChild(txt);
@@ -592,8 +617,8 @@ Recibo Mensual</div>
   }
 
   async function refreshAgrupCat(){
-    const rama = $("rama")?.value || "—";
-    if(!META || rama === "—"){ return; }
+    const rama = $("rama")?.value || "";
+    if(!META || !rama){ return; }
 
     // Meses por rama (Etapa 2)
     refreshMesesForRama(rama);
@@ -604,7 +629,7 @@ Recibo Mensual</div>
     fillSelect($("agrup"), agrups, "Agrupamiento");
     if(agrups.includes("GENERAL")) $("agrup").value = "GENERAL";
 
-    const agrup = $("agrup")?.value || "—";
+    const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
@@ -614,9 +639,9 @@ Recibo Mensual</div>
   }
 
   async function refreshCatsOnly(){
-    const rama = $("rama")?.value || "—";
-    const agrup = $("agrup")?.value || "—";
-    if(!META || rama === "—" || agrup === "—"){ return; }
+    const rama = $("rama")?.value || "";
+    const agrup = $("agrup")?.value || "";
+    if(!META || !rama || !agrup){ return; }
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     if(cats.length) $("categoria").value = cats[0];
@@ -645,11 +670,11 @@ Recibo Mensual</div>
 
   async function refreshPayload(){
     try{
-      const rama = $("rama")?.value || "—";
-      const mes = $("mes")?.value || "—";
-      const agrup = $("agrup")?.value || "—";
-      const categoria = $("categoria")?.value || "—";
-      if([rama,mes,agrup,categoria].some(v => v==="—")) return;
+      const rama = $("rama")?.value || "";
+      const mes = $("mes")?.value || "";
+      const agrup = $("agrup")?.value || "";
+      const categoria = $("categoria")?.value || "";
+      if([rama,mes,agrup,categoria].some(v => !v)) return;
 
       const jornada = num($("hs")?.value || 48) || 48;
 
@@ -720,11 +745,11 @@ Recibo Mensual</div>
 
   async function calcularMensual(){
     try{
-      const rama = $("rama")?.value || "—";
-      const mes = $("mes")?.value || "—";
-      const agrup = $("agrup")?.value || "—";
-      const categoria = $("categoria")?.value || "—";
-      if([rama,mes,agrup,categoria].some(v => v==="—")){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
+      const rama = $("rama")?.value || "";
+      const mes = $("mes")?.value || "";
+      const agrup = $("agrup")?.value || "";
+      const categoria = $("categoria")?.value || "";
+      if([rama,mes,agrup,categoria].some(v => !v)){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
 
       const jornada = num($("hs")?.value || 48) || 48;
       const anios_antig = num($("anios")?.value || 0) || 0;

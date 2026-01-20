@@ -236,30 +236,69 @@ def _build_index() -> Dict[str, Any]:
     # ---------------------------
     # Adicionales Fúnebres
     # ---------------------------
+    # La hoja "Adicionales" del maestro puede venir en distintos formatos según versión.
+    # Formato usual actual (enero 2026): Rama | Concepto | Mes | Valor | Detalle
+    # Otros formatos posibles: Rama | Concepto | Mes | Tipo | Monto | % | Observación
     funebres_adic: Dict[str, List[Dict[str, Any]]] = {}  # mes -> list
     if "Adicionales" in wb.sheetnames:
         ws = wb["Adicionales"]
-        # headers: Rama, Concepto, Mes, Tipo, Monto, % , Observación
+
+        # Mapear columnas por encabezados (fila 1)
+        header = {}
+        for c in range(1, ws.max_column + 1):
+            h = _norm(ws.cell(1, c).value)
+            if h:
+                header[h.lower()] = c
+
+        col_rama = header.get("rama", 1)
+        col_concepto = header.get("concepto", 2)
+        col_mes = header.get("mes", 3)
+        col_tipo = header.get("tipo")  # opcional
+        col_monto = header.get("monto") or header.get("valor") or header.get("importe")
+        col_pct = header.get("%") or header.get("porcentaje") or header.get("pct")
+        col_obs = header.get("observación") or header.get("observacion") or header.get("detalle") or header.get("obs")
+
         for r in range(2, ws.max_row + 1):
-            rama = _norm(ws.cell(r, 1).value)
+            rama = _norm(ws.cell(r, col_rama).value)
             if rama.lower() not in ["funebres", "fúnebres"]:
                 continue
-            concepto = _norm(ws.cell(r, 2).value)
-            mes = _mes_to_key(ws.cell(r, 3).value)
-            tipo = _norm(ws.cell(r, 4).value).lower()  # "monto" o "porcentaje"
-            monto = _to_float(ws.cell(r, 5).value)
-            pct = _to_float(ws.cell(r, 6).value)
-            obs = _norm(ws.cell(r, 7).value)
-            if not mes or not concepto:
+
+            concepto_raw = _norm(ws.cell(r, col_concepto).value)
+            mes_k = _mes_to_key(ws.cell(r, col_mes).value)
+            if not mes_k or not concepto_raw:
                 continue
-            funebres_adic.setdefault(mes, []).append({
-                "id": concepto,        # id simple
-                "label": concepto,     # label
-                "tipo": "pct" if "por" in tipo else "monto",
-                "monto": monto,
-                "pct": pct,
-                "obs": obs,
+
+            tipo_raw = _norm(ws.cell(r, col_tipo).value).lower() if col_tipo else ""
+            monto_val = _to_float(ws.cell(r, col_monto).value) if col_monto else 0.0
+            pct_val = _to_float(ws.cell(r, col_pct).value) if col_pct else 0.0
+            obs_raw = _norm(ws.cell(r, col_obs).value) if col_obs else ""
+
+            # Determinar tipo
+            tipo = "pct" if ("por" in tipo_raw or "%" in tipo_raw) else "monto"
+
+            # Etiquetas amigables (como en el HTML offline)
+            cl = concepto_raw.lower()
+            label = concepto_raw
+            if "indument" in cl:
+                label = "Indumentaria"
+            elif "general" in cl:
+                # Ojo: este concepto suele venir como "... incluidos choferes", por eso
+                # se evalúa ANTES que el de chofer/furgonero.
+                label = "Resto del personal"
+            elif "cadaver" in cl or "cadáver" in cl or "no incluido" in cl or "inciso" in cl:
+                label = "Manipulación de cadáveres"
+            elif "furgon" in cl or "chofer/furgon" in cl:
+                label = "Chofer/Furgonero"
+
+            funebres_adic.setdefault(mes_k, []).append({
+                "id": concepto_raw,   # id estable (se usa en fun_adic[] del /calcular)
+                "label": label,
+                "tipo": tipo,
+                "monto": monto_val if tipo == "monto" else 0.0,
+                "pct": pct_val if tipo == "pct" else 0.0,
+                "obs": obs_raw,
             })
+
 
     # ---------------------------
     # Build meta
@@ -688,9 +727,26 @@ def calcular_payload(
 
 
 def get_adicionales_funebres(mes: str) -> List[Dict[str, Any]]:
+    """Adicionales de Fúnebres.
+
+    - Si existe definición exacta para el mes, se usa esa.
+    - Si no existe, se toma la última definición anterior (prórroga automática).
+      Esto permite, por ejemplo, que si el maestro quedó hasta 2026-01, en
+      2026-02/03/04 se sigan ofreciendo los mismos adicionales.
+    """
     idx = _build_index()
     mes_k = _mes_to_key(mes)
-    return idx["funebres_adic"].get(mes_k, [])
+
+    d = idx.get("funebres_adic", {})
+    if mes_k in d:
+        return list(d.get(mes_k, []))
+
+    # fallback: última definición <= mes_k
+    keys = [k for k in d.keys() if isinstance(k, str) and k <= mes_k]
+    if not keys:
+        return []
+    best = max(keys)
+    return list(d.get(best, []))
 
 def match_regla_conexiones(conexiones_o_nivel) -> Dict[str, Any]:
     """
