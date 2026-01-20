@@ -172,7 +172,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
+<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">
@@ -268,7 +268,7 @@ Recibo Mensual</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
 <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
-<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
+<button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
 <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
@@ -303,9 +303,7 @@ Recibo Mensual</div>
 #printArea thead th{padding:2.2mm 2mm 2mm;border-bottom:.45mm solid #000;font-weight:800}
 #printArea th,#printArea td{padding:2mm;font-variant-numeric:tabular-nums}
 #printArea th:nth-child(1),#printArea td:nth-child(1){text-align:left}
-#printArea th:nth-child(2),#printArea td:nth-child(2),
-#printArea th:nth-child(3),#printArea td:nth-child(3),
-#printArea th:nth-child(4),#printArea td:nth-child(4){text-align:right;white-space:nowrap}
+#printArea th:not(:first-child),#printArea td:not(:first-child){text-align:right;white-space:nowrap}
 #printArea col.wFixed{width:33.5mm}
 /* Divisor */
 #printArea .divider td{padding:0;border-bottom:.35mm solid #000;height:0}
@@ -680,6 +678,106 @@ Recibo Mensual</div>
       setText("status", "Error al calcular.");
     }
   }
+
+
+
+  // =====================
+  // Etapa 3: Impresión / PDF (evita hoja en blanco)
+  // =====================
+  function escapeHtml(s){
+    return (s ?? "").toString()
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/\"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+  function cloneTableForPrint(tab){
+    const sel = (tab === 'final') ? '#paneFinal table.table' : '#paneMensual table.table';
+    const src = document.querySelector(sel);
+    if(!src) return null;
+    const tbl = src.cloneNode(true);
+
+    // Mensual: sacar columna Base (2da columna)
+    if(tab !== 'final'){
+      tbl.querySelectorAll('tr').forEach(tr => {
+        const kids = tr.children;
+        if(kids && kids.length >= 5){
+          // Concepto | Base | Rem | NR | Desc
+          kids[1].remove();
+        }
+      });
+      // Ajustar colspans (Neto a cobrar)
+      tbl.querySelectorAll('td[colspan]').forEach(td => {
+        const cs = parseInt(td.getAttribute('colspan') || '0', 10);
+        if(cs > 0) td.setAttribute('colspan', String(Math.max(1, cs - 1)));
+      });
+    }
+
+    // En print siempre queremos tabla “limpia”
+    tbl.classList.remove('table');
+    tbl.classList.add('print-table');
+
+    return tbl;
+  }
+
+  function buildPrintArea(tab){
+    const area = $('printArea');
+    if(!area) return;
+
+    const isFinal = (tab === 'final');
+    const titulo = isFinal ? 'Liquidación Final' : 'Recibo Mensual';
+
+    // Header: usar los spans ya armados (fallback a selects)
+    const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || '—';
+    const agrup = (isFinal ? $('lf_outAgrup')?.textContent : $('outAgrup')?.textContent) || $('agrup')?.value || '—';
+    const cat  = (isFinal ? $('lf_outCat')?.textContent : $('outCat')?.textContent) || $('categoria')?.value || '—';
+    const escala = (!isFinal ? ($('outEscala')?.textContent || '') : (`Escala ${$('mes')?.value || ''}`)).trim();
+
+    const tbl = cloneTableForPrint(tab);
+
+    if(!tbl){
+      area.innerHTML = `
+        <div class="sheet">
+          <div class="title">${escapeHtml(titulo)}</div>
+          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+          <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
+        </div>`;
+      return;
+    }
+
+    // Armado final
+    area.innerHTML = `
+      <div class="sheet">
+        <div class="title">${escapeHtml(titulo)}</div>
+        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+        ${tbl.outerHTML}
+      </div>`;
+  }
+
+  function imprimirPDF(tab){
+    // Construye el printArea ANTES de imprimir.
+    try{
+      buildPrintArea(tab || 'mensual');
+      // Forzar reflow para que el navegador “vea” el contenido
+      const area = $('printArea');
+      if(area) void area.offsetHeight;
+      // Dejar un tick para que pinte antes de abrir el diálogo
+      setTimeout(() => window.print(), 60);
+    }catch(err){
+      console.error(err);
+      alert('No se pudo preparar la impresión. Revisá consola.');
+    }
+  }
+
+  // Limpiar al terminar de imprimir (evita que quede contenido oculto)
+  window.addEventListener('afterprint', () => {
+    const area = $('printArea');
+    if(area) area.innerHTML = '';
+  });
+
+  window.imprimirPDF = imprimirPDF;
 
   // Exponer para botones existentes
   window.calcularMensual = calcularMensual;
