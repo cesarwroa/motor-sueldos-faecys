@@ -86,6 +86,11 @@ def _norm(s: Any) -> str:
     return str(s).strip() if s is not None else ""
 
 
+def norm_rama(rama: Any) -> str:
+    """Normaliza el nombre de rama para comparaciones."""
+    return _norm(rama).upper().replace("  ", " ").strip()
+
+
 def _nr_labels(rama: str) -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
     r = _norm(rama).upper()
@@ -291,7 +296,14 @@ def _build_index() -> Dict[str, Any]:
 def get_meta() -> Dict[str, Any]:
     return _build_index()["meta"]
 
-def get_payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—") -> Dict[str, Any]:
+def get_payload(
+    rama: str,
+    mes: str,
+    agrup: str = "—",
+    categoria: str = "—",
+    conex_cat: str = "",
+    conexiones: int = 0,
+) -> Dict[str, Any]:
     """Devuelve los valores base del maestro para la combinación dada.
 
     Se usa en:
@@ -319,7 +331,23 @@ def get_payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—")
 
     labels = _nr_labels(key[0])
 
-    return {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec, "labels": labels}
+    out = {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec, "labels": labels}
+
+    # Agua Potable: ajustar valores base según selector de conexiones (A/B/C/D)
+    if norm_rama(key[0]) in ("AGUA POTABLE", "AGUA", "AGUAPOTABLE") and (conex_cat or conexiones):
+        regla = match_regla_conexiones(conex_cat or conexiones)
+        try:
+            f = float(regla.get("factor", 1.0))
+        except Exception:
+            f = 1.0
+        if f and f != 1.0:
+            out["basico"] = _round2(out.get("basico", 0.0) * f)
+            out["no_rem"] = _round2(out.get("no_rem", 0.0) * f)
+            out["suma_fija"] = _round2(out.get("suma_fija", 0.0) * f)
+            out["conex_cat"] = _norm(conex_cat).upper() if conex_cat else ""
+            out["conexiones"] = int(conexiones or 0)
+
+    return out
 
 def calcular_payload(
     rama: str,

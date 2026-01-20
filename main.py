@@ -57,8 +57,17 @@ def payload(
     mes: str,
     agrup: str = "—",
     categoria: str = "—",
+    conex_cat: str = "",
+    conexiones: int = 0,
 ):
-    return get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+    return get_payload(
+        rama=rama,
+        mes=mes,
+        agrup=agrup,
+        categoria=categoria,
+        conex_cat=conex_cat,
+        conexiones=conexiones,
+    )
 
 # ========= CALCULAR (recibo completo) =========
 @app.get("/calcular")
