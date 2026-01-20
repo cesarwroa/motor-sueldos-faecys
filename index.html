@@ -47,7 +47,6 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 #printArea .sigTitle { font-weight:700; margin-bottom:1mm; }
 #printArea .qr { width:32mm; height:32mm; border:0.3mm dashed #94a3b8; display:flex; align-items:center; justify-content:center; font-size:10px; color:#64748b; }
 
-
 /* === Base (solo HTML) === */
 .th-base-num, .col-base-num { min-width: 180px; }
 .base-mini { font-size: 12px; opacity:.95; }
@@ -151,25 +150,6 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
 <div style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
 </div>
-<div class="grid cols-4" style="margin-top:8px">
-<div><label>Título (Turismo)</label>
-<select id="tituloNivel">
-<option value="">—</option>
-<option value="terciario">Terciario</option>
-<option value="universitario">Universitario</option>
-</select>
-</div>
-<div><label>Cajero (Art. 30)</label>
-<select id="cajeroTipo">
-<option value="">—</option>
-<option value="A">Cajero A</option>
-<option value="B">Cajero B</option>
-<option value="C">Cajero C</option>
-</select>
-</div>
-<div><label>KM Chofer</label><input id="kmChofer" min="0" step="1" type="number" value="0"/></div>
-<div><label>KM Ayudante</label><input id="kmAyudante" min="0" step="1" type="number" value="0"/></div>
-</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
 <button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
@@ -246,25 +226,6 @@ Recibo Mensual</div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
 </div>
 <div class="note small">* Usá “Sugerir MRMNH” para proponer un mejor mensual (editable) con NR + antigüedad + presentismo.</div>
-<div class="grid cols-4" style="margin-top:8px">
-<div><label>Título (Turismo)</label>
-<select id="tituloNivel">
-<option value="">—</option>
-<option value="terciario">Terciario</option>
-<option value="universitario">Universitario</option>
-</select>
-</div>
-<div><label>Cajero (Art. 30)</label>
-<select id="cajeroTipo">
-<option value="">—</option>
-<option value="A">Cajero A</option>
-<option value="B">Cajero B</option>
-<option value="C">Cajero C</option>
-</select>
-</div>
-<div><label>KM Chofer</label><input id="kmChofer" min="0" step="1" type="number" value="0"/></div>
-<div><label>KM Ayudante</label><input id="kmAyudante" min="0" step="1" type="number" value="0"/></div>
-</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
 <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
@@ -702,8 +663,6 @@ Recibo Mensual</div>
       setText("status", "Error al calcular.");
     }
   }
-
-
 
   // =====================
   // Etapa 3: Impresión / PDF (evita hoja en blanco)
