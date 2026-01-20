@@ -6,6 +6,8 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Recibo de Sueldo</title>
+<!-- Evita 404 de /favicon.ico en algunos hosts -->
+<link rel="icon" href="data:," />
 <style>
 :root{ --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --grid:#e2e8f0; }
 *{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
@@ -405,6 +407,35 @@ Recibo Mensual</div>
     const n = num(v);
     return n.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
   };
+
+  // Lee montos escritos como "$ 1.234,56" / "1234,56" / "1234.56" y devuelve número.
+  function parseMoneyInput(v){
+    if(v == null) return 0;
+    if(typeof v === "number") return Number.isFinite(v) ? v : 0;
+    let s = String(v).trim();
+    if(!s) return 0;
+    // mantener signo
+    const neg = s.startsWith("-");
+    s = s.replace(/[^0-9,\.]/g, "");
+    if(!s) return 0;
+    if(s.includes(",") && s.includes(".")){
+      // 1.234,56 => 1234.56
+      s = s.replace(/\./g, "").replace(/,/g, ".");
+    } else if(s.includes(",") && !s.includes(".")){
+      // 1234,56 => 1234.56
+      s = s.replace(/,/g, ".");
+    } else {
+      // 1.234.567 => 1234567 (si hay multiples puntos)
+      const parts = s.split(".");
+      if(parts.length > 2) s = parts.join("");
+    }
+    const n = Number(s);
+    if(!Number.isFinite(n)) return 0;
+    return neg ? -n : n;
+  }
+
+  // por si algún handler lo usa desde el HTML inline
+  window.parseMoneyInput = parseMoneyInput;
 
   async function fetchJSON(url){
     const res = await fetch(url, { credentials:"omit" });
