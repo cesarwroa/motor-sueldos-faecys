@@ -73,6 +73,9 @@ def calcular(
     afiliado: bool = False,
     sind_pct: float = 0,
     titulo_pct: float = 0,
+    fer_no_trab: int = 0,
+    fer_trab: int = 0,
+    aus_inj: int = 0,
 ):
     return calcular_payload(
         rama=rama,
@@ -85,6 +88,9 @@ def calcular(
         afiliado=afiliado,
         sind_pct=sind_pct,
         titulo_pct=titulo_pct,
+        fer_no_trab=fer_no_trab,
+        fer_trab=fer_trab,
+        aus_inj=aus_inj,
     )
 
 # ========= FUNEBRES =========

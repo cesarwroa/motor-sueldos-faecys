@@ -632,6 +632,11 @@ Recibo Mensual</div>
       const jornada = num($("hs")?.value || 48) || 48;
       const anios_antig = num($("anios")?.value || 0) || 0;
 
+      // Feriados / Ausencias
+      const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
+      const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+      const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
+
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
       const sind_pct = 0;
@@ -648,6 +653,9 @@ Recibo Mensual</div>
       url.searchParams.set("afiliado", afiliado ? "true" : "false");
       url.searchParams.set("sind_pct", String(sind_pct));
       url.searchParams.set("titulo_pct", String(titulo_pct));
+      url.searchParams.set("fer_no_trab", String(fer_no_trab));
+      url.searchParams.set("fer_trab", String(fer_trab));
+      url.searchParams.set("aus_inj", String(aus_inj));
 
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");

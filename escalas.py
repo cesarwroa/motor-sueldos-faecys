@@ -13,6 +13,8 @@ import datetime as _dt
 from functools import lru_cache
 from typing import Dict, Tuple, List, Any, Optional
 
+from decimal import Decimal, ROUND_HALF_UP
+
 import openpyxl
 
 
@@ -21,18 +23,35 @@ import openpyxl
 # ---------------------------
 
 def _default_maestro_path() -> str:
-    # Preferimos SIEMPRE data/maestro_actualizado.xlsx (evita conflicto con un maestro en raíz)
-    p1 = os.path.join("data", "maestro_actualizado.xlsx")
+    # Preferimos SIEMPRE data/maestro_actualizado.xlsx (evita conflicto con un maestro en raíz).
+    # Resolvemos relativo a este archivo, no al CWD, para evitar errores 500 en deploy.
+    here = os.path.dirname(__file__)
+
+    p1 = os.path.join(here, "data", "maestro_actualizado.xlsx")
     if os.path.exists(p1):
         return p1
-    # fallback
-    p2 = os.path.join("data", "maestro.xlsx")
+
+    p2 = os.path.join(here, "data", "maestro.xlsx")
     if os.path.exists(p2):
         return p2
+
+    # último fallback (raíz del proyecto)
+    p3 = os.path.join(here, "maestro.xlsx")
+    if os.path.exists(p3):
+        return p3
+
     return "maestro.xlsx"
 
 
 MAESTRO_PATH = os.getenv("MAESTRO_PATH", _default_maestro_path())
+
+
+def round2(x: float) -> float:
+    """Redondeo a 2 decimales (half up) para importes."""
+    try:
+        return float(Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    except Exception:
+        return 0.0
 
 
 # ---------------------------
@@ -313,6 +332,9 @@ def calcular_payload(
     afiliado: bool = False,
     sind_pct: float = 0,
     titulo_pct: float = 0,
+    fer_no_trab: int = 0,
+    fer_trab: int = 0,
+    aus_inj: int = 0,
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
 
@@ -339,33 +361,57 @@ def calcular_payload(
 
     # -------- Cálculos núcleo --------
     # Remunerativos
-    presentismo = bas / 12.0
-    antig = bas * (float(anios_antig or 0.0) * 0.01)
+    pct_ant = float(anios_antig or 0.0) * 0.01
+    presentismo = round2(bas / 12.0)
+    antig = round2(bas * pct_ant)
 
-    rem_total = bas + presentismo + antig
+    rem_total = round2(bas + presentismo + antig)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
-    nr_base_total = nr + sf
-    antig_nr = nr_base_total * (float(anios_antig or 0.0) * 0.01) if nr_base_total else 0.0
+    nr_base_total = round2(nr + sf)
+    antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
     # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR
-    presentismo_nr = (nr_base_total + antig_nr) / 12.0 if nr_base_total else 0.0
+    presentismo_nr = round2((nr_base_total + antig_nr) / 12.0) if nr_base_total else 0.0
 
-    nr_total = nr_base_total + antig_nr + presentismo_nr
+    nr_total = round2(nr_base_total + antig_nr + presentismo_nr)
+
+    # -------- Feriados --------
+    fer_no = max(0, int(fer_no_trab or 0))
+    fer_si = max(0, int(fer_trab or 0))
+    base_fer_rem = round2(bas + antig)
+    base_fer_nr = round2(nr_base_total + antig_nr)
+    vdia_rem = round2(base_fer_rem / 25.0) if base_fer_rem else 0.0
+    vdia_nr = round2(base_fer_nr / 25.0) if base_fer_nr else 0.0
+
+    fer_no_rem = round2(fer_no * vdia_rem) if fer_no else 0.0
+    fer_si_rem = round2(fer_si * vdia_rem) if fer_si else 0.0
+    fer_si_nr = round2(fer_si * vdia_nr) if fer_si else 0.0
+
+    rem_total = round2(rem_total + fer_no_rem + fer_si_rem)
+    nr_total = round2(nr_total + fer_si_nr)
+
+    # -------- Ausencias injustificadas (descuento) --------
+    aus_dias = max(0, int(aus_inj or 0))
+    base_dia_aus = round2((bas + antig) / 30.0) if (bas or antig) else 0.0
+    aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
+
+    # Base imponible para aportes: REM - ausencias
+    rem_aportes = max(0.0, round2(rem_total - aus_rem))
 
     # Descuentos
-    jub = rem_total * 0.11
-    pami = rem_total * 0.03
+    jub = round2(rem_aportes * 0.11)
+    pami = round2(rem_aportes * 0.03)
     # Si tiene OSECAC, Obra Social 3% también se calcula sobre NR (criterio del sistema)
-    os_base = (rem_total + nr_total) if bool(osecac) else rem_total
-    os_aporte = os_base * 0.03 if bool(osecac) else 0.0
+    os_base = round2((rem_aportes + nr_total) if bool(osecac) else rem_aportes)
+    os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
     osecac_100 = 100.0 if bool(osecac) else 0.0
 
     sind = 0.0
     if bool(afiliado) and float(sind_pct or 0) > 0:
-        sind = (rem_total + nr_total) * (float(sind_pct) / 100.0)
+        sind = round2((rem_aportes + nr_total) * (float(sind_pct) / 100.0))
 
-    ded_total = jub + pami + os_aporte + osecac_100 + sind
-    neto = (rem_total + nr_total) - ded_total
+    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + aus_rem)
+    neto = round2((rem_total + nr_total) - ded_total)
 
     def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
         out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
@@ -380,6 +426,20 @@ def calcular_payload(
 
     items.append(item("Presentismo", r=presentismo, base_num=bas + antig))
 
+    # Feriados (REM)
+    if fer_no_rem:
+        items.append(item(
+            f"Feriado no trabajado ({fer_no} día{'s' if fer_no != 1 else ''})",
+            r=fer_no_rem,
+            base_num=base_fer_rem,
+        ))
+    if fer_si_rem:
+        items.append(item(
+            f"Feriado trabajado ({fer_si} día{'s' if fer_si != 1 else ''})",
+            r=fer_si_rem,
+            base_num=base_fer_rem,
+        ))
+
     labels = _nr_labels(base["rama"])
 
     if nr:
@@ -393,8 +453,24 @@ def calcular_payload(
     if presentismo_nr:
         items.append(item("Presentismo (NR)", n=presentismo_nr, base_num=(nr_base_total + antig_nr)))
 
-    items.append(item("Jubilación 11%", d=jub, base_num=rem_total))
-    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_total))
+    # Feriados (NR)
+    if fer_si_nr:
+        items.append(item(
+            f"Feriado trabajado (NR) ({fer_si} día{'s' if fer_si != 1 else ''})",
+            n=fer_si_nr,
+            base_num=base_fer_nr,
+        ))
+
+    # Ausencias injustificadas (descuento) – reduce bases de aportes vía rem_aportes
+    if aus_rem:
+        items.append(item(
+            f"Ausencias injustificadas ({aus_dias} día{'s' if aus_dias != 1 else ''})",
+            d=aus_rem,
+            base_num=base_dia_aus,
+        ))
+
+    items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
+    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
 
     if bool(osecac):
         items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
@@ -403,7 +479,7 @@ def calcular_payload(
         items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
 
     if sind:
-        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_total + nr_total)))
+        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_total)))
 
     return {
         "ok": True,
