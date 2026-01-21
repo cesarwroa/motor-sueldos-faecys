@@ -840,6 +840,11 @@ function applyBranchUI(){
       const hex100 = num($("hex100")?.value || 0) || 0;
       const hs_noct = num($("hsNoct")?.value || 0) || 0;
 
+      // Adicional por KM (Chofer / Ayudante)
+      const km_tipo = String($("kmTipo")?.value || "").trim();
+      const km_menos100 = Math.max(0, parseInt($("kmMenos100")?.value || "0", 10) || 0);
+      const km_mas100 = Math.max(0, parseInt($("kmMas100")?.value || "0", 10) || 0);
+
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
       const zona_pct = num($('zona')?.value || 0) || 0;
@@ -878,6 +883,10 @@ function applyBranchUI(){
       url.searchParams.set("hex50", String(hex50));
       url.searchParams.set("hex100", String(hex100));
       url.searchParams.set("hs_noct", String(hs_noct));
+      // KM
+      if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
+      url.searchParams.set("km_menos100", String(km_menos100));
+      url.searchParams.set("km_mas100", String(km_mas100));
       url.searchParams.set("conex_cat", conex_cat);
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 

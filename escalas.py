@@ -428,6 +428,11 @@ def calcular_payload(
     hex50: float = 0,
     hex100: float = 0,
     hs_noct: float = 0,
+
+    # Adicional por KM (Art. 36 Chofer/Ayudante)
+    km_tipo: str = "",
+    km_menos100: float = 0,
+    km_mas100: float = 0,
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -512,6 +517,88 @@ def calcular_payload(
     hex100_h = _h(hex100)
     hs_noct_h = _h(hs_noct)
 
+    # -------- Adicional por KM (Art. 36) --------
+    # Regla histórica (Acuerdo 26/09/1983):
+    #  - Ayudante: 0,0082% (primeros 100km) sobre básico inicial Auxiliar A
+    #             0,01%   (>100km)         sobre básico inicial Auxiliar Especializado A
+    #  - Chofer:   0,01%   (primeros 100km) sobre básico inicial Auxiliar B
+    #             0,0115% (>100km)         sobre básico inicial Auxiliar Especializado B
+    #
+    # El front manda:
+    #   km_tipo: "AY" (Ayudante) o "CH" (Chofer)
+    #   km_menos100: km dentro de los primeros 100
+    #   km_mas100: km por encima de 100
+    #
+    # Se prorratea por jornada (factor) igual que el básico (salvo Call Center, donde factor=1).
+    def _canon(s: str) -> str:
+        s = _norm(s).upper()
+        s = re.sub(r"\s+", " ", s).strip()
+        return s
+
+    def _basico_ref(_rama: str, _mes: str, candidates: List[str]) -> float:
+        idx = _build_index()
+        mes_k = _mes_to_key(_mes)
+        cand_can = [_canon(c) for c in candidates]
+
+        def _search(rama_k: str) -> float:
+            # 1) match exacto
+            for (r, _agr, cat, m), rec in idx.get("payload", {}).items():
+                if r != rama_k or m != mes_k:
+                    continue
+                cat_c = _canon(cat)
+                if "MENORES" in cat_c:
+                    continue
+                if cat_c in cand_can:
+                    try:
+                        return float(rec.get("basico") or 0.0)
+                    except Exception:
+                        return 0.0
+            # 2) contiene
+            for (r, _agr, cat, m), rec in idx.get("payload", {}).items():
+                if r != rama_k or m != mes_k:
+                    continue
+                cat_c = _canon(cat)
+                if "MENORES" in cat_c:
+                    continue
+                if any(cc in cat_c for cc in cand_can):
+                    try:
+                        return float(rec.get("basico") or 0.0)
+                    except Exception:
+                        return 0.0
+            return 0.0
+
+        r0 = _canon(_rama)
+        v = _search(r0)
+        if (not v) and r0 != "GENERAL":
+            v = _search("GENERAL")
+        return float(v or 0.0)
+
+    km_tipo_n = _norm(km_tipo).upper()
+    km_le100 = max(0.0, float(km_menos100 or 0.0))
+    km_gt100 = max(0.0, float(km_mas100 or 0.0))
+
+    # 2 renglones (<=100 y >100) para que el "Base" muestre el básico referencia correcto.
+    km_rem_le = 0.0
+    km_rem_gt = 0.0
+    km_base_le = 0.0
+    km_base_gt = 0.0
+
+    if km_tipo_n in ("AY", "AYUDANTE", "CH", "CHOFER") and (km_le100 or km_gt100):
+        if km_tipo_n in ("AY", "AYUDANTE"):
+            km_base_le = _basico_ref(rama, mes, ["AUXILIAR A", "AUXILIAR  A", "PERSONAL AUXILIAR A", "AUXILIAR LETRA A"])
+            km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO A", "AUXILIAR  ESPECIALIZADO A"])
+            # Art. 36: adicional por km recorrido (no se prorratea por jornada).
+            km_rem_le = round2(km_base_le * 0.000082 * km_le100) if (km_base_le and km_le100) else 0.0
+            km_rem_gt = round2(km_base_gt * 0.0001 * km_gt100) if (km_base_gt and km_gt100) else 0.0
+        else:
+            km_base_le = _basico_ref(rama, mes, ["AUXILIAR B", "AUXILIAR  B", "PERSONAL AUXILIAR B", "AUXILIAR LETRA B"])
+            km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO B", "AUXILIAR  ESPECIALIZADO B"])
+            # Art. 36: adicional por km recorrido (no se prorratea por jornada).
+            km_rem_le = round2(km_base_le * 0.0001 * km_le100) if (km_base_le and km_le100) else 0.0
+            km_rem_gt = round2(km_base_gt * 0.000115 * km_gt100) if (km_base_gt and km_gt100) else 0.0
+
+    km_rem_total = round2(km_rem_le + km_rem_gt)
+
     DIV_HORA = 200.0
     hora_rem = (float(bas) / DIV_HORA) if bas else 0.0
     hora_nr = (float(nr_base_total) / DIV_HORA) if nr_base_total else 0.0
@@ -546,10 +633,10 @@ def calcular_payload(
     aus_dias = max(0, int(aus_inj or 0))
     presentismo_habil = (aus_dias < 2)
     # Presentismo: doceava parte de (Básico + Zona + Antigüedad + Horas)
-    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem)
+    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total)
     presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
 
-    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem)
+    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
@@ -669,9 +756,9 @@ def calcular_payload(
     noct_rem_os = round2(hora_rem_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_rem_os and hs_noct_h) else 0.0
     noct_nr_os = round2(hora_nr_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_nr_os and hs_noct_h) else 0.0
 
-    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os)
+    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total)
     presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
-    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os)
+    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total)
 
     antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
     presentismo_nr_os = (
@@ -772,6 +859,14 @@ def calcular_payload(
         items.append(item("Horas nocturnas (Rem)", r=noct_rem, base_num=hora_rem))
     if noct_nr:
         items.append(item("Horas nocturnas (NR)", n=noct_nr, base_num=hora_nr))
+
+    # Adicional por KM (Art. 36) — 2 filas (<=100 / >100)
+    if km_rem_le:
+        tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
+        items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le))
+    if km_rem_gt:
+        tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
+        items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
     if presentismo_habil and presentismo:

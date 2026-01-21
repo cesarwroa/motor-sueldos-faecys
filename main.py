@@ -91,6 +91,10 @@ def calcular(
     hex50: float = 0,
     hex100: float = 0,
     hs_noct: float = 0,
+    # KM (Chofer/Ayudante)
+    km_tipo: str = "",
+    km_menos100: float = 0,
+    km_mas100: float = 0,
     # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -115,6 +119,9 @@ def calcular(
         hex50=hex50,
         hex100=hex100,
         hs_noct=hs_noct,
+        km_tipo=km_tipo,
+        km_menos100=km_menos100,
+        km_mas100=km_mas100,
         conex_cat=conex_cat,
         conexiones=conexiones,
         fun_adic=(";".join(fun_adic) if fun_adic else ""),
