@@ -835,6 +835,11 @@ function applyBranchUI(){
       const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
       const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
 
+      // Horas extras / nocturnas
+      const hex50 = num($("hex50")?.value || 0) || 0;
+      const hex100 = num($("hex100")?.value || 0) || 0;
+      const hs_noct = num($("hsNoct")?.value || 0) || 0;
+
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
       const zona_pct = num($('zona')?.value || 0) || 0;
@@ -870,6 +875,9 @@ function applyBranchUI(){
       url.searchParams.set("fer_no_trab", String(fer_no_trab));
       url.searchParams.set("fer_trab", String(fer_trab));
       url.searchParams.set("aus_inj", String(aus_inj));
+      url.searchParams.set("hex50", String(hex50));
+      url.searchParams.set("hex100", String(hex100));
+      url.searchParams.set("hs_noct", String(hs_noct));
       url.searchParams.set("conex_cat", conex_cat);
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 

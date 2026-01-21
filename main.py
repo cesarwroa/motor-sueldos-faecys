@@ -87,6 +87,10 @@ def calcular(
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
+    # Horas
+    hex50: float = 0,
+    hex100: float = 0,
+    hs_noct: float = 0,
     # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -108,6 +112,9 @@ def calcular(
         fer_no_trab=fer_no_trab,
         fer_trab=fer_trab,
         aus_inj=aus_inj,
+        hex50=hex50,
+        hex100=hex100,
+        hs_noct=hs_noct,
         conex_cat=conex_cat,
         conexiones=conexiones,
         fun_adic=(";".join(fun_adic) if fun_adic else ""),

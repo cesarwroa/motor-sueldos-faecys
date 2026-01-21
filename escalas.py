@@ -424,6 +424,10 @@ def calcular_payload(
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
+    # Horas (cantidades)
+    hex50: float = 0,
+    hex100: float = 0,
+    hs_noct: float = 0,
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -477,6 +481,51 @@ def calcular_payload(
     nr = nr_base * factor
     sf = sf_base * factor
 
+    # NR base total (sin derivados). Se usa también para valor-hora NR.
+    nr_base_total = round2(nr + sf)
+
+    # -------- Horas extra / nocturnas --------
+    # Reglas: divisor fijo 200. Nocturnas = recargo 13,33% (1h = 1h08m).
+    def _fh(x: float) -> float:
+        try:
+            v = float(x or 0.0)
+        except Exception:
+            v = 0.0
+        return max(0.0, v)
+
+    hex50_h = _fh(hex50)
+    hex100_h = _fh(hex100)
+    hs_noct_h = _fh(hs_noct)
+
+    # -------- Bases NR --------
+    nr_base_total = round2(nr + sf)
+
+    # -------- Horas (extras + nocturnas) --------
+    # Divisor fijo: 200 hs.
+    def _h(x) -> float:
+        try:
+            return max(0.0, float(x or 0.0))
+        except Exception:
+            return 0.0
+
+    hex50_h = _h(hex50)
+    hex100_h = _h(hex100)
+    hs_noct_h = _h(hs_noct)
+
+    DIV_HORA = 200.0
+    hora_rem = (float(bas) / DIV_HORA) if bas else 0.0
+    hora_nr = (float(nr_base_total) / DIV_HORA) if nr_base_total else 0.0
+
+    hex50_rem = round2(hora_rem * 1.5 * hex50_h) if (hora_rem and hex50_h) else 0.0
+    hex50_nr = round2(hora_nr * 1.5 * hex50_h) if (hora_nr and hex50_h) else 0.0
+    hex100_rem = round2(hora_rem * 2.0 * hex100_h) if (hora_rem and hex100_h) else 0.0
+    hex100_nr = round2(hora_nr * 2.0 * hex100_h) if (hora_nr and hex100_h) else 0.0
+
+    # Hora nocturna: recargo 13,33% (1h nocturna = 1h 8m). Se liquida como adicional.
+    NOCT_ADIC_PCT = 0.13333333333333333
+    noct_rem = round2(hora_rem * NOCT_ADIC_PCT * hs_noct_h) if (hora_rem and hs_noct_h) else 0.0
+    noct_nr = round2(hora_nr * NOCT_ADIC_PCT * hs_noct_h) if (hora_nr and hs_noct_h) else 0.0
+
     # -------- Cálculos núcleo --------
     # Remunerativos
     pct_ant = float(anios_antig or 0.0) * 0.01
@@ -496,24 +545,23 @@ def calcular_payload(
     # Regla Presentismo: se pierde con 2 (dos) o más ausencias injustificadas.
     aus_dias = max(0, int(aus_inj or 0))
     presentismo_habil = (aus_dias < 2)
-    # Presentismo: doceava parte de (Básico + Zona + Antigüedad)
-    base_pres = round2(bas + zona + antig)
+    # Presentismo: doceava parte de (Básico + Zona + Antigüedad + Horas)
+    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem)
     presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
 
-    rem_total = round2(bas + zona + presentismo + antig)
+    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
-    nr_base_total = round2(nr + sf)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
     # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR.
     # Se pierde también si corresponde pérdida de presentismo por ausencias.
     presentismo_nr = (
-        round2((nr_base_total + antig_nr) / 12.0)
+        round2((nr_base_total + antig_nr + hex50_nr + hex100_nr + noct_nr) / 12.0)
         if (nr_base_total and presentismo_habil)
         else 0.0
     )
 
-    nr_total = round2(nr_base_total + antig_nr + presentismo_nr)
+    nr_total = round2(nr_base_total + antig_nr + presentismo_nr + hex50_nr + hex100_nr + noct_nr)
 
     # -------- FUNEBRES: Adicionales (según maestro) --------
     fun_rows: List[Dict[str, Any]] = []
@@ -609,18 +657,29 @@ def calcular_payload(
     zona_os = round2(bas_os * (zona_pct_f / 100.0)) if zona_pct_f else 0.0
     base_ant_os = round2(bas_os + zona_os)
     antig_os = round2(base_ant_os * pct_ant)
-    base_pres_os = round2(bas_os + zona_os + antig_os)
-    presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
-    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os)
-
+    # Horas (48hs) – mismo input de horas, con valor hora simulado a 48hs
+    hora_rem_os = (float(bas_os) / DIV_HORA) if bas_os else 0.0
+    # OJO: para NR, la base hora es (nr_os + sf_os)
     nr_base_total_os = round2(nr_os + sf_os)
+    hora_nr_os = (float(nr_base_total_os) / DIV_HORA) if nr_base_total_os else 0.0
+    hex50_rem_os = round2(hora_rem_os * 1.5 * hex50_h) if (hora_rem_os and hex50_h) else 0.0
+    hex50_nr_os = round2(hora_nr_os * 1.5 * hex50_h) if (hora_nr_os and hex50_h) else 0.0
+    hex100_rem_os = round2(hora_rem_os * 2.0 * hex100_h) if (hora_rem_os and hex100_h) else 0.0
+    hex100_nr_os = round2(hora_nr_os * 2.0 * hex100_h) if (hora_nr_os and hex100_h) else 0.0
+    noct_rem_os = round2(hora_rem_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_rem_os and hs_noct_h) else 0.0
+    noct_nr_os = round2(hora_nr_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_nr_os and hs_noct_h) else 0.0
+
+    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os)
+    presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
+    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os)
+
     antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
     presentismo_nr_os = (
-        round2((nr_base_total_os + antig_nr_os) / 12.0)
+        round2((nr_base_total_os + antig_nr_os + hex50_nr_os + hex100_nr_os + noct_nr_os) / 12.0)
         if (nr_base_total_os and presentismo_habil)
         else 0.0
     )
-    nr_total_os = round2(nr_base_total_os + antig_nr_os + presentismo_nr_os)
+    nr_total_os = round2(nr_base_total_os + antig_nr_os + presentismo_nr_os + hex50_nr_os + hex100_nr_os + noct_nr_os)
 
     # FUNEBRES: adicionales (48hs)
     if norm_rama(base["rama"]) in ("FUNEBRES", "FÚNEBRES"):
@@ -699,6 +758,20 @@ def calcular_payload(
 
     if antig:
         items.append(item("Antigüedad", r=antig, base_num=base_ant))
+
+    # Horas extra / nocturnas (2 filas o 4 si hay NR)
+    if hex50_rem:
+        items.append(item("Horas extra 50% (Rem)", r=hex50_rem, base_num=hora_rem))
+    if hex50_nr:
+        items.append(item("Horas extra 50% (NR)", n=hex50_nr, base_num=hora_nr))
+    if hex100_rem:
+        items.append(item("Horas extra 100% (Rem)", r=hex100_rem, base_num=hora_rem))
+    if hex100_nr:
+        items.append(item("Horas extra 100% (NR)", n=hex100_nr, base_num=hora_nr))
+    if noct_rem:
+        items.append(item("Horas nocturnas (Rem)", r=noct_rem, base_num=hora_rem))
+    if noct_nr:
+        items.append(item("Horas nocturnas (NR)", n=noct_nr, base_num=hora_nr))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
     if presentismo_habil and presentismo:
