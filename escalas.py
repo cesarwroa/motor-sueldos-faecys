@@ -13,6 +13,8 @@ import datetime as _dt
 from functools import lru_cache
 from typing import Dict, Tuple, List, Any, Optional
 
+from decimal import Decimal, ROUND_HALF_UP
+
 import openpyxl
 
 
@@ -21,30 +23,35 @@ import openpyxl
 # ---------------------------
 
 def _default_maestro_path() -> str:
-    # Buscamos un maestro existente (orden de preferencia)
-    base_dir = os.path.dirname(__file__)
-    env = os.getenv("MAESTRO_PATH")
+    # Preferimos SIEMPRE data/maestro_actualizado.xlsx (evita conflicto con un maestro en raíz).
+    # Resolvemos relativo a este archivo, no al CWD, para evitar errores 500 en deploy.
+    here = os.path.dirname(__file__)
 
-    candidates = [
-        env,
-        os.path.join(base_dir, "data", "maestro_actualizado.xlsx"),
-        os.path.join(base_dir, "maestro_actualizado.xlsx"),
-        os.path.join(base_dir, "data", "maestro.xlsx"),
-        os.path.join(base_dir, "maestro.xlsx"),
-        # entorno de sandbox
-        "/mnt/data/maestro_actualizado.xlsx",
-    ]
-    for p in candidates:
-        if p and os.path.exists(p):
-            return p
+    p1 = os.path.join(here, "data", "maestro_actualizado.xlsx")
+    if os.path.exists(p1):
+        return p1
 
-    # último fallback: ruta esperada en producción
-    return os.path.join(base_dir, "data", "maestro_actualizado.xlsx")
+    p2 = os.path.join(here, "data", "maestro.xlsx")
+    if os.path.exists(p2):
+        return p2
 
+    # último fallback (raíz del proyecto)
+    p3 = os.path.join(here, "maestro.xlsx")
+    if os.path.exists(p3):
+        return p3
 
+    return "maestro.xlsx"
 
 
 MAESTRO_PATH = os.getenv("MAESTRO_PATH", _default_maestro_path())
+
+
+def round2(x: float) -> float:
+    """Redondeo a 2 decimales (half up) para importes."""
+    try:
+        return float(Decimal(str(x)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    except Exception:
+        return 0.0
 
 
 # ---------------------------
@@ -78,6 +85,25 @@ def _to_float(v: Any) -> float:
 def _norm(s: Any) -> str:
     return str(s).strip() if s is not None else ""
 
+
+def norm_rama(rama: Any) -> str:
+    """Normaliza el nombre de rama para comparaciones."""
+    return _norm(rama).upper().replace("  ", " ").strip()
+
+
+def _nr_labels(rama: str) -> dict:
+    """Nombres oficiales de los NR según rama (criterio César)."""
+    r = _norm(rama).upper()
+    if r in ("TURISMO", "CEREALES"):
+        # En el maestro de Turismo/Cereales, suele venir 60k en no_rem y 40k en suma_fija.
+        return {
+            "no_rem": "Recomp. NR. Acu. 26",
+            "suma_fija": "Incr. NR. Acu. Ene 26",
+        }
+    return {
+        "no_rem": "Incr. NR. Acu. Dic 25",
+        "suma_fija": "Recomp. NR. Acu. 25",
+    }
 
 # ---------------------------
 # Maestro loader / parser
@@ -207,87 +233,71 @@ def _build_index() -> Dict[str, Any]:
 
             add_row(rama_u, current_agr or "—", current_cat or "—", mes_k, bas, nr, sf)
 
-    
     # ---------------------------
     # Adicionales Fúnebres
     # ---------------------------
+    # La hoja "Adicionales" del maestro puede venir en distintos formatos según versión.
+    # Formato usual actual (enero 2026): Rama | Concepto | Mes | Valor | Detalle
+    # Otros formatos posibles: Rama | Concepto | Mes | Tipo | Monto | % | Observación
     funebres_adic: Dict[str, List[Dict[str, Any]]] = {}  # mes -> list
     if "Adicionales" in wb.sheetnames:
         ws = wb["Adicionales"]
 
-        # Detectar esquema por headers
-        headers = [_norm(ws.cell(1, c).value).strip().lower() for c in range(1, ws.max_column + 1)]
+        # Mapear columnas por encabezados (fila 1)
+        header = {}
+        for c in range(1, ws.max_column + 1):
+            h = _norm(ws.cell(1, c).value)
+            if h:
+                header[h.lower()] = c
 
-        def _hidx(name: str) -> Optional[int]:
-            for i, h in enumerate(headers, start=1):
-                if h == name:
-                    return i
-            return None
+        col_rama = header.get("rama", 1)
+        col_concepto = header.get("concepto", 2)
+        col_mes = header.get("mes", 3)
+        col_tipo = header.get("tipo")  # opcional
+        col_monto = header.get("monto") or header.get("valor") or header.get("importe")
+        col_pct = header.get("%") or header.get("porcentaje") or header.get("pct")
+        col_obs = header.get("observación") or header.get("observacion") or header.get("detalle") or header.get("obs")
 
-        # Esquema A (actual): Rama, Concepto, Mes, Valor, Detalle
-        has_valor = ("valor" in headers) or ("importe" in headers)
-        # Esquema B (alternativo): Rama, Concepto, Mes, Tipo, Monto, % , Observación
-        has_tipo = ("tipo" in headers) and (("monto" in headers) or ("% " in headers) or ("%" in headers))
+        for r in range(2, ws.max_row + 1):
+            rama = _norm(ws.cell(r, col_rama).value)
+            if rama.lower() not in ["funebres", "fúnebres"]:
+                continue
 
-        if has_tipo:
-            i_rama = _hidx("rama") or 1
-            i_conc = _hidx("concepto") or 2
-            i_mes = _hidx("mes") or 3
-            i_tipo = _hidx("tipo") or 4
-            i_monto = _hidx("monto") or 5
-            i_pct = _hidx("%") or _hidx("porcentaje") or 6
-            i_obs = _hidx("observación") or _hidx("observacion") or 7
+            concepto_raw = _norm(ws.cell(r, col_concepto).value)
+            mes_k = _mes_to_key(ws.cell(r, col_mes).value)
+            if not mes_k or not concepto_raw:
+                continue
 
-            for r in range(2, ws.max_row + 1):
-                rama = _norm(ws.cell(r, i_rama).value)
-                if rama.lower() not in ["funebres", "fúnebres"]:
-                    continue
-                concepto = _norm(ws.cell(r, i_conc).value)
-                mes = _mes_to_key(ws.cell(r, i_mes).value)
-                tipo = _norm(ws.cell(r, i_tipo).value).lower()  # "monto" o "porcentaje"
-                monto = _to_float(ws.cell(r, i_monto).value)
-                pct = _to_float(ws.cell(r, i_pct).value)
-                obs = _norm(ws.cell(r, i_obs).value)
-                if not mes or not concepto:
-                    continue
-                funebres_adic.setdefault(mes, []).append(
-                    {
-                        "id": concepto,
-                        "label": concepto,
-                        "tipo": "pct" if "por" in tipo else "monto",
-                        "monto": monto,
-                        "pct": pct,
-                        "obs": obs,
-                    }
-                )
-        elif has_valor:
-            i_rama = _hidx("rama") or 1
-            i_conc = _hidx("concepto") or 2
-            i_mes = _hidx("mes") or 3
-            i_val = _hidx("valor") or _hidx("importe") or 4
-            i_det = _hidx("detalle") or _hidx("observación") or _hidx("observacion") or 5
+            tipo_raw = _norm(ws.cell(r, col_tipo).value).lower() if col_tipo else ""
+            monto_val = _to_float(ws.cell(r, col_monto).value) if col_monto else 0.0
+            pct_val = _to_float(ws.cell(r, col_pct).value) if col_pct else 0.0
+            obs_raw = _norm(ws.cell(r, col_obs).value) if col_obs else ""
 
-            for r in range(2, ws.max_row + 1):
-                rama = _norm(ws.cell(r, i_rama).value)
-                if rama.lower() not in ["funebres", "fúnebres"]:
-                    continue
-                concepto = _norm(ws.cell(r, i_conc).value)
-                mes = _mes_to_key(ws.cell(r, i_mes).value)
-                valor = _to_float(ws.cell(r, i_val).value)
-                det = _norm(ws.cell(r, i_det).value)
-                if not mes or not concepto:
-                    continue
-                funebres_adic.setdefault(mes, []).append(
-                    {
-                        "id": concepto,
-                        "label": concepto,
-                        "tipo": "monto",
-                        "monto": valor,
-                        "pct": 0.0,
-                        "obs": det,
-                    }
-                )
+            # Determinar tipo
+            tipo = "pct" if ("por" in tipo_raw or "%" in tipo_raw) else "monto"
 
+            # Etiquetas amigables (como en el HTML offline)
+            cl = concepto_raw.lower()
+            label = concepto_raw
+            if "indument" in cl:
+                label = "Indumentaria"
+            elif "general" in cl:
+                # Ojo: este concepto suele venir como "... incluidos choferes", por eso
+                # se evalúa ANTES que el de chofer/furgonero.
+                label = "Resto del personal"
+            elif "cadaver" in cl or "cadáver" in cl or "no incluido" in cl or "inciso" in cl:
+                label = "Manipulación de cadáveres"
+            elif "furgon" in cl or "chofer/furgon" in cl:
+                label = "Chofer/Furgonero"
+
+            funebres_adic.setdefault(mes_k, []).append({
+                "id": concepto_raw,   # id estable (se usa en fun_adic[] del /calcular)
+                "label": label,
+                "tipo": tipo,
+                "monto": monto_val if tipo == "monto" else 0.0,
+                "pct": pct_val if tipo == "pct" else 0.0,
+                "obs": obs_raw,
+            })
 
 
     # ---------------------------
@@ -325,7 +335,15 @@ def _build_index() -> Dict[str, Any]:
 def get_meta() -> Dict[str, Any]:
     return _build_index()["meta"]
 
-def get_payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—") -> Dict[str, Any]:
+def get_payload(
+    rama: str,
+    mes: str,
+    agrup: str = "—",
+    categoria: str = "—",
+    conex_cat: str = "",
+    conexiones: int = 0,
+    fun_adic: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """Devuelve los valores base del maestro para la combinación dada.
 
     Se usa en:
@@ -351,7 +369,25 @@ def get_payload(rama: str, mes: str, agrup: str = "—", categoria: str = "—")
             "mes": _mes_to_key(mes),
         }
 
-    return {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec}
+    labels = _nr_labels(key[0])
+
+    out = {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec, "labels": labels}
+
+    # Agua Potable: ajustar valores base según selector de conexiones (A/B/C/D)
+    if norm_rama(key[0]) in ("AGUA POTABLE", "AGUA", "AGUAPOTABLE") and (conex_cat or conexiones):
+        regla = match_regla_conexiones(conex_cat or conexiones)
+        try:
+            f = float(regla.get("factor", 1.0))
+        except Exception:
+            f = 1.0
+        if f and f != 1.0:
+            out["basico"] = _round2(out.get("basico", 0.0) * f)
+            out["no_rem"] = _round2(out.get("no_rem", 0.0) * f)
+            out["suma_fija"] = _round2(out.get("suma_fija", 0.0) * f)
+            out["conex_cat"] = _norm(conex_cat).upper() if conex_cat else ""
+            out["conexiones"] = int(conexiones or 0)
+
+    return out
 
 def calcular_payload(
     rama: str,
@@ -364,17 +400,22 @@ def calcular_payload(
     afiliado: bool = False,
     sind_pct: float = 0,
     titulo_pct: float = 0,
-    fun_adic1: bool = False,
-    fun_adic2: bool = False,
-    fun_adic3: bool = False,
-    fun_adic4: bool = False,
+    zona_pct: float = 0,
+    fer_no_trab: int = 0,
+    fer_trab: int = 0,
+    aus_inj: int = 0,
+    # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
+    conex_cat: str = "",
+    conexiones: int = 0,
+    # Fúnebres: ids de adicionales seleccionados (coma-separados)
+    fun_adic: str = "",
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
 
     El front NO calcula: solo renderiza.
     Devuelve items + totales numéricos para que el HTML muestre cada fila.
 
-    Versión núcleo + soporte Adicionales Fúnebres (remunerativos y NO prorrateados por jornada).
+    Versión núcleo (GENERAL): Básico, Antigüedad, Presentismo, NR base y descuentos principales.
     """
     base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
     if not base.get("ok"):
@@ -388,115 +429,269 @@ def calcular_payload(
     nr_base = float(base.get("no_rem", 0.0) or 0.0)
     sf_base = float(base.get("suma_fija", 0.0) or 0.0)
 
+    # Agua Potable: Conexiones (A/B/C/D) NO se muestra como adicional;
+    # modifica directamente el valor del Básico y de los No Rem.
+    is_agua = norm_rama(rama) in ("AGUA POTABLE", "AGUA", "AGUAPOTABLE")
+    if is_agua:
+        nivel = _norm(conex_cat).upper() if conex_cat else ""
+        info = match_regla_conexiones(nivel if nivel else conexiones)
+        fac = float(info.get("factor", 1.0) or 1.0)
+        if fac and fac != 1.0:
+            bas_base *= fac
+            nr_base *= fac
+            sf_base *= fac
+
     bas = bas_base * factor
     nr = nr_base * factor
     sf = sf_base * factor
 
-    # -------- Helper item --------
+    # -------- Cálculos núcleo --------
+    # Remunerativos
+    pct_ant = float(anios_antig or 0.0) * 0.01
+
+    # Zona desfavorable (porcentaje sobre Básico prorrateado)
+    try:
+        zona_pct_f = float(zona_pct or 0.0)
+    except Exception:
+        zona_pct_f = 0.0
+    zona_pct_f = max(0.0, zona_pct_f)
+    zona = round2(bas * (zona_pct_f / 100.0)) if zona_pct_f else 0.0
+
+    # Antigüedad: base incluye Zona (criterio del sistema para cálculos generales)
+    base_ant = round2(bas + zona)
+    antig = round2(base_ant * pct_ant)
+
+    # Regla Presentismo: se pierde con 2 (dos) o más ausencias injustificadas.
+    aus_dias = max(0, int(aus_inj or 0))
+    presentismo_habil = (aus_dias < 2)
+    # Presentismo: doceava parte de (Básico + Zona + Antigüedad)
+    base_pres = round2(bas + zona + antig)
+    presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
+
+    rem_total = round2(bas + zona + presentismo + antig)
+
+    # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
+    nr_base_total = round2(nr + sf)
+    antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
+    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR.
+    # Se pierde también si corresponde pérdida de presentismo por ausencias.
+    presentismo_nr = (
+        round2((nr_base_total + antig_nr) / 12.0)
+        if (nr_base_total and presentismo_habil)
+        else 0.0
+    )
+
+    nr_total = round2(nr_base_total + antig_nr + presentismo_nr)
+
+    # -------- FUNEBRES: Adicionales (según maestro) --------
+    fun_rows: List[Dict[str, Any]] = []
+    if base["rama"] == "FUNEBRES":
+        sel_raw = (fun_adic or "").strip()
+        if sel_raw:
+            # IMPORTANTE: NO cortar por coma, porque algunos IDs contienen comas
+            # (p.ej. "incluidos choferes"). Usamos solo ";" como separador.
+            sel_ids = [s.strip() for s in sel_raw.split(";") if s.strip()]
+            if sel_ids:
+                defs = get_adicionales_funebres(mes)
+                by_id = {str(d.get("id")): d for d in defs}
+                for sid in sel_ids:
+                    d = by_id.get(str(sid))
+                    if not d:
+                        continue
+                    label = str(d.get("label") or sid)
+                    tipo = str(d.get("tipo") or "").strip().lower()
+                    monto = float(d.get("monto") or 0.0)
+                    pct = float(d.get("pct") or 0.0)
+
+                    val = 0.0
+                    base_num = 0.0
+                    if tipo in ("monto", "importe", "fijo") and monto:
+                        # prorrateo por jornada
+                        val = round2(monto * factor)
+                    elif pct:
+                        base_num = float(bas)
+                        val = round2(bas * (pct / 100.0))
+                    elif monto:
+                        val = round2(monto * factor)
+
+                    if val:
+                        fun_rows.append({"label": label, "val": float(val), "base": float(base_num)})
+                        rem_total = round2(rem_total + val)
+
+    # -------- TURISMO: Adicional por Título --------
+    # Se aplica sobre el básico (REM) y sobre el NR de $40.000 (en nuestro maestro = suma_fija).
+    try:
+        titulo_pct_f = float(titulo_pct or 0.0)
+    except Exception:
+        titulo_pct_f = 0.0
+    titulo_pct_f = max(0.0, titulo_pct_f)
+
+    titulo_rem = 0.0
+    titulo_nr = 0.0
+    if base["rama"] == "TURISMO" and titulo_pct_f > 0:
+        titulo_rem = round2(bas * (titulo_pct_f / 100.0)) if bas else 0.0
+        # Turismo: $40.000 NR corresponde a suma_fija (sf)
+        titulo_nr = round2(sf * (titulo_pct_f / 100.0)) if sf else 0.0
+        rem_total = round2(rem_total + titulo_rem)
+        nr_total = round2(nr_total + titulo_nr)
+
+    # -------- Feriados --------
+    fer_no = max(0, int(fer_no_trab or 0))
+    fer_si = max(0, int(fer_trab or 0))
+    base_fer_rem = round2(bas + zona + antig)
+    base_fer_nr = round2(nr_base_total + antig_nr)
+    # Para mensualizados:
+    # - Feriado NO trabajado: se suma la diferencia entre día feriado (1/25) y día normal incluido en el mensual (1/30).
+    # - Feriado trabajado: se suma 1 día feriado (1/25).
+    vdia25_rem = round2(base_fer_rem / 25.0) if base_fer_rem else 0.0
+    vdia30_rem = round2(base_fer_rem / 30.0) if base_fer_rem else 0.0
+    vdia25_nr = round2(base_fer_nr / 25.0) if base_fer_nr else 0.0
+    vdia30_nr = round2(base_fer_nr / 30.0) if base_fer_nr else 0.0
+
+    fer_no_rem = round2(fer_no * (vdia25_rem - vdia30_rem)) if fer_no else 0.0
+    fer_si_rem = round2(fer_si * vdia25_rem) if fer_si else 0.0
+
+    fer_no_nr = round2(fer_no * (vdia25_nr - vdia30_nr)) if fer_no else 0.0
+    fer_si_nr = round2(fer_si * vdia25_nr) if fer_si else 0.0
+
+    rem_total = round2(rem_total + fer_no_rem + fer_si_rem)
+    nr_total = round2(nr_total + fer_no_nr + fer_si_nr)
+
+    # -------- Ausencias injustificadas (descuento) --------
+    base_dia_aus = round2((bas + zona + antig) / 30.0) if (bas or zona or antig) else 0.0
+    aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
+
+    # Base imponible para aportes: REM - ausencias
+    rem_aportes = max(0.0, round2(rem_total - aus_rem))
+
+    # Descuentos
+    jub = round2(rem_aportes * 0.11)
+    pami = round2(rem_aportes * 0.03)
+    # Si tiene OSECAC, Obra Social 3% también se calcula sobre NR (criterio del sistema)
+    os_base = round2((rem_aportes + nr_total) if bool(osecac) else rem_aportes)
+    os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
+    osecac_100 = 100.0 if bool(osecac) else 0.0
+
+    sind = 0.0
+    if bool(afiliado) and float(sind_pct or 0) > 0:
+        sind = round2((rem_aportes + nr_total) * (float(sind_pct) / 100.0))
+
+    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + aus_rem)
+    neto = round2((rem_total + nr_total) - ded_total)
+
     def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
         out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
         if base_num:
             out["base"] = float(base_num)
         return out
 
-    # -------- Cálculos núcleo --------
-    presentismo = bas / 12.0
-    antig = bas * (float(anios_antig or 0.0) * 0.01)
-
-    # -------- Adicionales Fúnebres (remunerativos, NO prorrateo) --------
-    fun_rem = 0.0
-    fun_items: List[Dict[str, Any]] = []
-
-    rama_u = _norm(rama).upper()
-    if rama_u in ["FUNEBRES", "FÚNEBRES"]:
-        CONC_GEN = "Adicional General (todo el personal, incluidos choferes)"
-        CONC_RESTO = "Adicional Personal no incluido en inciso 1"
-        CONC_CHOFER = "Adicional Chofer/Furgonero (vehículos)"
-        CONC_CHOFER2 = "Adicional Chofer/Furgonero (vehiculos)"
-        CONC_IND = "Adicional por Indumentaria"
-
-        # Chofer implica el General (Inc. 1) además del plus específico
-        if bool(fun_adic3) and not bool(fun_adic1):
-            fun_adic1 = True
-
-        def _get_val(conc: str) -> float:
-            conc_l = conc.strip().lower()
-            for it in get_adicionales_funebres(mes):
-                if _norm(it.get("id")).strip().lower() == conc_l:
-                    return float(it.get("monto") or 0.0)
-            # fallback por contains
-            for it in get_adicionales_funebres(mes):
-                if conc_l in _norm(it.get("label")).strip().lower():
-                    return float(it.get("monto") or 0.0)
-            return 0.0
-
-        if bool(fun_adic1):
-            v = _get_val(CONC_GEN)
-            if v:
-                fun_items.append(item("Adic. Fúnebres (Inc. 1) - Manipulación de cadáveres", r=v, base_num=v))
-                fun_rem += v
-
-        if bool(fun_adic2):
-            v = _get_val(CONC_RESTO)
-            if v:
-                fun_items.append(item("Adic. Fúnebres (Inc. 2) - Resto del personal", r=v, base_num=v))
-                fun_rem += v
-
-        if bool(fun_adic3):
-            v = _get_val(CONC_CHOFER) or _get_val(CONC_CHOFER2)
-            if v:
-                fun_items.append(item("Adic. Fúnebres (Inc. 3) - Chofer/Furgonero", r=v, base_num=v))
-                fun_rem += v
-
-        if bool(fun_adic4):
-            v = _get_val(CONC_IND)
-            if v:
-                fun_items.append(item("Adic. Fúnebres (Inc. 4) - Indumentaria", r=v, base_num=v))
-                fun_rem += v
-
-    rem_total = bas + presentismo + antig + fun_rem
-    nr_total = nr + sf
-
-    # -------- Deducciones --------
-    jub = rem_total * 0.11
-    pami = rem_total * 0.03
-    os_aporte = rem_total * 0.03 if bool(osecac) else 0.0
-    osecac_100 = 100.0 if bool(osecac) else 0.0
-
-    sind = 0.0
-    if bool(afiliado) and float(sind_pct or 0) > 0:
-        sind = (rem_total + nr_total) * (float(sind_pct) / 100.0)
-
-    ded_total = jub + pami + os_aporte + osecac_100 + sind
-    neto = (rem_total + nr_total) - ded_total
-
-    # -------- Items --------
     items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas)]
 
+    if zona:
+        items.append(item("Zona desfavorable", r=zona, base_num=bas))
+
     if antig:
-        items.append(item("Antigüedad", r=antig, base_num=bas))
+        items.append(item("Antigüedad", r=antig, base_num=base_ant))
 
-    items.append(item("Presentismo", r=presentismo, base_num=bas + antig))
+    # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
+    if presentismo_habil and presentismo:
+        items.append(item(
+            "Presentismo",
+            r=presentismo,
+            base_num=base_pres,
+        ))
 
-    # Adicionales Fúnebres
-    items.extend(fun_items)
+    # Fúnebres: adicionales seleccionados (según maestro)
+    if fun_rows:
+        for fr in fun_rows:
+            items.append(item(
+                str(fr.get("label") or "Adicional"),
+                r=float(fr.get("val") or 0.0),
+                base_num=float(fr.get("base") or 0.0),
+            ))
+
+
+
+    # -------- Etapa 12: Mostrar adicionales (Turismo Título / Agua Conexiones) --------
+    if titulo_rem:
+        items.append(item(
+            'Adicional por Título',
+            r=titulo_rem,
+            base_num=bas,
+        ))
+    if titulo_nr:
+        items.append(item(
+            'Adicional por Título (NR)',
+            n=titulo_nr,
+            base_num=sf,
+        ))
+
+    # Conexiones (Agua Potable): no se agrega fila, porque el selector modifica el básico y los NR.
+    # Feriados (REM)
+    if fer_no_rem:
+        items.append(item(
+            f"Feriado no trabajado ({fer_no} día{'s' if fer_no != 1 else ''})",
+            r=fer_no_rem,
+            base_num=base_fer_rem,
+        ))
+    if fer_si_rem:
+        items.append(item(
+            f"Feriado trabajado ({fer_si} día{'s' if fer_si != 1 else ''})",
+            r=fer_si_rem,
+            base_num=base_fer_rem,
+        ))
+
+    labels = _nr_labels(base["rama"])
 
     if nr:
-        items.append(item("No Rem (variable)", n=nr))
+        items.append(item(labels.get("no_rem", "No Remunerativo"), n=nr))
     if sf:
-        items.append(item("Suma Fija (NR)", n=sf))
+        items.append(item(labels.get("suma_fija", "Suma Fija (NR)"), n=sf))
 
-    items.append(item("Jubilación 11%", d=jub, base_num=rem_total))
-    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_total))
+    # Derivados sobre NR (desglosado como filas NR)
+    if antig_nr:
+        items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total))
+    # Presentismo sobre NR: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila.
+    if presentismo_habil and presentismo_nr:
+        items.append(item(
+            "Presentismo (NR)",
+            n=presentismo_nr,
+            base_num=(nr_base_total + antig_nr),
+        ))
+
+    # Feriados (NR)
+    if fer_no_nr:
+        items.append(item(
+            f"Feriado no trabajado (NR) ({fer_no} día{'s' if fer_no != 1 else ''})",
+            n=fer_no_nr,
+            base_num=base_fer_nr,
+        ))
+    if fer_si_nr:
+        items.append(item(
+            f"Feriado trabajado (NR) ({fer_si} día{'s' if fer_si != 1 else ''})",
+            n=fer_si_nr,
+            base_num=base_fer_nr,
+        ))
+
+    # Ausencias injustificadas (descuento) – reduce bases de aportes vía rem_aportes
+    if aus_rem:
+        items.append(item(
+            f"Ausencias injustificadas ({aus_dias} día{'s' if aus_dias != 1 else ''})",
+            d=aus_rem,
+            base_num=base_dia_aus,
+        ))
+
+    items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
+    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
 
     if bool(osecac):
-        items.append(item("Obra Social 3%", d=os_aporte, base_num=rem_total))
+        items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
         items.append(item("OSECAC $100", d=osecac_100))
     else:
-        items.append(item("Obra Social 3%", d=0.0, base_num=rem_total))
+        items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
 
     if sind:
-        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_total + nr_total)))
+        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_total)))
 
     return {
         "ok": True,
@@ -510,20 +705,16 @@ def calcular_payload(
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
         "titulo_pct": float(titulo_pct or 0),
+        "zona_pct": float(zona_pct_f),
 
-        "funebres": {
-            "adic1": bool(fun_adic1),
-            "adic2": bool(fun_adic2),
-            "adic3": bool(fun_adic3),
-            "adic4": bool(fun_adic4),
-            "rem": float(fun_rem),
-        },
+        "labels": labels,
 
         "basico_base": float(bas_base),
         "no_rem_base": float(nr_base),
         "suma_fija_base": float(sf_base),
 
         "basico": float(bas),
+        "zona": float(zona),
         "no_rem": float(nr),
         "suma_fija": float(sf),
 
@@ -537,36 +728,29 @@ def calcular_payload(
     }
 
 
-
-
 def get_adicionales_funebres(mes: str) -> List[Dict[str, Any]]:
-    """Devuelve la lista de adicionales de Fúnebres para el mes.
+    """Adicionales de Fúnebres.
 
-    Si no existe el mes exacto, hace *carry-forward*: usa el último mes disponible <= mes pedido.
+    - Si existe definición exacta para el mes, se usa esa.
+    - Si no existe, se toma la última definición anterior (prórroga automática).
+      Esto permite, por ejemplo, que si el maestro quedó hasta 2026-01, en
+      2026-02/03/04 se sigan ofreciendo los mismos adicionales.
     """
     idx = _build_index()
     mes_k = _mes_to_key(mes)
-    d: Dict[str, List[Dict[str, Any]]] = idx.get("funebres_adic", {}) or {}
 
+    d = idx.get("funebres_adic", {})
     if mes_k in d:
-        return d.get(mes_k, [])
+        return list(d.get(mes_k, []))
 
-    keys = sorted([k for k in d.keys() if k])
-    if not keys or not mes_k:
+    # fallback: última definición <= mes_k
+    keys = [k for k in d.keys() if isinstance(k, str) and k <= mes_k]
+    if not keys:
         return []
+    best = max(keys)
+    return list(d.get(best, []))
 
-    prev = None
-    for k in keys:
-        if k <= mes_k:
-            prev = k
-        else:
-            break
-    if prev is None:
-        prev = keys[0]
-    return d.get(prev, [])
-
-
-def match_regla_conexiones(conexiones: int) -> Dict[str, Any]:
+def match_regla_conexiones(conexiones_o_nivel) -> Dict[str, Any]:
     """
     Agua Potable: reglas por umbrales (según tu UI):
     A: hasta 500
@@ -575,32 +759,58 @@ def match_regla_conexiones(conexiones: int) -> Dict[str, Any]:
     D: más de 1600
     El % es 7% encadenado (A=0%, B=7%, C=14,49%, D=22,5043%).
     """
-    try:
-        n = int(conexiones)
-    except Exception:
-        n = 0
-    if n <= 0:
-        return {"cat": None, "pct": 0.0, "label": None}
+    # Soporta dos entradas:
+    # 1) cantidad (int) -> determina A/B/C/D por umbral
+    # 2) nivel directo ("A"/"B"/"C"/"D") -> usa ese nivel
+    level = 0
+    cat = None
+    label = None
+    if isinstance(conexiones_o_nivel, str) and conexiones_o_nivel.strip():
+        c = _norm(conexiones_o_nivel).upper()
+        if c in ["A", "B", "C", "D"]:
+            cat = c
+            level = {"A": 0, "B": 1, "C": 2, "D": 3}[c]
+            label = {
+                "A": "A (hasta 500)",
+                "B": "B (+7% s/A)",
+                "C": "C (+7% s/B)",
+                "D": "D (+7% s/C)",
+            }[c]
+        else:
+            # Si viene un texto no esperado, intentamos tratarlo como número
+            try:
+                conexiones_o_nivel = int(c)
+            except Exception:
+                conexiones_o_nivel = 0
 
-    if n <= 500:
-        level = 0
-        cat = "A"
-        label = "A (hasta 500)"
-    elif n <= 1000:
-        level = 1
-        cat = "B"
-        label = "B (501 a 1000)"
-    elif n <= 1600:
-        level = 2
-        cat = "C"
-        label = "C (1001 a 1600)"
-    else:
-        level = 3
-        cat = "D"
-        label = "D (más de 1600)"
+    if cat is None:
+        try:
+            n = int(conexiones_o_nivel)
+        except Exception:
+            n = 0
+        if n <= 0:
+            return {"cat": None, "pct": 0.0, "factor": 1.0, "label": None}
 
-    pct = (1.07 ** level) - 1.0  # level 0 => 0
-    return {"cat": cat, "pct": pct, "label": label}
+        if n <= 500:
+            level = 0
+            cat = "A"
+            label = "A (hasta 500)"
+        elif n <= 1000:
+            level = 1
+            cat = "B"
+            label = "B (501 a 1000)"
+        elif n <= 1600:
+            level = 2
+            cat = "C"
+            label = "C (1001 a 1600)"
+        else:
+            level = 3
+            cat = "D"
+            label = "D (más de 1600)"
+
+    factor = 1.07 ** level
+    pct = factor - 1.0  # level 0 => 0
+    return {"cat": cat, "pct": pct, "factor": factor, "label": label}
 
 def get_titulo_pct_por_nivel(nivel: str) -> float:
     n = _norm(nivel).lower()

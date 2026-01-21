@@ -47,7 +47,6 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 #printArea .sigTitle { font-weight:700; margin-bottom:1mm; }
 #printArea .qr { width:32mm; height:32mm; border:0.3mm dashed #94a3b8; display:flex; align-items:center; justify-content:center; font-size:10px; color:#64748b; }
 
-
 /* === Base (solo HTML) === */
 .th-base-num, .col-base-num { min-width: 180px; }
 .base-mini { font-size: 12px; opacity:.95; }
@@ -125,20 +124,21 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="note" id="status">Cargando maestro…</div>
 </div>
 <div class="card" id="paneMensual">
-<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label>No Rem (variable) — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label>Suma Fija (NR) — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div class="note" id="aguaBlock" style="display:none">
-<strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D (aplica 7% encadenado a Básico + Suma Fija)
-      <select id="aguaConex"><option value="A">A (hasta 500)</option><option value="B">B (+7% s/ A)</option><option value="C">C (+7% s/ B)</option><option value="D">D (+7% s/ C)</option></select>
+  <strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D
+  <select id="aguaConexCat" style="max-width:180px; margin-left:6px">
+    <option value="">—</option>
+    <option value="A">A (hasta 500)</option>
+    <option value="B">B (+7% s/A)</option>
+    <option value="C">C (+7% s/B)</option>
+    <option value="D">D (+7% s/C)</option>
+  </select>
 </div>
 <div class="note" id="funBlock" style="display:none">
-<strong>Fúnebres:</strong> Adicionales mensuales (desde “Adicionales” del maestro)
-      <div>
-        <label><input id="funAdic1" type="checkbox"/> Manipulación de cadáveres <span class="inline-hint" id="funVal1"></span></label>
-        <label><input id="funAdic2" type="checkbox"/> Resto del personal <span class="inline-hint" id="funVal2"></span></label>
-        <label><input id="funAdic3" type="checkbox"/> Chofer/Furgonero <span class="inline-hint" id="funVal3"></span></label>
-        <label><input id="funAdic4" type="checkbox"/> Indumentaria <span class="inline-hint" id="funVal4"></span></label>
-      </div>
-</div>
+  <strong>Fúnebres:</strong> Adicionales mensuales
+  <div id="funList" class="grid cols-4" style="margin-top:6px"></div>
+  <div id="funHint" style="margin-top:6px; color:#64748b"></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px"><div class="grid cols-4" style="margin-top:8px">
 </div><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
@@ -154,28 +154,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
 <div style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
 </div>
-<div class="grid cols-4" style="margin-top:8px">
-<div><label>Título (Turismo)</label>
-<select id="tituloNivel">
-<option value="">—</option>
-<option value="terciario">Terciario</option>
-<option value="universitario">Universitario</option>
-</select>
-</div>
-<div><label>Cajero (Art. 30)</label>
-<select id="cajeroTipo">
-<option value="">—</option>
-<option value="A">Cajero A</option>
-<option value="B">Cajero B</option>
-<option value="C">Cajero C</option>
-</select>
-</div>
-<div><label>KM Chofer</label><input id="kmChofer" min="0" step="1" type="number" value="0"/></div>
-<div><label>KM Ayudante</label><input id="kmAyudante" min="0" step="1" type="number" value="0"/></div>
-</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
+<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">
@@ -249,29 +230,10 @@ Recibo Mensual</div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
 </div>
 <div class="note small">* Usá “Sugerir MRMNH” para proponer un mejor mensual (editable) con NR + antigüedad + presentismo.</div>
-<div class="grid cols-4" style="margin-top:8px">
-<div><label>Título (Turismo)</label>
-<select id="tituloNivel">
-<option value="">—</option>
-<option value="terciario">Terciario</option>
-<option value="universitario">Universitario</option>
-</select>
-</div>
-<div><label>Cajero (Art. 30)</label>
-<select id="cajeroTipo">
-<option value="">—</option>
-<option value="A">Cajero A</option>
-<option value="B">Cajero B</option>
-<option value="C">Cajero C</option>
-</select>
-</div>
-<div><label>KM Chofer</label><input id="kmChofer" min="0" step="1" type="number" value="0"/></div>
-<div><label>KM Ayudante</label><input id="kmAyudante" min="0" step="1" type="number" value="0"/></div>
-</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="lf_sugerir_mrmnh()" type="button">Sugerir MRMNH</button>
 <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
-<button onclick="window.print()" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
+<button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBase" type="checkbox"/> Ver base</label>
 <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
@@ -306,9 +268,7 @@ Recibo Mensual</div>
 #printArea thead th{padding:2.2mm 2mm 2mm;border-bottom:.45mm solid #000;font-weight:800}
 #printArea th,#printArea td{padding:2mm;font-variant-numeric:tabular-nums}
 #printArea th:nth-child(1),#printArea td:nth-child(1){text-align:left}
-#printArea th:nth-child(2),#printArea td:nth-child(2),
-#printArea th:nth-child(3),#printArea td:nth-child(3),
-#printArea th:nth-child(4),#printArea td:nth-child(4){text-align:right;white-space:nowrap}
+#printArea th:not(:first-child),#printArea td:not(:first-child){text-align:right;white-space:nowrap}
 #printArea col.wFixed{width:33.5mm}
 /* Divisor */
 #printArea .divider td{padding:0;border-bottom:.35mm solid #000;height:0}
@@ -421,41 +381,223 @@ Recibo Mensual</div>
     }
     return data;
   }
-
   function fillSelect(sel, items, placeholder="—"){
     if(!sel) return;
     const cur = sel.value;
     sel.innerHTML = "";
+
+    // Placeholder: value vacío para no chocar con valores reales como "—"
     const opt0 = document.createElement("option");
-    opt0.value = "—";
+    opt0.value = "";
     opt0.textContent = placeholder;
     sel.appendChild(opt0);
+
     (items||[]).forEach((it) => {
       const o = document.createElement("option");
       o.value = it;
       o.textContent = it;
       sel.appendChild(o);
     });
-    // mantener selección si existe
-    if(items && items.includes(cur)) sel.value = cur;
-    if(!sel.value) sel.value = "—";
+
+    // Mantener selección si existe; si no, seleccionar el primer ítem real
+    if(items && items.length){
+      if(items.includes(cur)) sel.value = cur;
+      else sel.value = items[0];
+    }else{
+      sel.value = "";
+    }
   }
 
+
   let META = null;
+  let ALL_MESES = [];
+
+  function normRama(r){
+    try{
+      return (r||"").toString().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    }catch{
+      return (r||"").toString().toUpperCase().trim();
+    }
+  }
+
+  // Etiquetas cortas para los adicionales de Fúnebres (solo visual)
+  function prettifyFunLabel(raw){
+    const s = (raw ?? "").toString().trim();
+    if(!s) return "";
+
+    const up = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    // Mapeo a los nombres que usás en el modelo de referencia
+    if(up.includes("GENERAL") && up.includes("TODO EL PERSONAL")) return "Manipulación de cadáveres";
+    if(up.includes("PERSONAL NO INCLUIDO") || up.includes("INCISO 1")) return "Resto del personal";
+    if(up.includes("CHOFER") || up.includes("FURGONERO")) return "Chofer/Furgonero";
+    if(up.includes("INDUMENTARIA")) return "Indumentaria";
+
+    // Fallback genérico
+    return s.replace(/^Adicional\s+/i, "").replace(/\s*\([^)]*\)\s*/g, " ").trim();
+  }
+
+  function mesesPorRama(rama){
+    const r = normRama(rama);
+    // Reglas pedidas (Etapa 2):
+    // - GENERAL / FUNEBRES / AGUA / CALL: 2026-01 a 2026-04
+    // - TURISMO: 2026-01 a 2026-05
+    // - CEREALES: 2026-01 a 2026-03
+    if(r === "TURISMO") return ["2026-01","2026-02","2026-03","2026-04","2026-05"];
+    if(r === "CEREALES") return ["2026-01","2026-02","2026-03"];
+    if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04"];
+    // Fallback: desde 2026-01 en adelante (hasta lo disponible)
+    return (ALL_MESES||[]).filter(m => /^2026-/.test(m));
+  }
+
+  function refreshMesesForRama(rama){
+    const pref = mesesPorRama(rama);
+    const disponibles = (pref||[]).filter(m => (ALL_MESES||[]).includes(m));
+    fillSelect($("mes"), disponibles, "Mes");
+    const sel = $("mes");
+    if(!sel) return;
+    // si no quedó seleccionado, usar el último disponible
+    if(!sel.value && disponibles.length){
+      sel.value = disponibles[disponibles.length-1];
+    }
+  }
+
+
+
+
+  function isAguaRama(r){
+    const rr = normRama(r);
+    return rr === 'AGUA POTABLE' || rr === 'AGUA' || rr === 'AGUAPOTABLE';
+  }
+
+  function isTurismoRama(r){
+    return normRama(r) === 'TURISMO';
+  }
+
+  function isFunebresRama(r){
+    const rr = normRama(r);
+    return rr === 'FUNEBRES' || rr === 'FÚNEBRES' || rr === 'FUNEBRES '; // tolerante
+  }
+
+  function clearFunebresAdics(){
+    const box = document.getElementById('funList');
+    if(box) box.innerHTML = '';
+    setText('funHint', '');
+  }
+
+  async function loadFunebresAdicionales(){
+    try{
+      const rama = document.getElementById('rama')?.value || '';
+      const mes = document.getElementById('mes')?.value || '';
+      if(!isFunebresRama(rama) || !/^\d{4}-\d{2}$/.test(mes)){
+        clearFunebresAdics();
+        return;
+      }
+
+      const rows = await fetchJSON(`${API_BASE}/adicionales-funebres?mes=${encodeURIComponent(mes)}`);
+      const box = document.getElementById('funList');
+      if(!box) return;
+      box.innerHTML = '';
+
+      if(!Array.isArray(rows) || rows.length === 0){
+        setText('funHint', 'No hay adicionales configurados para ese mes.');
+        return;
+      }
+
+      // Render checkboxes
+      for(const it of rows){
+        const id = (it && it.id != null) ? String(it.id) : '';
+        const label = (it && it.label != null) ? String(it.label) : id;
+        const tipo = (it && it.tipo != null) ? String(it.tipo).toLowerCase() : '';
+        const monto = num(it?.monto);
+        const pct = num(it?.pct);
+        const obs = (it && it.obs) ? String(it.obs) : '';
+
+        const wrap = document.createElement('label');
+        wrap.style.display = 'flex';
+        wrap.style.alignItems = 'flex-start';
+        wrap.style.gap = '6px';
+        wrap.style.lineHeight = '1.2';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = id;
+
+        const txt = document.createElement('div');
+        const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
+        const prettyLabel = prettifyFunLabel(label);
+        txt.innerHTML = `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs)}</div>` : '');
+
+        wrap.appendChild(cb);
+        wrap.appendChild(txt);
+        box.appendChild(wrap);
+      }
+
+      setText('funHint', 'Marcá los adicionales que correspondan.');
+    }catch(err){
+      console.error(err);
+      setText('funHint', 'No se pudieron cargar los adicionales de Fúnebres.');
+    }
+  }
+
+  // Agua Potable: selector A/B/C/D (no muestra texto extra)
+  function updateAguaConexInfo(){
+    // placeholder por si a futuro querés mostrar algo; hoy no mostramos nada.
+  }
+
+  function applyBranchUI(){
+    const rama = $('rama')?.value || '';
+    const showAgua = isAguaRama(rama);
+    const showTur = isTurismoRama(rama);
+    const showFun = isFunebresRama(rama);
+
+    const aguaBlock = $('aguaBlock');
+    if(aguaBlock) aguaBlock.style.display = showAgua ? '' : 'none';
+
+    const boxTitulo = $('boxTitulo');
+    if(boxTitulo) boxTitulo.style.display = showTur ? '' : 'none';
+
+    const funBlock = $('funBlock');
+    if(funBlock) funBlock.style.display = showFun ? '' : 'none';
+
+    // limpiar valores cuando no aplica
+    if(!showAgua){
+      const a = $('aguaConexCat');
+      if(a) a.value = '';
+    }
+    else{ try{ updateAguaConexInfo(); }catch{} }
+    if(!showTur){
+      const t = $('turTitulo');
+      if(t) t.value = '0';
+    }
+
+    if(!showFun){
+      clearFunebresAdics();
+    }else{
+      // cargar para el mes seleccionado
+      loadFunebresAdicionales();
+    }
+  }
 
   async function loadMeta(){
     setText("status", "Cargando maestro…");
     META = await fetchJSON(`${API_BASE}/meta`);
     // META esperado: {ramas:{}, meses:{}, ...} o {ramas:[...], meses:[...]}
     const ramas = Array.isArray(META.ramas) ? META.ramas : Object.keys(META.ramas||{}).filter(k => META.ramas[k]);
-    const meses = Array.isArray(META.meses) ? META.meses : Object.keys(META.meses||{}).filter(k => META.meses[k]);
+    const mesesRaw = Array.isArray(META.meses) ? META.meses : Object.keys(META.meses||{}).filter(k => META.meses[k]);
+    // normalizar meses válidos AAAA-MM y ordenar
+    ALL_MESES = (mesesRaw||[]).filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
 
     fillSelect($("rama"), ramas, "Rama");
-    fillSelect($("mes"), meses, "Mes");
 
     // defaults
     if(ramas.includes("GENERAL")) $("rama").value = "GENERAL";
-    if(meses.includes("2026-04")) $("mes").value = "2026-04";
+    refreshMesesForRama($("rama")?.value || "GENERAL");
+
+    applyBranchUI();
+    await updateAguaConexInfo();
 
     await refreshAgrupCat();
     setText("status", "Listo.");
@@ -475,14 +617,19 @@ Recibo Mensual</div>
   }
 
   async function refreshAgrupCat(){
-    const rama = $("rama")?.value || "—";
-    if(!META || rama === "—"){ return; }
+    const rama = $("rama")?.value || "";
+    if(!META || !rama){ return; }
+
+    // Meses por rama (Etapa 2)
+    refreshMesesForRama(rama);
+
+    applyBranchUI();
 
     const agrups = getAgrupsForRama(rama);
     fillSelect($("agrup"), agrups, "Agrupamiento");
     if(agrups.includes("GENERAL")) $("agrup").value = "GENERAL";
 
-    const agrup = $("agrup")?.value || "—";
+    const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
@@ -492,9 +639,9 @@ Recibo Mensual</div>
   }
 
   async function refreshCatsOnly(){
-    const rama = $("rama")?.value || "—";
-    const agrup = $("agrup")?.value || "—";
-    if(!META || rama === "—" || agrup === "—"){ return; }
+    const rama = $("rama")?.value || "";
+    const agrup = $("agrup")?.value || "";
+    if(!META || !rama || !agrup){ return; }
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     if(cats.length) $("categoria").value = cats[0];
@@ -523,11 +670,11 @@ Recibo Mensual</div>
 
   async function refreshPayload(){
     try{
-      const rama = $("rama")?.value || "—";
-      const mes = $("mes")?.value || "—";
-      const agrup = $("agrup")?.value || "—";
-      const categoria = $("categoria")?.value || "—";
-      if([rama,mes,agrup,categoria].some(v => v==="—")) return;
+      const rama = $("rama")?.value || "";
+      const mes = $("mes")?.value || "";
+      const agrup = $("agrup")?.value || "";
+      const categoria = $("categoria")?.value || "";
+      if([rama,mes,agrup,categoria].some(v => !v)) return;
 
       const jornada = num($("hs")?.value || 48) || 48;
 
@@ -537,6 +684,12 @@ Recibo Mensual</div>
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("jornada", String(jornada));
+      // Agua Potable: selector de conexiones A/B/C/D (impacta en básicos y NR)
+      const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
+      if(isAgua){
+        const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+        if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+      }
 
       const p = await fetchJSON(url.toString());
       if(!p || p.ok === false) throw new Error((p && p.status) ? p.status : "payload error");
@@ -546,6 +699,23 @@ Recibo Mensual</div>
       setVal("nrSF", (p.suma_fija_base ?? p.suma_fija ?? 0));
       const nrTot = num(p.no_rem_base ?? p.no_rem ?? 0) + num(p.suma_fija_base ?? p.suma_fija ?? 0);
       setVal("nrTotal", nrTot);
+
+      // Labels oficiales NR por rama
+      if(p.labels){
+        if(p.labels.no_rem) setText("lblNrVar", p.labels.no_rem);
+        if(p.labels.suma_fija) setText("lblNrSF", p.labels.suma_fija);
+      }
+
+      // Encabezado de recibo
+      setText("outRama", rama);
+      setText("outAgrup", agrup);
+      setText("outCat", categoria);
+      setText("outEscala", `Escala ${mes}`);
+
+      // Fúnebres: refrescar lista de adicionales al cambiar mes/categoría
+      if(isFunebresRama(rama)){
+        try{ await loadFunebresAdicionales(); }catch{}
+      }
 
       setText("status", "Listo.");
     }catch(err){
@@ -573,68 +743,35 @@ Recibo Mensual</div>
     tb.appendChild(tr);
   }
 
-  
-function normKey(s){
-  return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-}
-function isFunebresRama(rama){
-  return normKey(rama) === "FUNEBRES";
-}
-function toggleFunebresUI(){
-  const rama = $("rama")?.value || "";
-  const show = isFunebresRama(rama);
-  const blk = $("funBlock");
-  if(blk) blk.style.display = show ? "" : "none";
-  if(!show){
-    ["funAdic1","funAdic2","funAdic3","funAdic4"].forEach(id => { const el = $(id); if(el) el.checked = false; });
-    setText("funVal1",""); setText("funVal2",""); setText("funVal3",""); setText("funVal4","");
-  }
-}
-async function refreshFunebresAdic(){
-  const rama = $("rama")?.value || "";
-  const mes = $("mes")?.value || "";
-  if(!isFunebresRama(rama) || !mes || mes === "—") return;
-
-  try{
-    const url = new URL(`${API_BASE}/adicionales-funebres`);
-    url.searchParams.set("mes", mes);
-    const list = await fetchJSON(url.toString());
-    const arr = Array.isArray(list) ? list : [];
-
-    // Mapeo por contains en el label/id
-    const pick = (needle) => {
-      const n = normKey(needle);
-      return arr.find(it => normKey(it.label || it.id || "").includes(n)) || null;
-    };
-    const showVal = (spanId, it) => {
-      if(!it){ setText(spanId, ""); return; }
-      const val = (it.tipo === "pct") ? `${num(it.pct || 0)}%` : money(it.monto || 0);
-      setText(spanId, val ? `(${val})` : "");
-    };
-
-    showVal("funVal1", pick("Adicional General"));
-    showVal("funVal2", pick("no incluido en inciso 1"));
-    showVal("funVal3", pick("Chofer/Furgonero"));
-    showVal("funVal4", pick("Indumentaria"));
-  }catch(err){
-    console.error(err);
-  }
-}
-async function calcularMensual(){
+  async function calcularMensual(){
     try{
-      const rama = $("rama")?.value || "—";
-      const mes = $("mes")?.value || "—";
-      const agrup = $("agrup")?.value || "—";
-      const categoria = $("categoria")?.value || "—";
-      if([rama,mes,agrup,categoria].some(v => v==="—")){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
+      const rama = $("rama")?.value || "";
+      const mes = $("mes")?.value || "";
+      const agrup = $("agrup")?.value || "";
+      const categoria = $("categoria")?.value || "";
+      if([rama,mes,agrup,categoria].some(v => !v)){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
 
       const jornada = num($("hs")?.value || 48) || 48;
       const anios_antig = num($("anios")?.value || 0) || 0;
 
+      // Feriados / Ausencias
+      const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
+      const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+      const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
+
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
+      const zona_pct = num($('zona')?.value || 0) || 0;
       const sind_pct = 0;
-      const titulo_pct = 0;
+      const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
+      const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
+        ? String($("aguaConexCat")?.value || "").trim()
+        : "";      // Fúnebres: adicionales seleccionados (ids)
+      const fun_adics = (isFunebresRama(rama))
+        ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
+            .map(el => (el && el.value != null) ? String(el.value) : "")
+            .filter(v => v)
+        : [];
 
       const url = new URL(`${API_BASE}/calcular`);
       url.searchParams.set("rama", rama);
@@ -642,23 +779,44 @@ async function calcularMensual(){
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("mes", mes);
       url.searchParams.set("jornada", String(jornada));
+      // Agua Potable: selector de conexiones A/B/C/D (impacta en básicos y NR)
+      const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
+      if(isAgua){
+        const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+        if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+      }
       url.searchParams.set("anios_antig", String(anios_antig));
       url.searchParams.set("osecac", osecac ? "true" : "false");
       url.searchParams.set("afiliado", afiliado ? "true" : "false");
       url.searchParams.set("sind_pct", String(sind_pct));
       url.searchParams.set("titulo_pct", String(titulo_pct));
-// Fúnebres: enviar flags al servidor (adicionales remunerativos)
-if(isFunebresRama(rama)){
-  url.searchParams.set("fun_adic1", $("funAdic1")?.checked ? "true" : "false");
-  url.searchParams.set("fun_adic2", $("funAdic2")?.checked ? "true" : "false");
-  url.searchParams.set("fun_adic3", $("funAdic3")?.checked ? "true" : "false");
-  url.searchParams.set("fun_adic4", $("funAdic4")?.checked ? "true" : "false");
-}
+      url.searchParams.set("zona_pct", String(zona_pct));
+      url.searchParams.set("fer_no_trab", String(fer_no_trab));
+      url.searchParams.set("fer_trab", String(fer_trab));
+      url.searchParams.set("aus_inj", String(aus_inj));
+      url.searchParams.set("conex_cat", conex_cat);
+      for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");
 
-      const items = Array.isArray(data.items) ? data.items : [];
+      // Etapa 9: dedupe visual (evita filas duplicadas por render/bugs)
+      const rawItems = Array.isArray(data.items) ? data.items : [];
+      const seen = new Set();
+      const items = [];
+      for(const it of rawItems){
+        const concepto = (it && it.concepto != null) ? String(it.concepto).trim() : "";
+        const sig = [
+          concepto,
+          num(it?.base).toFixed(2),
+          num(it?.r).toFixed(2),
+          num(it?.n).toFixed(2),
+          num(it?.d).toFixed(2)
+        ].join("|");
+        if(seen.has(sig)) continue;
+        seen.add(sig);
+        items.push(it);
+      }
       items.forEach(it => addRowMensual(it.concepto, it.base, it.r, it.n, it.d));
 
       const t = data.totales || {};
@@ -666,6 +824,16 @@ if(isFunebresRama(rama)){
       setText("totNR", money(t.nr || 0));
       setText("totDed", money(t.ded || 0));
       setText("neto", money(t.neto || 0));
+
+      // Encabezado + labels desde API
+      setText("outRama", data.rama || rama);
+      setText("outAgrup", data.agrup || agrup);
+      setText("outCat", data.categoria || categoria);
+      setText("outEscala", `Escala ${data.mes || mes}`);
+      if(data.labels){
+        if(data.labels.no_rem) setText("lblNrVar", data.labels.no_rem);
+        if(data.labels.suma_fija) setText("lblNrSF", data.labels.suma_fija);
+      }
 
       setText("status", "Calculado.");
     }catch(err){
@@ -675,30 +843,131 @@ if(isFunebresRama(rama)){
     }
   }
 
+  // =====================
+  // Etapa 3: Impresión / PDF (evita hoja en blanco)
+  // =====================
+  function escapeHtml(s){
+    return (s ?? "").toString()
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/\"/g,"&quot;")
+      .replace(/'/g,"&#039;");
+  }
+
+  function cloneTableForPrint(tab){
+    const sel = (tab === 'final') ? '#paneFinal table.table' : '#paneMensual table.table';
+    const src = document.querySelector(sel);
+    if(!src) return null;
+    const tbl = src.cloneNode(true);
+
+    // Mensual: sacar columna Base (2da columna)
+    if(tab !== 'final'){
+      tbl.querySelectorAll('tr').forEach(tr => {
+        const kids = tr.children;
+        if(kids && kids.length >= 5){
+          // Concepto | Base | Rem | NR | Desc
+          kids[1].remove();
+        }
+      });
+      // Ajustar colspans (Neto a cobrar)
+      tbl.querySelectorAll('td[colspan]').forEach(td => {
+        const cs = parseInt(td.getAttribute('colspan') || '0', 10);
+        if(cs > 0) td.setAttribute('colspan', String(Math.max(1, cs - 1)));
+      });
+    }
+
+    // En print siempre queremos tabla “limpia”
+    tbl.classList.remove('table');
+    tbl.classList.add('print-table');
+
+    return tbl;
+  }
+
+  function buildPrintArea(tab){
+    const area = $('printArea');
+    if(!area) return;
+
+    const isFinal = (tab === 'final');
+    const titulo = isFinal ? 'Liquidación Final' : 'Recibo Mensual';
+
+    // Header: usar los spans ya armados (fallback a selects)
+    const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || '—';
+    const agrup = (isFinal ? $('lf_outAgrup')?.textContent : $('outAgrup')?.textContent) || $('agrup')?.value || '—';
+    const cat  = (isFinal ? $('lf_outCat')?.textContent : $('outCat')?.textContent) || $('categoria')?.value || '—';
+    const escala = (!isFinal ? ($('outEscala')?.textContent || '') : (`Escala ${$('mes')?.value || ''}`)).trim();
+
+    const tbl = cloneTableForPrint(tab);
+
+    if(!tbl){
+      area.innerHTML = `
+        <div class="sheet">
+          <div class="title">${escapeHtml(titulo)}</div>
+          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+          <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
+        </div>`;
+      return;
+    }
+
+    // Armado final
+    area.innerHTML = `
+      <div class="sheet">
+        <div class="title">${escapeHtml(titulo)}</div>
+        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+        ${tbl.outerHTML}
+      </div>`;
+  }
+
+  function imprimirPDF(tab){
+    // Construye el printArea ANTES de imprimir.
+    try{
+      buildPrintArea(tab || 'mensual');
+      // Forzar reflow para que el navegador “vea” el contenido
+      const area = $('printArea');
+      if(area) void area.offsetHeight;
+      // Dejar un tick para que pinte antes de abrir el diálogo
+      setTimeout(() => window.print(), 60);
+    }catch(err){
+      console.error(err);
+      alert('No se pudo preparar la impresión. Revisá consola.');
+    }
+  }
+
+  // Limpiar al terminar de imprimir (evita que quede contenido oculto)
+  window.addEventListener('afterprint', () => {
+    const area = $('printArea');
+    if(area) area.innerHTML = '';
+  });
+
+  window.imprimirPDF = imprimirPDF;
+
   // Exponer para botones existentes
   window.calcularMensual = calcularMensual;
 
   function wire(){
-    $("rama")?.addEventListener("change", () => { toggleFunebresUI(); refreshAgrupCat(); refreshFunebresAdic(); });
-    $("agrup")?.addEventListener("change", () => { refreshCatsOnly(); });
-    $("categoria")?.addEventListener("change", () => { refreshPayload(); refreshFunebresAdic(); });
-    $("mes")?.addEventListener("change", () => { refreshPayload(); refreshFunebresAdic(); });
+
+    // Rama: además de refrescar agrups/cats, togglear UI condicional.
+    $("rama")?.addEventListener("change", async () => {
+      try{ applyBranchUI(); }catch{}
+      await refreshAgrupCat();
+    });
+    $("agrup")?.addEventListener("change", refreshCatsOnly);
+    $("categoria")?.addEventListener("change", refreshPayload);
+    $("mes")?.addEventListener("change", refreshPayload);
     $("hs")?.addEventListener("change", refreshPayload);
 
-    // Si el usuario cambia un adicional, lo ideal es recalcular; lo dejamos manual (botón Calcular),
-    // pero sí refrescamos los importes mostrados cuando cambie el mes.
-    ["funAdic1","funAdic2","funAdic3","funAdic4"].forEach(id => {
-      $(id)?.addEventListener("change", () => {});
-    });
-  }
+    // Agua: selector de conexiones A/B/C/D
+    $("aguaConexCat")?.addEventListener("change", () => { refreshPayload(); });
 
+    // Turismo: si cambia título, recalcular base al vuelo (no recalcula recibo hasta que toques Calcular)
+    $("turTitulo")?.addEventListener("change", () => { /* opcional */ });
+
+  }
 
   document.addEventListener("DOMContentLoaded", async () => {
     try{
       wire();
       await loadMeta();
-      toggleFunebresUI();
-      await refreshFunebresAdic();
     }catch(err){
       console.error(err);
       setText("status", "Error al cargar maestro.");

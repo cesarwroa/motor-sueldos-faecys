@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
+from typing import List, Optional
 from escalas import (
     get_meta,
     get_payload,
@@ -57,8 +58,17 @@ def payload(
     mes: str,
     agrup: str = "—",
     categoria: str = "—",
+    conex_cat: str = "",
+    conexiones: int = 0,
 ):
-    return get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+    return get_payload(
+        rama=rama,
+        mes=mes,
+        agrup=agrup,
+        categoria=categoria,
+        conex_cat=conex_cat,
+        conexiones=conexiones,
+    )
 
 # ========= CALCULAR (recibo completo) =========
 @app.get("/calcular")
@@ -73,10 +83,15 @@ def calcular(
     afiliado: bool = False,
     sind_pct: float = 0,
     titulo_pct: float = 0,
-    fun_adic1: bool = False,
-    fun_adic2: bool = False,
-    fun_adic3: bool = False,
-    fun_adic4: bool = False,
+    zona_pct: float = 0,
+    fer_no_trab: int = 0,
+    fer_trab: int = 0,
+    aus_inj: int = 0,
+    # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
+    conex_cat: str = "",
+    conexiones: int = 0,
+    # Fúnebres: ids de adicionales seleccionados (coma-separados)
+    fun_adic: Optional[List[str]] = Query(None),
 ):
     return calcular_payload(
         rama=rama,
@@ -89,10 +104,13 @@ def calcular(
         afiliado=afiliado,
         sind_pct=sind_pct,
         titulo_pct=titulo_pct,
-        fun_adic1=fun_adic1,
-        fun_adic2=fun_adic2,
-        fun_adic3=fun_adic3,
-        fun_adic4=fun_adic4,
+        zona_pct=zona_pct,
+        fer_no_trab=fer_no_trab,
+        fer_trab=fer_trab,
+        aus_inj=aus_inj,
+        conex_cat=conex_cat,
+        conexiones=conexiones,
+        fun_adic=(";".join(fun_adic) if fun_adic else ""),
     )
 
 # ========= FUNEBRES =========
@@ -102,7 +120,10 @@ def adicionales_funebres(mes: str):
 
 # ========= AGUA POTABLE =========
 @app.get("/regla-conexiones")
-def regla_conexiones(cantidad: int):
+def regla_conexiones(cantidad: int = 0, nivel: str = ""):
+    # Si el front manda nivel (A/B/C/D), devolvemos la misma estructura.
+    if nivel:
+        return match_regla_conexiones(nivel)
     return match_regla_conexiones(cantidad)
 
 # ========= TURISMO =========
