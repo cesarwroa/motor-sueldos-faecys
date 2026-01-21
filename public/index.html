@@ -631,7 +631,22 @@ Recibo Mensual</div>
       clearTbody("tbodyMensual");
 
       const items = Array.isArray(data.items) ? data.items : [];
-      items.forEach(it => addRowMensual(it.concepto, it.base, it.remunerativo, it.no_remunerativo, it.deduccion));
+      // Orden: Remunerativos → No Remunerativos → Descuentos
+      const remItems = [];
+      const nrItems  = [];
+      const dedItems = [];
+      const otherItems = [];
+      for(const it of items){
+        const r = num(it?.remunerativo);
+        const n = num(it?.no_remunerativo);
+        const d = num(it?.deduccion);
+        if(d > 0 && r <= 0 && n <= 0) dedItems.push(it);
+        else if(r > 0) remItems.push(it);
+        else if(n > 0) nrItems.push(it);
+        else otherItems.push(it);
+      }
+      [...remItems, ...nrItems, ...dedItems, ...otherItems]
+        .forEach(it => addRowMensual(it.concepto, it.base, it.remunerativo, it.no_remunerativo, it.deduccion));
 
       const t = data.totales || {};
       setText("totRem", money(t.remunerativo || 0));

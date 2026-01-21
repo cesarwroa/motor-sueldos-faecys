@@ -901,7 +901,22 @@ function applyBranchUI(){
         seen.add(sig);
         items.push(it);
       }
-      items.forEach(it => addRowMensual(it.concepto, it.base, it.r, it.n, it.d));
+      // Orden: Remunerativos → No Remunerativos → Descuentos
+      const remItems = [];
+      const nrItems  = [];
+      const dedItems = [];
+      const otherItems = [];
+      for(const it of items){
+        const r = num(it?.r);
+        const n = num(it?.n);
+        const d = num(it?.d);
+        if(d > 0 && r <= 0 && n <= 0) dedItems.push(it);
+        else if(r > 0) remItems.push(it);
+        else if(n > 0) nrItems.push(it);
+        else otherItems.push(it);
+      }
+      [...remItems, ...nrItems, ...dedItems, ...otherItems]
+        .forEach(it => addRowMensual(it.concepto, it.base, it.r, it.n, it.d));
 
       const t = data.totales || {};
       setText("totRem", money(t.rem || 0));
