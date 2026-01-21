@@ -124,7 +124,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="note" id="status">Cargando maestro…</div>
 </div>
 <div class="card" id="paneMensual">
-<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div class="note" id="aguaBlock" style="display:none">
   <strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D
   <select id="aguaConexCat" style="max-width:180px; margin-left:6px">
@@ -547,11 +547,64 @@ Recibo Mensual</div>
     // placeholder por si a futuro querés mostrar algo; hoy no mostramos nada.
   }
 
+  
+  function isCallRama(rama){
+    const r = normRama(rama);
+    return (r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r.includes("CALL"));
+  }
+
+  function parseHorasCategoria(cat){
+    const s = (cat || "").toString().toUpperCase();
+    const m = s.match(/(\d+(?:[\.,]\d+)?)\s*H/);
+    if(!m) return null;
+    const raw = m[1].replace(",", ".");
+    const v = parseFloat(raw);
+    if(!isFinite(v) || v <= 0 || v > 48) return null;
+    return v;
+  }
+
+  function syncCallJornadaFromCategoria(){
+    const rama = $("rama")?.value || "";
+    if(!isCallRama(rama)) return;
+    const cat = $("categoria")?.value || "";
+    const h = parseHorasCategoria(cat);
+    if(h && $("hs")) $("hs").value = String(h);
+  }
+
+  function getEffectiveJornada(){
+    const rama = $("rama")?.value || "";
+    if(isCallRama(rama)){
+      const h = parseHorasCategoria($("categoria")?.value || "");
+      return (h || 48);
+    }
+
+  function updateCallCenterUI(){
+    try{
+      const rama = $('rama')?.value || '';
+      const showCall = isCallRama(rama);
+      const hsWrap = $('hsWrap');
+      if(hsWrap) hsWrap.style.display = showCall ? 'none' : '';
+      if($('hs')) $('hs').disabled = !!showCall;
+      if(showCall){ try{ syncCallJornadaFromCategoria(); }catch{} }
+    }catch(e){}
+  }
+
+    return num($("hs")?.value || 48) || 48;
+  }
+
+
   function applyBranchUI(){
     const rama = $('rama')?.value || '';
     const showAgua = isAguaRama(rama);
     const showTur = isTurismoRama(rama);
     const showFun = isFunebresRama(rama);
+    const showCall = isCallRama(rama);
+
+    // CALL CENTER: ocultar jornada (la trae la categoría) y sincronizar hs
+    const hsWrap = $('hsWrap');
+    if(hsWrap) hsWrap.style.display = showCall ? 'none' : '';
+    if($('hs')) $('hs').disabled = !!showCall;
+    if(showCall){ try{ syncCallJornadaFromCategoria(); }catch{} }
 
     // FÚNEBRES: ocultar agrupamiento y forzar valor "—"
     const agrupWrap = $("agrupWrap");
@@ -648,6 +701,9 @@ Recibo Mensual</div>
     fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
     if(cats.length) $("categoria").value = cats[0];
+    try{ syncCallJornadaFromCategoria(); }catch{}
+
+    updateCallCenterUI();
 
     await refreshPayload();
   }
@@ -664,6 +720,8 @@ Recibo Mensual</div>
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     if(cats.length) $("categoria").value = cats[0];
+    try{ syncCallJornadaFromCategoria(); }catch{}
+    updateCallCenterUI();
     await refreshPayload();
   }
 
@@ -695,7 +753,7 @@ Recibo Mensual</div>
       const categoria = $("categoria")?.value || "";
       if([rama,mes,agrup,categoria].some(v => !v)) return;
 
-      const jornada = num($("hs")?.value || 48) || 48;
+      const jornada = getEffectiveJornada();
 
       const url = new URL(`${API_BASE}/payload`);
       url.searchParams.set("rama", rama);
@@ -770,7 +828,7 @@ Recibo Mensual</div>
       const categoria = $("categoria")?.value || "";
       if([rama,mes,agrup,categoria].some(v => !v)){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
 
-      const jornada = num($("hs")?.value || 48) || 48;
+      const jornada = getEffectiveJornada();
       const anios_antig = num($("anios")?.value || 0) || 0;
 
       // Feriados / Ausencias
@@ -971,7 +1029,7 @@ Recibo Mensual</div>
       await refreshAgrupCat();
     });
     $("agrup")?.addEventListener("change", refreshCatsOnly);
-    $("categoria")?.addEventListener("change", refreshPayload);
+    $("categoria")?.addEventListener("change", () => { updateCallCenterUI(); refreshPayload(); });
     $("mes")?.addEventListener("change", refreshPayload);
     $("hs")?.addEventListener("change", refreshPayload);
 
@@ -993,6 +1051,9 @@ Recibo Mensual</div>
       alert("Error al cargar maestro (meta). Ver consola.");
     }
   });
-})();
+
+    updateCallCenterUI();
+  }
+)();
 </script></body>
 </html>

@@ -9,6 +9,7 @@ Lee el maestro Excel con openpyxl y expone helpers para:
 from __future__ import annotations
 
 import os
+import re
 import datetime as _dt
 from functools import lru_cache
 from typing import Dict, Tuple, List, Any, Optional
@@ -90,6 +91,25 @@ def norm_rama(rama: Any) -> str:
     """Normaliza el nombre de rama para comparaciones."""
     return _norm(rama).upper().replace("  ", " ").strip()
 
+
+
+def _extract_hs_from_categoria(cat: Any) -> Optional[float]:
+    """Extrae horas de una categoría tipo '... 20HS' / '... 36 hs'."""
+    s = _norm(cat).upper()
+    if not s:
+        return None
+    m = re.search(r"(\d+(?:[\.,]\d+)?)\s*H", s)
+    if not m:
+        return None
+    raw = m.group(1).replace(",", ".")
+    try:
+        v = float(raw)
+    except Exception:
+        return None
+    # límites razonables
+    if v <= 0 or v > 48:
+        return None
+    return v
 
 def _nr_labels(rama: str) -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
@@ -422,8 +442,20 @@ def calcular_payload(
         return base
 
     # -------- Bases prorrateadas (48hs) --------
-    j = float(jornada or 48)
-    factor = (j / 48.0) if 48.0 else 1.0
+    # CALL CENTER: la categoría ya trae su jornada (20/21/24/30/34/35/36/48hs).
+    # No se prorratea por selector (evita que el básico se achique al poner 20hs).
+    is_call = norm_rama(rama) in ("CALL CENTER", "CALLCENTER", "CALL", "CENTRO DE LLAMADAS", "CENTRO DE LLAMADA")
+    hs_cat = _extract_hs_from_categoria(categoria) if is_call else None
+
+    if is_call and hs_cat:
+        j = float(hs_cat)
+        factor = 1.0
+        call_to_48 = (48.0 / j) if j else 1.0
+    else:
+        j = float(jornada or 48)
+        factor = (j / 48.0) if 48.0 else 1.0
+        call_to_48 = 1.0
+
 
     bas_base = float(base.get("basico", 0.0) or 0.0)
     nr_base = float(base.get("no_rem", 0.0) or 0.0)
@@ -570,9 +602,9 @@ def calcular_payload(
     # Obra Social (OSECAC): BASE JORNADA COMPLETA (48hs), sin prorrateo por jornada.
     # Importante: no "desprorrateamos" totales, porque eso infla importes fijos (p.ej. a-cuenta).
     # Recalculamos una simulación a 48hs manteniendo el resto de parámetros (antig., zona, feriados, ausencias, etc.).
-    bas_os = float(bas_base)  # 48hs (ya incluye ajuste por conexiones en Agua Potable)
-    nr_os = float(nr_base)
-    sf_os = float(sf_base)
+    bas_os = float(bas_base) * call_to_48  # 48hs (CALL: simula a 48). Agua: ya incluye conexiones en bas_base.
+    nr_os = float(nr_base) * call_to_48
+    sf_os = float(sf_base) * call_to_48
 
     zona_os = round2(bas_os * (zona_pct_f / 100.0)) if zona_pct_f else 0.0
     base_ant_os = round2(bas_os + zona_os)
