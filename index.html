@@ -577,6 +577,8 @@ Recibo Mensual</div>
       const h = parseHorasCategoria($("categoria")?.value || "");
       return (h || 48);
     }
+    return num($("hs")?.value || 48) || 48;
+  }
 
   function updateCallCenterUI(){
     try{
@@ -589,11 +591,8 @@ Recibo Mensual</div>
     }catch(e){}
   }
 
-    return num($("hs")?.value || 48) || 48;
-  }
 
-
-  function applyBranchUI(){
+function applyBranchUI(){
     const rama = $('rama')?.value || '';
     const showAgua = isAguaRama(rama);
     const showTur = isTurismoRama(rama);
@@ -612,7 +611,7 @@ Recibo Mensual</div>
     if(agrupWrap) agrupWrap.style.display = showFun ? "none" : "";
     if(agrupSel){
       agrupSel.disabled = !!showFun;
-      if(showFun) agrupSel.value = "—";
+      if(showFun) agrupSel.value = "";
     }
 
     const aguaBlock = $('aguaBlock');
