@@ -117,7 +117,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="card">
 <div class="grid cols-4">
 <div><label>Rama</label><select id="rama"></select></div>
-<div><label>Agrupamiento</label><select id="agrup"></select></div>
+<div id="agrupWrap"><label>Agrupamiento</label><select id="agrup"></select></div>
 <div><label>Categoría</label><select id="categoria"></select></div>
 <div><label>Mes</label><select id="mes"></select></div>
 </div>
@@ -553,6 +553,15 @@ Recibo Mensual</div>
     const showTur = isTurismoRama(rama);
     const showFun = isFunebresRama(rama);
 
+    // FÚNEBRES: ocultar agrupamiento y forzar valor "—"
+    const agrupWrap = $("agrupWrap");
+    const agrupSel = $("agrup");
+    if(agrupWrap) agrupWrap.style.display = showFun ? "none" : "";
+    if(agrupSel){
+      agrupSel.disabled = !!showFun;
+      if(showFun) agrupSel.value = "—";
+    }
+
     const aguaBlock = $('aguaBlock');
     if(aguaBlock) aguaBlock.style.display = showAgua ? '' : 'none';
 
@@ -604,6 +613,8 @@ Recibo Mensual</div>
   }
 
   function getAgrupsForRama(rama){
+    // FÚNEBRES no usa agrupamiento (evita errores por combinaciones inexistentes)
+    if(isFunebresRama(rama)) return ["—"];
     const r = (META && META.agrupamientos) ? META.agrupamientos : (META && META.agrups) ? META.agrups : null;
     if(r && r[rama]) return r[rama];
     // fallback: si no viene mapeo, usar GENERAL
@@ -625,9 +636,12 @@ Recibo Mensual</div>
 
     applyBranchUI();
 
-    const agrups = getAgrupsForRama(rama);
-    fillSelect($("agrup"), agrups, "Agrupamiento");
-    if(agrups.includes("GENERAL")) $("agrup").value = "GENERAL";
+    const isFun = isFunebresRama(rama);
+
+    const agrups = isFun ? ["—"] : getAgrupsForRama(rama);
+    fillSelect($("agrup"), agrups, isFun ? "—" : "Agrupamiento");
+    if(isFun) $("agrup").value = "—";
+    else if(agrups.includes("GENERAL")) $("agrup").value = "GENERAL";
 
     const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
@@ -640,8 +654,13 @@ Recibo Mensual</div>
 
   async function refreshCatsOnly(){
     const rama = $("rama")?.value || "";
-    const agrup = $("agrup")?.value || "";
-    if(!META || !rama || !agrup){ return; }
+    let agrup = $("agrup")?.value || "";
+    if(!META || !rama){ return; }
+    if(isFunebresRama(rama)){
+      agrup = "—";
+      if($("agrup")) $("agrup").value = "—";
+    }
+    if(!agrup){ return; }
     const cats = getCatsFor(rama, agrup);
     fillSelect($("categoria"), cats, "Categoría");
     if(cats.length) $("categoria").value = cats[0];

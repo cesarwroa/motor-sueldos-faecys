@@ -131,7 +131,7 @@ def _build_index() -> Dict[str, Any]:
         cat_u = _norm(cat) if _norm(cat) else "—"
 
         # Fix maestro FUNEBRES: a veces las categorías quedaron en "Agrupamiento" y "Categoria" viene vacío.
-        if rama_u == "FUNEBRES" and (cat_u == "—" or cat_u == "") and agrup_u not in ("—", ""):
+        if rama_u in ("FUNEBRES", "FÚNEBRES") and (cat_u == "—" or cat_u == "") and agrup_u not in ("—", ""):
             cat_u = agrup_u
             agrup_u = "—"
         mes_k = _mes_to_key(mes)
@@ -485,7 +485,7 @@ def calcular_payload(
 
     # -------- FUNEBRES: Adicionales (según maestro) --------
     fun_rows: List[Dict[str, Any]] = []
-    if base["rama"] == "FUNEBRES":
+    if norm_rama(base["rama"]) in ("FUNEBRES", "FÚNEBRES"):
         sel_raw = (fun_adic or "").strip()
         if sel_raw:
             # IMPORTANTE: NO cortar por coma, porque algunos IDs contienen comas
