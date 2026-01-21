@@ -567,8 +567,17 @@ def calcular_payload(
     # Descuentos
     jub = round2(rem_aportes * 0.11)
     pami = round2(rem_aportes * 0.03)
-    # Si tiene OSECAC, Obra Social 3% también se calcula sobre NR (criterio del sistema)
-    os_base = round2((rem_aportes + nr_total) if bool(osecac) else rem_aportes)
+    # Obra Social (OSECAC): se calcula como JORNADA COMPLETA (no proporcional a la jornada seleccionada).
+    # - La remuneración para OS se "desprorratea" a 48hs usando el mismo factor (j/48).
+    # - Si tiene OSECAC, el 3% también se calcula sobre NR (criterio del sistema).
+    rem_aportes_os = rem_aportes
+    try:
+        if factor and float(factor) != 0.0:
+            rem_aportes_os = round2(rem_aportes / float(factor))
+    except Exception:
+        rem_aportes_os = rem_aportes
+
+    os_base = round2((rem_aportes_os + nr_total) if bool(osecac) else rem_aportes_os)
     os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
     osecac_100 = 100.0 if bool(osecac) else 0.0
 
