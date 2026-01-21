@@ -567,17 +567,83 @@ def calcular_payload(
     # Descuentos
     jub = round2(rem_aportes * 0.11)
     pami = round2(rem_aportes * 0.03)
-    # Obra Social (OSECAC): se calcula como JORNADA COMPLETA (no proporcional a la jornada seleccionada).
-    # - La remuneración para OS se "desprorratea" a 48hs usando el mismo factor (j/48).
-    # - Si tiene OSECAC, el 3% también se calcula sobre NR (criterio del sistema).
-    rem_aportes_os = rem_aportes
-    try:
-        if factor and float(factor) != 0.0:
-            rem_aportes_os = round2(rem_aportes / float(factor))
-    except Exception:
-        rem_aportes_os = rem_aportes
+    # Obra Social (OSECAC): BASE JORNADA COMPLETA (48hs), sin prorrateo por jornada.
+    # Importante: no "desprorrateamos" totales, porque eso infla importes fijos (p.ej. a-cuenta).
+    # Recalculamos una simulación a 48hs manteniendo el resto de parámetros (antig., zona, feriados, ausencias, etc.).
+    bas_os = float(bas_base)  # 48hs (ya incluye ajuste por conexiones en Agua Potable)
+    nr_os = float(nr_base)
+    sf_os = float(sf_base)
 
-    os_base = round2((rem_aportes_os + nr_total) if bool(osecac) else rem_aportes_os)
+    zona_os = round2(bas_os * (zona_pct_f / 100.0)) if zona_pct_f else 0.0
+    base_ant_os = round2(bas_os + zona_os)
+    antig_os = round2(base_ant_os * pct_ant)
+    base_pres_os = round2(bas_os + zona_os + antig_os)
+    presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
+    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os)
+
+    nr_base_total_os = round2(nr_os + sf_os)
+    antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
+    presentismo_nr_os = (
+        round2((nr_base_total_os + antig_nr_os) / 12.0)
+        if (nr_base_total_os and presentismo_habil)
+        else 0.0
+    )
+    nr_total_os = round2(nr_base_total_os + antig_nr_os + presentismo_nr_os)
+
+    # FUNEBRES: adicionales (48hs)
+    if norm_rama(base["rama"]) in ("FUNEBRES", "FÚNEBRES"):
+        sel_raw = (fun_adic or "").strip()
+        if sel_raw:
+            sel_ids = [s.strip() for s in sel_raw.split(";") if s.strip()]
+            if sel_ids:
+                defs = get_adicionales_funebres(mes)
+                by_id = {str(d.get("id")): d for d in defs}
+                for sid in sel_ids:
+                    d = by_id.get(str(sid))
+                    if not d:
+                        continue
+                    tipo = str(d.get("tipo") or "").strip().lower()
+                    monto = float(d.get("monto") or 0.0)
+                    pct = float(d.get("pct") or 0.0)
+                    val = 0.0
+                    if tipo in ("monto", "importe", "fijo") and monto:
+                        val = round2(monto)  # 48hs
+                    elif pct:
+                        val = round2(bas_os * (pct / 100.0))
+                    elif monto:
+                        val = round2(monto)
+                    if val:
+                        rem_total_os = round2(rem_total_os + val)
+
+    # TURISMO: adicional por título (48hs)
+    if base["rama"] == "TURISMO" and titulo_pct_f > 0:
+        titulo_rem_os = round2(bas_os * (titulo_pct_f / 100.0)) if bas_os else 0.0
+        titulo_nr_os = round2(sf_os * (titulo_pct_f / 100.0)) if sf_os else 0.0
+        rem_total_os = round2(rem_total_os + titulo_rem_os)
+        nr_total_os = round2(nr_total_os + titulo_nr_os)
+
+    # Feriados (48hs)
+    base_fer_rem_os = round2(bas_os + zona_os + antig_os)
+    base_fer_nr_os = round2(nr_base_total_os + antig_nr_os)
+    vdia25_rem_os = round2(base_fer_rem_os / 25.0) if base_fer_rem_os else 0.0
+    vdia30_rem_os = round2(base_fer_rem_os / 30.0) if base_fer_rem_os else 0.0
+    vdia25_nr_os = round2(base_fer_nr_os / 25.0) if base_fer_nr_os else 0.0
+    vdia30_nr_os = round2(base_fer_nr_os / 30.0) if base_fer_nr_os else 0.0
+
+    fer_no_rem_os = round2(fer_no * (vdia25_rem_os - vdia30_rem_os)) if fer_no else 0.0
+    fer_si_rem_os = round2(fer_si * vdia25_rem_os) if fer_si else 0.0
+    fer_no_nr_os = round2(fer_no * (vdia25_nr_os - vdia30_nr_os)) if fer_no else 0.0
+    fer_si_nr_os = round2(fer_si * vdia25_nr_os) if fer_si else 0.0
+
+    rem_total_os = round2(rem_total_os + fer_no_rem_os + fer_si_rem_os)
+    nr_total_os = round2(nr_total_os + fer_no_nr_os + fer_si_nr_os)
+
+    # Ausencias (48hs)
+    base_dia_aus_os = round2((bas_os + zona_os + antig_os) / 30.0) if (bas_os or zona_os or antig_os) else 0.0
+    aus_rem_os = round2(aus_dias * base_dia_aus_os) if aus_dias else 0.0
+    rem_aportes_os = max(0.0, round2(rem_total_os - aus_rem_os))
+
+    os_base = round2((rem_aportes_os + nr_total_os) if bool(osecac) else rem_aportes_os)
     os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
     osecac_100 = 100.0 if bool(osecac) else 0.0
 
