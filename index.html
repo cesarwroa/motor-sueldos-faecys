@@ -396,6 +396,18 @@ Recibo Mensual</div>
     }
     return data;
   }
+
+// Manejo de Caja UI (Etapa 7): habilita/deshabilita inputs y limpia valores si se apaga
+function toggleManejoCajaUI(){
+  const on = !!($('manejoCaja')?.checked);
+  if($('cajero_tipo')) $('cajero_tipo').disabled = !on;
+  if($('faltanteCajaInput')) $('faltanteCajaInput').disabled = !on;
+  if(!on){
+    if($('cajero_tipo')) $('cajero_tipo').value = '';
+    if($('faltanteCajaInput')) $('faltanteCajaInput').value = '';
+  }
+}
+
   function fillSelect(sel, items, placeholder="—"){
     if(!sel) return;
     const cur = sel.value;
@@ -1133,16 +1145,6 @@ function applyBranchUI(){
   window.calcularMensual = calcularMensual;
 
   function wire(){
-    const toggleManejoCajaUI = () => {
-      const on = !!($('manejoCaja')?.checked);
-      if($('cajero_tipo')) $('cajero_tipo').disabled = !on;
-      if($('faltanteCajaInput')) $('faltanteCajaInput').disabled = !on;
-      if(!on){
-        if($('cajero_tipo')) $('cajero_tipo').value = '';
-        if($('faltanteCajaInput')) $('faltanteCajaInput').value = '';
-      }
-    };
-
     // Rama: además de refrescar agrups/cats, togglear UI condicional.
     $("rama")?.addEventListener("change", async () => {
       try{ applyBranchUI(); }catch{}
