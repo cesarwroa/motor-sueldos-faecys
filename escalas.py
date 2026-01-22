@@ -697,13 +697,11 @@ def calcular_payload(
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
-    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR.
-    # Se pierde también si corresponde pérdida de presentismo por ausencias.
-    presentismo_nr = (
-        round2((nr_base_total + antig_nr + hex50_nr + hex100_nr + noct_nr) / 12.0)
-        if (nr_base_total and presentismo_habil)
-        else 0.0
-    )
+    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR
+    # y también horas extra/nocturnas NR.
+    # Se pierde si hay 2+ ausencias injustificadas.
+    base_pres_nr = round2(nr_base_total + antig_nr + hex50_nr + hex100_nr + noct_nr)
+    presentismo_nr = round2(base_pres_nr / 12.0) if (base_pres_nr and presentismo_habil) else 0.0
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr + hex50_nr + hex100_nr + noct_nr)
 
@@ -994,7 +992,7 @@ def calcular_payload(
         items.append(item(
             "Presentismo (NR)",
             n=presentismo_nr,
-            base_num=(nr_base_total + antig_nr),
+            base_num=base_pres_nr,
         ))
 
     # Feriados (NR)
