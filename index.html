@@ -640,6 +640,47 @@ function applyBranchUI(){
       // cargar para el mes seleccionado
       loadFunebresAdicionales();
     }
+
+    // selector de KM: cambia según rama (Turismo vs resto)
+    try{ updateKmUI(); }catch{}
+  }
+
+  function updateKmUI(){
+    const rama = $('rama')?.value || '';
+    const sel = $('kmTipo');
+    if(!sel) return;
+
+    const isTur = isTurismoRama(rama);
+    const prev = sel.value;
+
+    const opts = isTur
+      ? [
+          {v:'',  t:'--'},
+          {v:'C4',t:'Operativo C4'},
+          {v:'C5',t:'Operativo C5'},
+        ]
+      : [
+          {v:'',  t:'--'},
+          {v:'AY',t:'Ayudante de Chofer'},
+          {v:'CH',t:'Chofer'},
+        ];
+
+    sel.innerHTML = opts.map(o => `<option value="${escapeHtml(o.v)}">${escapeHtml(o.t)}</option>`).join('');
+
+    // Autoselección (si aplica)
+    let want = '';
+    const cat = ($('categoria')?.value || '').toUpperCase();
+    if(isTur){
+      if(cat.includes('C4')) want = 'C4';
+      if(cat.includes('C5')) want = 'C5';
+    }else{
+      if(cat.includes('AYUDANTE')) want = 'AY';
+      if(cat.includes('CHOFER')) want = 'CH';
+    }
+
+    if(want) sel.value = want;
+    else if(opts.some(o => o.v === prev)) sel.value = prev;
+    else sel.value = '';
   }
 
   async function loadMeta(){
@@ -704,6 +745,8 @@ function applyBranchUI(){
 
     updateCallCenterUI();
 
+    try{ updateKmUI(); }catch{}
+
     await refreshPayload();
   }
 
@@ -721,6 +764,8 @@ function applyBranchUI(){
     if(cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
     updateCallCenterUI();
+
+    try{ updateKmUI(); }catch{}
     await refreshPayload();
   }
 
@@ -1060,7 +1105,11 @@ function applyBranchUI(){
       await refreshAgrupCat();
     });
     $("agrup")?.addEventListener("change", refreshCatsOnly);
-    $("categoria")?.addEventListener("change", () => { updateCallCenterUI(); refreshPayload(); });
+    $("categoria")?.addEventListener("change", () => {
+      updateCallCenterUI();
+      try{ updateKmUI(); }catch{}
+      refreshPayload();
+    });
     $("mes")?.addEventListener("change", refreshPayload);
     $("hs")?.addEventListener("change", refreshPayload);
 

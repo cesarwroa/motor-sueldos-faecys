@@ -67,6 +67,44 @@ def _is_funebres(rama: str) -> bool:
     return _u(rama) in ("FUNEBRES", "FÚNEBRES")
 
 
+# Horas nocturnas: recargo 13,33% (1h nocturna = 1h 8m)
+NOCT_RECARGO = 8.0 / 60.0  # 0.133333...
+
+
+# Turismo (CCT 547/08) - Adicional por KM (valores por km, según escala 01/2026 a 05/2026)
+TUR_KM_RATES: Dict[str, Dict[str, Dict[str, float]]] = {
+    "2026-01": {
+        "C4": {"menos100": 112.31, "mas100": 129.16},
+        "C5": {"menos100": 110.62, "mas100": 127.21},
+    },
+    "2026-02": {
+        "C4": {"menos100": 112.31, "mas100": 129.16},
+        "C5": {"menos100": 110.62, "mas100": 127.21},
+    },
+    "2026-03": {
+        "C4": {"menos100": 112.31, "mas100": 129.16},
+        "C5": {"menos100": 110.62, "mas100": 127.21},
+    },
+    "2026-04": {
+        "C4": {"menos100": 112.31, "mas100": 129.16},
+        "C5": {"menos100": 110.62, "mas100": 127.21},
+    },
+    "2026-05": {
+        "C4": {"menos100": 122.31, "mas100": 140.66},
+        "C5": {"menos100": 120.62, "mas100": 138.71},
+    },
+}
+
+
+def _tur_km_importe(mes: str, tipo: str, km_menos100: int, km_mas100: int) -> float:
+    t = (tipo or "").strip().upper()
+    mm = (mes or "").strip()
+    d = (TUR_KM_RATES.get(mm) or {}).get(t) or {}
+    v1 = float(d.get("menos100") or 0.0)
+    v2 = float(d.get("mas100") or 0.0)
+    return (float(km_menos100 or 0) * v1) + (float(km_mas100 or 0) * v2)
+
+
 def _vac_anuales_por_antig(anios: int) -> int:
     if anios < 5:
         return 14
@@ -232,20 +270,37 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
             base_caj = _find_basico_ref(mes, rama, ["Cajeros A", "CAJEROS A"])
             manejo_caja_rem = base_caj * 0.1225 * factor_hs
 
-    # Chofer/Ayudante (Art. 36): porcentaje por km sobre básicos iniciales de categorías referencia
+    # Adicional por KM:
+    # - Rama TURISMO (CCT 547/08): valores fijos por km, por categoría (C4 / C5) y mes.
+    # - Resto de ramas (CCT 130/75 - Art. 36): % por km sobre básicos iniciales de categorías referencia.
     km_tipo = str(payload.get("km_tipo") or "").strip().upper()
     km_menos100 = int(_f(payload.get("km_menos100") or 0) or 0)
     km_mas100 = int(_f(payload.get("km_mas100") or 0) or 0)
     km_rem = 0.0
-    if km_tipo in ("AY", "CH") and (km_menos100 > 0 or km_mas100 > 0):
-        if km_tipo == "AY":
-            b1 = _find_basico_ref(mes, rama, ["Auxiliar A", "PERSONAL AUXILIAR A"])
-            b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado A", "AUXILIAR ESPECIALIZADO A"])
-            km_rem = (b1 * (0.0082 / 100.0) * km_menos100 + b2 * (0.01 / 100.0) * km_mas100) * factor_hs
+    km_label = ""
+    if (km_menos100 > 0 or km_mas100 > 0):
+        if _is_turismo(rama):
+            tipo = km_tipo
+            if tipo not in ("C4", "C5"):
+                cu = _u(categoria)
+                if "C4" in cu:
+                    tipo = "C4"
+                elif "C5" in cu:
+                    tipo = "C5"
+            km_rem = _tur_km_importe(mes, tipo, km_menos100, km_mas100)
+            km_label = f"Adicional por KM (Operativo {tipo})" if tipo in ("C4", "C5") else "Adicional por KM"
         else:
-            b1 = _find_basico_ref(mes, rama, ["Auxiliar B", "PERSONAL AUXILIAR B"])
-            b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado B", "AUXILIAR ESPECIALIZADO B"])
-            km_rem = (b1 * (0.01 / 100.0) * km_menos100 + b2 * (0.0115 / 100.0) * km_mas100) * factor_hs
+            if km_tipo in ("AY", "CH"):
+                if km_tipo == "AY":
+                    b1 = _find_basico_ref(mes, rama, ["Auxiliar A", "PERSONAL AUXILIAR A"])
+                    b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado A", "AUXILIAR ESPECIALIZADO A"])
+                    km_rem = (b1 * (0.0082 / 100.0) * km_menos100) + (b2 * (0.01 / 100.0) * km_mas100)
+                    km_label = "Adicional por KM (Ayudante de Chofer)"
+                else:
+                    b1 = _find_basico_ref(mes, rama, ["Auxiliar B", "PERSONAL AUXILIAR B"])
+                    b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado B", "AUXILIAR ESPECIALIZADO B"])
+                    km_rem = (b1 * (0.01 / 100.0) * km_menos100) + (b2 * (0.0115 / 100.0) * km_mas100)
+                    km_label = "Adicional por KM (Chofer)"
 
     ant_fac = _ant_factor(rama, anios)
     ant_rem = basico * ant_fac
@@ -291,8 +346,8 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     hex50_nr = hora_nr * 1.5 * hex50
     hex100_rem = hora_rem * 2.0 * hex100
     hex100_nr = hora_nr * 2.0 * hex100
-    noct_rem = hora_rem * 0.3 * noct
-    noct_nr = hora_nr * 0.3 * noct
+    noct_rem = hora_rem * NOCT_RECARGO * noct
+    noct_nr = hora_nr * NOCT_RECARGO * noct
 
     # Feriados trabajados/no trabajados (simple)
     fer_no = int(_f(payload.get("fer_no") or 0) or 0)
@@ -367,7 +422,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     if manejo_caja_rem:
         _add(items, f"Manejo de Caja (Art. 30 - {cajero_tipo})", rem=manejo_caja_rem, base=manejo_caja_rem)
     if km_rem:
-        _add(items, "Adicional por KM (Art. 36)", rem=km_rem, base=km_rem)
+        _add(items, km_label or "Adicional por KM", rem=km_rem, base=km_rem)
 
     if nr1:
         _add(items, "No Rem (variable)", nr=nr1, base=nr1)
@@ -386,7 +441,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     if hex100_rem or hex100_nr:
         _add(items, "Horas extra 100%", rem=hex100_rem, nr=hex100_nr, base=hora_rem)
     if noct_rem or noct_nr:
-        _add(items, "Horas nocturnas (30%)", rem=noct_rem, nr=noct_nr, base=hora_rem)
+        _add(items, "Horas nocturnas (13,33%)", rem=noct_rem, nr=noct_nr, base=hora_rem)
 
     if fer_no_rem:
         _add(items, "Feriados no trabajados", rem=fer_no_rem, base=dia_rem_25)

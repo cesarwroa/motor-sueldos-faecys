@@ -409,6 +409,15 @@ def get_payload(
 
     return out
 
+
+# Compat: algunos módulos históricos importan find_row().
+# Devuelve el registro del maestro para (rama, agrup, categoria, mes) o None si no existe.
+def find_row(rama: str, agrup: str, categoria: str, mes: str) -> Optional[Dict[str, Any]]:
+    res = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
+    if not isinstance(res, dict) or not res.get("ok"):
+        return None
+    return res
+
 def calcular_payload(
     rama: str,
     agrup: str,
@@ -583,7 +592,55 @@ def calcular_payload(
     km_base_le = 0.0
     km_base_gt = 0.0
 
-    if km_tipo_n in ("AY", "AYUDANTE", "CH", "CHOFER") and (km_le100 or km_gt100):
+    # Turismo (CCT 547/08): adicionales por KM con valores fijos por categoría operativa (C4/C5)
+    is_turismo = norm_rama(rama) == "TURISMO"
+    tur_cat = None
+    if is_turismo:
+        if "C4" in km_tipo_n:
+            tur_cat = "C4"
+        elif "C5" in km_tipo_n:
+            tur_cat = "C5"
+
+    if is_turismo and tur_cat and (km_le100 or km_gt100):
+        TUR_KM_RATES = {
+            "C4": {
+                "2026-01": {"le": 112.31, "gt": 129.16},
+                "2026-02": {"le": 112.31, "gt": 129.16},
+                "2026-03": {"le": 112.31, "gt": 129.16},
+                "2026-04": {"le": 112.31, "gt": 129.16},
+                "2026-05": {"le": 122.31, "gt": 140.66},
+            },
+            "C5": {
+                "2026-01": {"le": 110.62, "gt": 127.21},
+                "2026-02": {"le": 110.62, "gt": 127.21},
+                "2026-03": {"le": 110.62, "gt": 127.21},
+                "2026-04": {"le": 110.62, "gt": 127.21},
+                "2026-05": {"le": 120.62, "gt": 138.71},
+            },
+        }
+
+        def _pick_rate(rmap: Dict[str, Dict[str, float]], mes_k: str) -> Dict[str, float]:
+            if not rmap:
+                return {"le": 0.0, "gt": 0.0}
+            keys = sorted(rmap.keys())
+            chosen = keys[0]
+            for k in keys:
+                if k <= mes_k:
+                    chosen = k
+            return rmap.get(chosen) or {"le": 0.0, "gt": 0.0}
+
+        mes_k = _mes_to_key(mes)
+        rates = _pick_rate(TUR_KM_RATES.get(tur_cat, {}), mes_k)
+        rate_le = float(rates.get("le") or 0.0)
+        rate_gt = float(rates.get("gt") or 0.0)
+
+        # En Turismo el "Base" lo mostramos como $/km (igual que en la escala).
+        km_base_le = rate_le
+        km_base_gt = rate_gt
+        km_rem_le = round2(rate_le * km_le100) if (rate_le and km_le100) else 0.0
+        km_rem_gt = round2(rate_gt * km_gt100) if (rate_gt and km_gt100) else 0.0
+
+    elif km_tipo_n in ("AY", "AYUDANTE", "CH", "CHOFER") and (km_le100 or km_gt100):
         if km_tipo_n in ("AY", "AYUDANTE"):
             km_base_le = _basico_ref(rama, mes, ["AUXILIAR A", "AUXILIAR  A", "PERSONAL AUXILIAR A", "AUXILIAR LETRA A"])
             km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO A", "AUXILIAR  ESPECIALIZADO A"])
@@ -860,13 +917,19 @@ def calcular_payload(
     if noct_nr:
         items.append(item("Horas nocturnas (NR)", n=noct_nr, base_num=hora_nr))
 
-    # Adicional por KM (Art. 36) — 2 filas (<=100 / >100)
+    # Adicional por KM — 2 filas (<=100 / >100)
     if km_rem_le:
-        tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
-        items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le))
+        if is_turismo and tur_cat:
+            items.append(item(f'Adicional por KM (Turismo - Operativo {tur_cat}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le))
+        else:
+            tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
+            items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le))
     if km_rem_gt:
-        tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
-        items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
+        if is_turismo and tur_cat:
+            items.append(item(f'Adicional por KM (Turismo - Operativo {tur_cat}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
+        else:
+            tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
+            items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
     if presentismo_habil and presentismo:
