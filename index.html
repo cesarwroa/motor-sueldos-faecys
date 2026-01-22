@@ -144,9 +144,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
 <option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
 </select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
-<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" placeholder="$ 0,00" type="text"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
+<div><label>Adelanto de sueldo (desc.)</label><input id="adelantoSueldo" min="0" step="0.01" type="number" value="0"/></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
@@ -370,6 +371,20 @@ Recibo Mensual</div>
     return n.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
   };
 
+  // Parseo tolerante para importes ingresados con formato argentino: $ 1.234,56
+  const parseMoneyText = (s) => {
+    try{
+      const raw = (s ?? "").toString().trim();
+      if(!raw) return 0;
+      const cleaned = raw
+        .replace(/[^0-9,.-]/g, "")
+        .replace(/\.(?=\d{3}(\D|$))/g, "") // quita separadores de miles
+        .replace(",", ".");
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }catch{ return 0; }
+  };
+
   async function fetchJSON(url){
     const res = await fetch(url, { credentials:"omit" });
     const txt = await res.text();
@@ -406,6 +421,8 @@ Recibo Mensual</div>
     }else{
       sel.value = "";
     }
+    $('manejoCaja')?.addEventListener('change', toggleManejoCajaUI);
+    toggleManejoCajaUI();
   }
 
 
@@ -893,6 +910,11 @@ function applyBranchUI(){
       // Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
       const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
       const viaticos_nr = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
+      const manejo_caja = !!($('manejoCaja')?.checked);
+      const cajero_tipo = ($('cajero_tipo')?.value || '').toString();
+      const faltante_caja = Math.max(0, parseMoneyText($('faltanteCajaInput')?.value || ''));
+      const armado_vidriera = !!($('armadoAuto')?.checked);
+      const adelanto_sueldo = Math.max(0, num($('adelantoSueldo')?.value || 0) || 0);
 
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
@@ -935,6 +957,12 @@ function applyBranchUI(){
       // Etapa 5/6
       url.searchParams.set("a_cuenta_rem", String(a_cuenta_rem));
       url.searchParams.set("viaticos_nr", String(viaticos_nr));
+      // Etapa 7
+      url.searchParams.set("manejo_caja", manejo_caja ? "true" : "false");
+      if(cajero_tipo) url.searchParams.set("cajero_tipo", cajero_tipo);
+      url.searchParams.set("faltante_caja", String(faltante_caja));
+      url.searchParams.set("armado_vidriera", armado_vidriera ? "true" : "false");
+      url.searchParams.set("adelanto_sueldo", String(adelanto_sueldo));
       // KM
       if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
       url.searchParams.set("km_menos100", String(km_menos100));
@@ -1105,6 +1133,15 @@ function applyBranchUI(){
   window.calcularMensual = calcularMensual;
 
   function wire(){
+    const toggleManejoCajaUI = () => {
+      const on = !!($('manejoCaja')?.checked);
+      if($('cajero_tipo')) $('cajero_tipo').disabled = !on;
+      if($('faltanteCajaInput')) $('faltanteCajaInput').disabled = !on;
+      if(!on){
+        if($('cajero_tipo')) $('cajero_tipo').value = '';
+        if($('faltanteCajaInput')) $('faltanteCajaInput').value = '';
+      }
+    };
 
     // Rama: además de refrescar agrups/cats, togglear UI condicional.
     $("rama")?.addEventListener("change", async () => {

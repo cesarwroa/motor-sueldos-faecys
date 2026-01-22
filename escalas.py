@@ -445,6 +445,13 @@ def calcular_payload(
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     a_cuenta_rem: float = 0,
     viaticos_nr: float = 0,
+
+    # Etapa 7: Manejo de Caja / Vidriera / Adelanto
+    manejo_caja: bool = False,
+    cajero_tipo: str = "",
+    faltante_caja: float = 0,
+    armado_vidriera: bool = False,
+    adelanto_sueldo: float = 0,
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -687,6 +694,37 @@ def calcular_payload(
     a_cuenta = _fpos(a_cuenta_rem)
     viaticos = _fpos(viaticos_nr)
 
+    # Etapa 7: Manejo de Caja / Vidriera / Adelanto / Faltante
+    # - Manejo de Caja (REM): A/C 12,25% sobre básico inicial Cajero A; B 48% sobre básico inicial Cajero B.
+    # - Armado de vidriera (REM): 3,83% sobre básico inicial Vendedor B.
+    # - Adelanto de sueldo y Faltante de caja: descuentos (no afectan bases de aportes).
+
+    caj_tipo = str(cajero_tipo or "").strip().upper()
+    manejo_caja_ok = bool(manejo_caja) and caj_tipo in ("A", "B", "C")
+
+    caja_base = 0.0
+    caja_pct = 0.0
+    if manejo_caja_ok:
+        if caj_tipo in ("A", "C"):
+            caja_base = _basico_ref(rama, mes, ["CAJERO A", "CAJEROS A", "CAJERO  A", "CAJERO A "])
+            caja_pct = 0.1225
+        elif caj_tipo == "B":
+            caja_base = _basico_ref(rama, mes, ["CAJERO B", "CAJEROS B", "CAJERO  B", "CAJERO B "])
+            caja_pct = 0.48
+
+    caja_rem = round2(caja_base * caja_pct * factor) if (caja_base and caja_pct) else 0.0
+    caja_rem_os = round2(caja_base * caja_pct) if (caja_base and caja_pct) else 0.0
+
+    vid_base = _basico_ref(rama, mes, ["VENDEDOR B", "Vendedor B", "VENDEDOR  B"]) if bool(armado_vidriera) else 0.0
+    vid_pct = 0.0383
+    vid_rem = round2(vid_base * vid_pct * factor) if (vid_base and bool(armado_vidriera)) else 0.0
+    vid_rem_os = round2(vid_base * vid_pct) if (vid_base and bool(armado_vidriera)) else 0.0
+
+    faltante = _fpos(faltante_caja)
+    adelanto = _fpos(adelanto_sueldo)
+    # El faltante se descuenta ÚNICAMENTE hasta el monto del adicional de Manejo de Caja.
+    faltante_desc = round2(min(faltante, caja_rem)) if (faltante and caja_rem) else 0.0
+
     # Zona desfavorable (porcentaje sobre Básico prorrateado)
     try:
         zona_pct_f = float(zona_pct or 0.0)
@@ -704,10 +742,10 @@ def calcular_payload(
     presentismo_habil = (aus_dias < 2)
     # Presentismo: doceava parte de (Básico + Zona + Antigüedad + Horas + Adicionales)
     # Incluye: horas extra/nocturnas, adicional por KM y A cuenta (REM).
-    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + a_cuenta)
+    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + caja_rem + vid_rem + a_cuenta)
     presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
 
-    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + a_cuenta)
+    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + caja_rem + vid_rem + a_cuenta)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
@@ -831,9 +869,9 @@ def calcular_payload(
     noct_nr_os = round2(hora_nr_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_nr_os and hs_noct_h) else 0.0
 
     # Incluye A cuenta (REM) como monto fijo (no se prorratea por la simulación a 48hs).
-    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + a_cuenta)
+    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta)
     presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
-    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + a_cuenta)
+    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta)
 
     antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
     presentismo_nr_os = (
@@ -907,7 +945,7 @@ def calcular_payload(
     if bool(afiliado) and float(sind_pct or 0) > 0:
         sind = round2((rem_aportes + nr_aportable_real) * (float(sind_pct) / 100.0))
 
-    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + aus_rem)
+    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + aus_rem + faltante_desc + adelanto)
     neto = round2((rem_total + nr_total) - ded_total)
 
     def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
@@ -951,6 +989,24 @@ def calcular_payload(
         else:
             tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
             items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
+
+    # Manejo de Caja (REM)
+    if caja_rem:
+        lbl_tipo = "Cajero B" if caj_tipo == "B" else "Cajero A/C"
+        lbl_pct = "48%" if caj_tipo == "B" else "12,25%"
+        items.append(item(
+            f"Manejo de Caja ({lbl_tipo}) {lbl_pct}",
+            r=caja_rem,
+            base_num=caja_base,
+        ))
+
+    # Armado de vidriera (REM)
+    if vid_rem:
+        items.append(item(
+            "Armado de vidriera (Art. 23) 3,83%",
+            r=vid_rem,
+            base_num=vid_base,
+        ))
 
     # A cuenta futuros aumentos (REM)
     if a_cuenta:
@@ -1052,6 +1108,19 @@ def calcular_payload(
             f"Ausencias injustificadas ({aus_dias} día{'s' if aus_dias != 1 else ''})",
             d=aus_rem,
             base_num=base_dia_aus,
+        ))
+
+    if faltante_desc:
+        items.append(item(
+            "Faltante de caja (desc.)",
+            d=faltante_desc,
+            base_num=caja_rem,
+        ))
+
+    if adelanto:
+        items.append(item(
+            "Adelanto de sueldo",
+            d=adelanto,
         ))
 
     items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))

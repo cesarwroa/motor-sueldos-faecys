@@ -98,6 +98,13 @@ def calcular(
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     a_cuenta_rem: float = 0,
     viaticos_nr: float = 0,
+
+    # Etapa 7: Manejo de Caja / Vidriera / Adelanto
+    manejo_caja: bool = False,
+    cajero_tipo: str = "",
+    faltante_caja: float = 0,
+    armado_vidriera: bool = False,
+    adelanto_sueldo: float = 0,
     # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -127,6 +134,11 @@ def calcular(
         km_mas100=km_mas100,
         a_cuenta_rem=a_cuenta_rem,
         viaticos_nr=viaticos_nr,
+        manejo_caja=manejo_caja,
+        cajero_tipo=cajero_tipo,
+        faltante_caja=faltante_caja,
+        armado_vidriera=armado_vidriera,
+        adelanto_sueldo=adelanto_sueldo,
         conex_cat=conex_cat,
         conexiones=conexiones,
         fun_adic=(";".join(fun_adic) if fun_adic else ""),
