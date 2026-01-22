@@ -457,6 +457,8 @@ def calcular_payload(
     faltante_caja: float = 0,
     armado_vidriera: bool = False,
     adelanto_sueldo: float = 0,
+    # SAC (estimación proporcional en mensual)
+    sac_prop_mes: bool = False,
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -843,6 +845,38 @@ def calcular_payload(
     rem_total = round2(rem_total + fer_no_rem + fer_si_rem)
     nr_total = round2(nr_total + fer_no_nr + fer_si_nr)
 
+    # -------- SAC (Jun/Dic) o SAC proporcional (mes) --------
+    sac_concepto = ""
+    sac_row_rem = 0.0
+    sac_row_nr = 0.0
+    sac_row_base = 0.0
+    mes_num = 0
+    try:
+        mes_num = int(str(base.get("mes") or mes or "").split("-")[1])
+    except Exception:
+        mes_num = 0
+
+    # Base SAC = Base mensual + Presentismo (REM y NR), sin extras/vacaciones.
+    base_sac_rem = round2((bas + zona + antig) + (presentismo if presentismo_habil else 0.0))
+    base_sac_nr = round2((nr_base_total + antig_nr) + (presentismo_nr if presentismo_habil else 0.0))
+    sac_row_base = round2(base_sac_rem + base_sac_nr)
+
+    if mes_num in (6, 12):
+        sac_concepto = "SAC (Junio)" if mes_num == 6 else "SAC (Diciembre)"
+        sac_row_rem = round2(base_sac_rem * 0.5)
+        sac_row_nr = round2(base_sac_nr * 0.5)
+        rem_total = round2(rem_total + sac_row_rem)
+        nr_total = round2(nr_total + sac_row_nr)
+    elif bool(sac_prop_mes) and (1 <= mes_num <= 12):
+        # Estimación: Base del mes * (meses del semestre / 12)
+        meses_sem = mes_num if mes_num <= 6 else (mes_num - 6)
+        factor_sac = float(meses_sem) / 12.0
+        sac_concepto = "SAC proporcional (mes)"
+        sac_row_rem = round2(base_sac_rem * factor_sac)
+        sac_row_nr = round2(base_sac_nr * factor_sac)
+        rem_total = round2(rem_total + sac_row_rem)
+        nr_total = round2(nr_total + sac_row_nr)
+
     # -------- Ausencias injustificadas (descuento) --------
     base_dia_aus = round2((bas + zona + antig) / 30.0) if (bas or zona or antig) else 0.0
     aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
@@ -947,6 +981,20 @@ def calcular_payload(
 
     rem_total_os = round2(rem_total_os + fer_no_rem_os + fer_si_rem_os)
     nr_total_os = round2(nr_total_os + fer_no_nr_os + fer_si_nr_os)
+
+    # SAC (48hs para base de Obra Social)
+    if mes_num in (6, 12):
+        base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
+        base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
+        rem_total_os = round2(rem_total_os + round2(base_sac_rem_os * 0.5))
+        nr_total_os = round2(nr_total_os + round2(base_sac_nr_os * 0.5))
+    elif bool(sac_prop_mes) and (1 <= mes_num <= 12):
+        meses_sem = mes_num if mes_num <= 6 else (mes_num - 6)
+        factor_sac = float(meses_sem) / 12.0
+        base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
+        base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
+        rem_total_os = round2(rem_total_os + round2(base_sac_rem_os * factor_sac))
+        nr_total_os = round2(nr_total_os + round2(base_sac_nr_os * factor_sac))
 
     # Ausencias (48hs)
     base_dia_aus_os = round2((bas_os + zona_os + antig_os) / 30.0) if (bas_os or zona_os or antig_os) else 0.0
@@ -1110,6 +1158,15 @@ def calcular_payload(
             "Presentismo",
             r=presentismo,
             base_num=base_pres,
+        ))
+
+    # SAC (Jun/Dic) o SAC proporcional (mes)
+    if sac_concepto and (sac_row_rem or sac_row_nr):
+        items.append(item(
+            sac_concepto,
+            r=sac_row_rem,
+            n=sac_row_nr,
+            base_num=sac_row_base,
         ))
 
     # Fúnebres: adicionales seleccionados (según maestro)

@@ -110,6 +110,7 @@ def calcular(
     faltante_caja: float = 0,
     armado_vidriera: bool = False,
     adelanto_sueldo: float = 0,
+    sac_prop_mes: bool = False,
     # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -148,6 +149,7 @@ def calcular(
         faltante_caja=faltante_caja,
         armado_vidriera=armado_vidriera,
         adelanto_sueldo=adelanto_sueldo,
+        sac_prop_mes=sac_prop_mes,
         conex_cat=conex_cat,
         conexiones=conexiones,
         fun_adic=(";".join(fun_adic) if fun_adic else ""),
