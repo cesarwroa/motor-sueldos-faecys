@@ -387,6 +387,9 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     afiliado = bool(payload.get("afiliado"))
     osecac = bool(payload.get("osecac", True))
 
+    sind_pct = _f(payload.get("sind_pct") or 0) or 0.0
+    sind_fijo = _f(payload.get("sind_fijo") or 0) or 0.0
+
     base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
 
     # Regla del sistema (admin): si es JUBILADO, no se descuenta PAMI ni Obra Social,
@@ -402,9 +405,10 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     faecys = base_ap * 0.005
     sind_solid = base_ap * 0.02
-    sind_af = base_ap * 0.02 if afiliado else 0.0
+    afil_pct = base_ap * (sind_pct / 100.0) if (afiliado and sind_pct > 0) else 0.0
+    afil_fijo = sind_fijo if (afiliado and sind_fijo > 0) else 0.0
 
-    total_ded = jub + pami + os_3 + os_100 + faecys + sind_solid + sind_af + ded_lic + ded_aus + faltante + embargo
+    total_ded = jub + pami + os_3 + os_100 + faecys + sind_solid + afil_pct + afil_fijo + ded_lic + ded_aus + faltante + embargo
     neto = (total_rem + total_nr) - total_ded
 
     items: List[Dict[str, Any]] = []
@@ -465,7 +469,8 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     if os_100: _add(items, "Aporte fijo OSECAC", ded=os_100, base=os_100)
     if faecys: _add(items, "FAECYS (0,5%)", ded=faecys, base=base_ap)
     if sind_solid: _add(items, "Sindicato (2%)", ded=sind_solid, base=base_ap)
-    if sind_af: _add(items, "Afiliación (2%)", ded=sind_af, base=base_ap)
+    if afil_pct: _add(items, f"Afiliación ({_r2(sind_pct)}%)", ded=afil_pct, base=base_ap)
+    if afil_fijo: _add(items, "Afiliación (fijo)", ded=afil_fijo, base=base_ap)
     if faltante: _add(items, "Faltante de caja", ded=faltante, base=faltante)
     if embargo: _add(items, "Embargo", ded=embargo, base=embargo)
 
@@ -599,6 +604,9 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     afiliado = bool(p.get('afiliado'))
     osecac = bool(p.get('osecac', True))
 
+    sind_pct = _f(p.get('sind_pct') or 0) or 0.0
+    sind_fijo = _f(p.get('sind_fijo') or 0) or 0.0
+
     viaticos_nr = _f(p.get('viaticos_nr') or 0)
     base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
 
@@ -608,7 +616,8 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     os_100 = 100.0 if (osecac and not jubilado) else 0.0
     faecys = base_ap * 0.005
     sind_solid = base_ap * 0.02
-    sind_af = base_ap * 0.02 if afiliado else 0.0
+    afil_pct = base_ap * (sind_pct / 100.0) if (afiliado and sind_pct > 0) else 0.0
+    afil_fijo = sind_fijo if (afiliado and sind_fijo > 0) else 0.0
 
     if jub:
         _add(items, 'Jubilación (11%)', ded=jub, base=total_rem)
@@ -622,10 +631,12 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
         _add(items, 'FAECYS (0,5%)', ded=faecys, base=base_ap)
     if sind_solid:
         _add(items, 'Sindicato (2%)', ded=sind_solid, base=base_ap)
-    if sind_af:
-        _add(items, 'Afiliación (2%)', ded=sind_af, base=base_ap)
+    if afil_pct:
+        _add(items, f'Afiliación ({_r2(sind_pct)}%)', ded=afil_pct, base=base_ap)
+    if afil_fijo:
+        _add(items, 'Afiliación (fijo)', ded=afil_fijo, base=base_ap)
 
-    total_ded = jub + pami + os_3 + os_100 + faecys + sind_solid + sind_af
+    total_ded = jub + pami + os_3 + os_100 + faecys + sind_solid + afil_pct + afil_fijo
     neto = (total_rem + total_nr + total_ind) - total_ded
 
     return {

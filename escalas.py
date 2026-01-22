@@ -981,10 +981,21 @@ def calcular_payload(
         base_fs = round2(rem_aportes + nr_aportable_real)
         faecys = round2(base_fs * 0.005)
         sind_solid = round2(base_fs * 0.02)
-        sind_af = round2(base_fs * 0.02) if bool(afiliado) else 0.0
-        # No se aplica sindicato porcentual/fijo en jubilado (usa solidario + afiliación fija).
-        sind = 0.0
-        sind_fijo_monto = 0.0
+        # En JUBILADO, la afiliación respeta el selector (% 1–4) y/o monto fijo.
+        sind_af = 0.0
+
+        if bool(afiliado):
+            try:
+                sp = float(sind_pct or 0.0)
+            except Exception:
+                sp = 0.0
+            if sp > 0:
+                sind = round2(base_fs * (sp / 100.0))
+
+            try:
+                sind_fijo_monto = round2(max(0.0, float(sind_fijo or 0.0)))
+            except Exception:
+                sind_fijo_monto = 0.0
     else:
         if bool(afiliado):
             try:
@@ -1220,8 +1231,10 @@ def calcular_payload(
         items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
         items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
         items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
-        if sind_af:
-            items.append(item("Afiliación 2%", d=sind_af, base_num=base_fs))
+        if sind:
+            items.append(item(f"Afiliación {float(sind_pct):g}%", d=sind, base_num=base_fs))
+        if sind_fijo_monto:
+            items.append(item("Afiliación (fijo)", d=sind_fijo_monto))
     else:
         items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
         items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
