@@ -1411,3 +1411,346 @@ def get_regla_km(categoria: str, km: float) -> Dict[str, Any]:
         "km_le_100": km_le_100,
         "km_gt_100": km_gt_100,
     }
+
+
+# ---------------------------
+# Liquidación Final (Etapa 9)
+# ---------------------------
+
+def _parse_date_yyyy_mm_dd(s: str) -> _dt.date:
+    """Parsea 'YYYY-MM-DD'. Lanza ValueError si es inválido."""
+    if not s:
+        raise ValueError('Fecha requerida')
+    parts = s.strip().split('-')
+    if len(parts) != 3:
+        raise ValueError('Formato de fecha inválido (YYYY-MM-DD)')
+    y, m, d = (int(parts[0]), int(parts[1]), int(parts[2]))
+    return _dt.date(y, m, d)
+
+
+def _years_complete(fecha_ing: _dt.date, fecha_egr: _dt.date) -> int:
+    """Años completos entre fechas (antigüedad)."""
+    y = fecha_egr.year - fecha_ing.year
+    if (fecha_egr.month, fecha_egr.day) < (fecha_ing.month, fecha_ing.day):
+        y -= 1
+    return max(0, y)
+
+
+def _months_diff(fecha_ing: _dt.date, fecha_egr: _dt.date) -> int:
+    """Diferencia aproximada en meses completos (para reglas de preaviso / 245)."""
+    m = (fecha_egr.year - fecha_ing.year) * 12 + (fecha_egr.month - fecha_ing.month)
+    if fecha_egr.day < fecha_ing.day:
+        m -= 1
+    return max(0, m)
+
+
+def _years_art245(fecha_ing: _dt.date, fecha_egr: _dt.date) -> int:
+    """Años computables art. 245: 1 por año o fracción mayor a 3 meses."""
+    total_months = _months_diff(fecha_ing, fecha_egr)
+    if total_months < 3:
+        return 0
+    years = total_months // 12
+    rem_months = total_months % 12
+    if years == 0:
+        return 1
+    if rem_months > 3:
+        years += 1
+    return max(0, years)
+
+
+def _vac_anuales_por_antig(anios: int) -> int:
+    # LCT (estándar): <=5:14; >5<=10:21; >10<=20:28; >20:35
+    if anios <= 5:
+        return 14
+    if anios <= 10:
+        return 21
+    if anios <= 20:
+        return 28
+    return 35
+
+
+def calcular_final_payload(
+    *,
+    rama: str,
+    agrup: str,
+    categoria: str,
+    fecha_ingreso: str,
+    fecha_egreso: str,
+    tipo: str,
+    mejor_rem: float = 0.0,
+    mejor_nr: float = 0.0,
+    mejor_total: float = 0.0,
+    dias_mes: int = 0,
+    vac_anuales: int = 0,
+    preaviso_dias: int = 0,
+    integracion: bool = True,
+    sac_sobre_preaviso: bool = False,
+    sac_sobre_integracion: bool = True,
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0.0,
+    sind_fijo: float = 0.0,
+    jubilado: bool = False,
+    embargo: float = 0.0,
+) -> Dict[str, Any]:
+    """Liquidación final básica (MVP Etapa 9).
+
+    - Usa MRMNH / Mejor salario como base (Rem + NR) y prorratea por día.
+    - SAC proporcional por días de semestre (base * días / 360).
+    - Vacaciones no gozadas proporcionales por días del año (vac_anuales * días / 365) y pago 1/25.
+    - Despido sin causa: incluye indemnización art. 245 + preaviso (opción) + integración (opción).
+
+    Devuelve items con columnas: r (rem), n (no rem), i (indemnizatorio), d (descuentos).
+    """
+    import calendar as _cal
+
+    fi = _parse_date_yyyy_mm_dd(fecha_ingreso)
+    fe = _parse_date_yyyy_mm_dd(fecha_egreso)
+    if fe < fi:
+        raise ValueError('La fecha de egreso no puede ser anterior a la de ingreso')
+
+    # Base mejor salario
+    mr = float(mejor_rem or 0.0)
+    nn = float(mejor_nr or 0.0)
+    mt = float(mejor_total or 0.0)
+
+    if mt <= 0:
+        mt = mr + nn
+    if mr <= 0 and nn <= 0 and mt > 0:
+        # si solo vino total, lo tratamos como Rem (compatibilidad)
+        mr = mt
+        nn = 0.0
+
+    base_total = max(0.0, mr + nn)
+    if base_total <= 0:
+        raise ValueError('MRMNH / Mejor salario debe ser mayor a 0')
+
+    share_rem = mr / base_total if base_total else 1.0
+    share_nr = nn / base_total if base_total else 0.0
+
+    # Días del mes de egreso
+    dim = _cal.monthrange(fe.year, fe.month)[1]
+    dia_baja = fe.day
+
+    # Días trabajados del mes (default: día de egreso)
+    try:
+        dm = int(dias_mes or 0)
+    except Exception:
+        dm = 0
+    if dm <= 0:
+        dm = dia_baja
+    dm = max(0, min(dim, dm))
+
+    # Antigüedad
+    anios_antig = _years_complete(fi, fe)
+    anios_245 = _years_art245(fi, fe)
+
+    # Vacaciones
+    vac_an = int(vac_anuales or 0)
+    if vac_an <= 0:
+        vac_an = _vac_anuales_por_antig(anios_antig)
+
+    # Días trabajados del año (para proporción de vacaciones)
+    start_year = max(fi, _dt.date(fe.year, 1, 1))
+    dias_anio = (fe - start_year).days + 1
+    dias_anio = max(0, dias_anio)
+
+    vac_prop = round2(vac_an * (dias_anio / 365.0)) if dias_anio else 0.0
+
+    # Días trabajados del semestre (para SAC proporcional)
+    sem_start = _dt.date(fe.year, 1, 1) if fe.month <= 6 else _dt.date(fe.year, 7, 1)
+    start_sem = max(fi, sem_start)
+    dias_sem = (fe - start_sem).days + 1
+    dias_sem = max(0, dias_sem)
+
+    # Helpers de prorrateo
+    def split_amount(total: float) -> Tuple[float, float]:
+        t = round2(total)
+        r = round2(t * share_rem)
+        n = round2(t - r)
+        return r, n
+
+    # Haberes base del mes
+    hab_mes_total = round2(base_total * (dm / 30.0))
+    hab_mes_r, hab_mes_n = split_amount(hab_mes_total)
+
+    # Vacaciones no gozadas: pago 1/25
+    vac_pago_total = round2((base_total / 25.0) * vac_prop) if vac_prop else 0.0
+    vac_r, vac_n = split_amount(vac_pago_total)
+
+    # SAC sobre vacaciones (siempre que haya vac)
+    sac_vac_total = round2(vac_pago_total / 12.0) if vac_pago_total else 0.0
+    sac_vac_r, sac_vac_n = split_amount(sac_vac_total)
+
+    # SAC proporcional del semestre
+    sac_prop_total = round2(base_total * (dias_sem / 360.0)) if dias_sem else 0.0
+    sac_prop_r, sac_prop_n = split_amount(sac_prop_total)
+
+    # Integración mes despido (art. 233) – default ON
+    dias_int = max(0, dim - dia_baja) if integracion else 0
+    integ_total = round2(base_total * (dias_int / 30.0)) if dias_int else 0.0
+    integ_r, integ_n = split_amount(integ_total)
+
+    sac_integ_total = round2(integ_total / 12.0) if (sac_sobre_integracion and integ_total) else 0.0
+    sac_integ_r, sac_integ_n = split_amount(sac_integ_total)
+
+    # Preaviso (art. 231/232) – indemnizatorio
+    prev_dias = int(preaviso_dias or 0)
+    prev_total = round2(base_total * (prev_dias / 30.0)) if prev_dias else 0.0
+    sac_prev_total = round2(prev_total / 12.0) if (sac_sobre_preaviso and prev_total) else 0.0
+
+    # Indemnización antigüedad (art. 245)
+    ind_antig = 0.0
+    tipo_n = (tipo or '').strip().upper()
+    if tipo_n in ('DESPIDO_SIN_CAUSA', 'DESPIDO SIN CAUSA', 'SIN_CAUSA'):
+        ind_antig = round2(base_total * float(anios_245 or 0))
+
+    # Armado de items
+    def item(concepto: str, r: float = 0.0, n: float = 0.0, i: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
+        out = {"concepto": concepto, "r": float(r), "n": float(n), "i": float(i), "d": float(d)}
+        if base_num:
+            out["base"] = float(base_num)
+        return out
+
+    items: List[Dict[str, Any]] = []
+
+    items.append(item(f"Días trabajados del mes ({dm} día{'s' if dm != 1 else ''})", r=hab_mes_r, n=hab_mes_n, base_num=base_total))
+
+    if vac_prop:
+        items.append(item(f"Vacaciones no gozadas (prop.) {vac_prop:g} día{'s' if vac_prop != 1 else ''}", r=vac_r, n=vac_n, base_num=base_total))
+        if sac_vac_total:
+            items.append(item("SAC s/ vacaciones", r=sac_vac_r, n=sac_vac_n, base_num=vac_pago_total))
+
+    if sac_prop_total:
+        items.append(item("SAC proporcional", r=sac_prop_r, n=sac_prop_n, base_num=base_total))
+
+    if integ_total:
+        items.append(item(f"Integración mes despido ({dias_int} día{'s' if dias_int != 1 else ''})", r=integ_r, n=integ_n, base_num=base_total))
+        if sac_integ_total:
+            items.append(item("SAC s/ integración", r=sac_integ_r, n=sac_integ_n, base_num=integ_total))
+
+    if prev_total:
+        items.append(item(f"Preaviso ({prev_dias} día{'s' if prev_dias != 1 else ''})", i=prev_total, base_num=base_total))
+        if sac_prev_total:
+            items.append(item("SAC s/ preaviso", i=sac_prev_total, base_num=prev_total))
+
+    if ind_antig:
+        items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_total))
+
+    # Totales antes de descuentos
+    rem_total = round2(sum(x.get('r', 0.0) for x in items))
+    nr_total = round2(sum(x.get('n', 0.0) for x in items))
+    ind_total = round2(sum(x.get('i', 0.0) for x in items))
+
+    # -----------------
+    # Deducciones (misma lógica que mensual)
+    # -----------------
+    rem_aportes = rem_total
+
+    jub = 0.0
+    pami = 0.0
+    os_aporte = 0.0
+    osecac_100 = 0.0
+    sind = 0.0
+    sind_fijo_monto = 0.0
+
+    if bool(jubilado):
+        # Jubilado: según criterio del sistema vigente
+        jub = round2(rem_aportes * 0.11)
+        base_fs = round2(rem_aportes + nr_total)
+        faecys = round2(base_fs * 0.005)
+        sind_solid = round2(base_fs * 0.02)
+        if bool(afiliado):
+            if float(sind_pct or 0) > 0:
+                sind = round2(base_fs * (float(sind_pct) / 100.0))
+            if float(sind_fijo or 0) > 0:
+                sind_fijo_monto = round2(float(sind_fijo))
+    else:
+        jub = round2(rem_aportes * 0.11)
+        pami = round2(rem_aportes * 0.03)
+
+        # Obra social: base = rem_aportes. (simplificado)
+        os_base = rem_aportes
+        os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
+        osecac_100 = 100.0 if bool(osecac) else 0.0
+
+        if bool(afiliado):
+            if float(sind_pct or 0) > 0:
+                sind = round2((rem_aportes + nr_total) * (float(sind_pct) / 100.0))
+            if float(sind_fijo or 0) > 0:
+                sind_fijo_monto = round2(float(sind_fijo))
+
+    ded_pre = round2(jub + pami + os_aporte + osecac_100 + sind + sind_fijo_monto)
+
+    neto_pre = round2((rem_total + nr_total + ind_total) - ded_pre)
+
+    emb_in = 0.0
+    try:
+        emb_in = float(embargo or 0.0)
+    except Exception:
+        emb_in = 0.0
+    emb_in = max(0.0, emb_in)
+    embargo_monto = round2(min(emb_in, max(0.0, neto_pre))) if emb_in else 0.0
+
+    ded_total = round2(ded_pre + embargo_monto)
+    neto = round2(neto_pre - embargo_monto)
+
+    # Agregar filas de descuentos al final
+    if bool(jubilado):
+        base_fs = round2(rem_aportes + nr_total)
+        faecys = round2(base_fs * 0.005)
+        sind_solid = round2(base_fs * 0.02)
+        if jub:
+            items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
+        if faecys:
+            items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
+        if sind_solid:
+            items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
+        if sind:
+            items.append(item(f"Afiliación {float(sind_pct):g}%", d=sind, base_num=base_fs))
+        if sind_fijo_monto:
+            items.append(item("Afiliación (fijo)", d=sind_fijo_monto))
+    else:
+        if jub:
+            items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
+        if pami:
+            items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
+        items.append(item("Obra Social 3%", d=os_aporte, base_num=rem_aportes))
+        if osecac_100:
+            items.append(item("OSECAC $100", d=osecac_100))
+        if sind:
+            items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_total)))
+        if sind_fijo_monto:
+            items.append(item("Sindicato (fijo)", d=sind_fijo_monto))
+
+    if embargo_monto:
+        items.append(item("Embargo (desc.)", d=embargo_monto, base_num=neto_pre))
+
+    # Recalcular totales para que incluyan filas de descuentos en el cuerpo
+    rem_total = round2(sum(x.get('r', 0.0) for x in items))
+    nr_total = round2(sum(x.get('n', 0.0) for x in items))
+    ind_total = round2(sum(x.get('i', 0.0) for x in items))
+
+    return {
+        "ok": True,
+        "rama": _norm(rama),
+        "agrup": _norm(agrup),
+        "categoria": _norm(categoria),
+        "tipo": tipo,
+        "fecha_ingreso": fecha_ingreso,
+        "fecha_egreso": fecha_egreso,
+        "anios_antig": anios_antig,
+        "anios_245": anios_245,
+        "dias_mes": dm,
+        "dias_semestre": dias_sem,
+        "vac_anuales": vac_an,
+        "vac_prop": vac_prop,
+        "items": items,
+        "totales": {
+            "rem": rem_total,
+            "nr": nr_total,
+            "ind": ind_total,
+            "ded": ded_total,
+            "neto": neto,
+        },
+    }

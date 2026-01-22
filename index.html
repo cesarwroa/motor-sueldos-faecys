@@ -1186,8 +1186,209 @@ function applyBranchUI(){
     // Turismo: si cambia título, recalcular base al vuelo (no recalcula recibo hasta que toques Calcular)
     $("turTitulo")?.addEventListener("change", () => { /* opcional */ });
 
+    // Liquidación final: autocompletar años/vacaciones/días
+    ['lf_ing','lf_egr','lf_tipo'].forEach(id => $(id)?.addEventListener('change', _lfUpdateDerived));
+    _lfUpdateDerived();
+
   }
 
+
+
+  // =====================
+  // Etapa 9: Tabs + Liquidación Final
+  // =====================
+  function switchTab(tab){
+    const tMens = document.getElementById('tabMensual');
+    const tFinal = document.getElementById('tabFinal');
+    const pMens = document.getElementById('paneMensual');
+    const pFinal = document.getElementById('paneFinal');
+    if(!tMens || !tFinal || !pMens || !pFinal) return;
+
+    if(tab === 'final'){
+      tFinal.classList.add('active');
+      tMens.classList.remove('active');
+      pFinal.style.display = '';
+      pMens.style.display = 'none';
+    }else{
+      tMens.classList.add('active');
+      tFinal.classList.remove('active');
+      pMens.style.display = '';
+      pFinal.style.display = 'none';
+    }
+  }
+  window.switchTab = switchTab;
+
+  function _lfYearsComplete(fi, fe){
+    try{
+      const a = new Date(fi);
+      const b = new Date(fe);
+      if(Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+      let y = b.getFullYear() - a.getFullYear();
+      const m = b.getMonth() - a.getMonth();
+      if(m < 0 || (m === 0 && b.getDate() < a.getDate())) y -= 1;
+      return Math.max(0, y);
+    }catch(_){
+      return 0;
+    }
+  }
+
+  function _lfDefaultVacAnuales(anios){
+    if(anios < 5) return 14;
+    if(anios < 10) return 21;
+    if(anios < 20) return 28;
+    return 35;
+  }
+
+  function _lfUpdateDerived(){
+    const fi = $('lf_ing')?.value || '';
+    const fe = $('lf_egr')?.value || '';
+    const y = _lfYearsComplete(fi, fe);
+    if($('lf_anios')) $('lf_anios').value = String(y);
+    if($('lf_vac_an')) $('lf_vac_an').value = String(_lfDefaultVacAnuales(y));
+
+    // Default días trabajados = día de egreso
+    try{
+      const d = new Date(fe);
+      if(!Number.isNaN(d.getTime()) && $('lf_dias_mes') && !$('lf_dias_mes').value){
+        $('lf_dias_mes').value = String(d.getDate());
+      }
+    }catch(_){/* ignore */}
+
+    // Mostrar/ocultar bloque indemnizaciones
+    const tipo = $('lf_tipo')?.value || 'RENUNCIA';
+    const showInd = (tipo === 'DESPIDO_SIN_CAUSA');
+    document.querySelectorAll('.lf-only-despido').forEach(el => {
+      el.style.display = showInd ? '' : 'none';
+    });
+  }
+
+  window.lf_sugerir_mrmnh = function(){
+    const last = window.__lastMensualCalc;
+    if(!last || !last.totales){
+      alert('Primero calculá un mensual (para tomar el MEJOR SALARIO).');
+      return;
+    }
+    const t = last.totales;
+    const rem = Number(t.rem || 0);
+    const nr  = Number(t.nr || 0);
+    const tot = rem + nr;
+    window.__lf_mejor = { rem, nr, total: tot };
+    if($('lf_mrmnh')) $('lf_mrmnh').value = String(tot.toFixed(2));
+    setText('diagFinal', 'MEJOR SALARIO tomado del último mensual.');
+  };
+
+  window.calcularFinal = async function(){
+    try{
+      const rama = ($('rama')?.value || 'GENERAL');
+      const agrup = ($('agrup')?.value || 'GENERAL');
+      const categoria = ($('categoria')?.value || '—');
+
+      const fi = $('lf_ing')?.value || '';
+      const fe = $('lf_egr')?.value || '';
+      if(!fi || !fe){
+        alert('Completá Fecha de Alta (Ingreso) y Fecha de Baja (Egreso).');
+        return;
+      }
+
+      const tipo = $('lf_tipo')?.value || 'RENUNCIA';
+
+      const mejor_total = parseMoneyInput($('lf_mrmnh')?.value || '0');
+      let mejor_rem = 0;
+      let mejor_nr = 0;
+      if(window.__lf_mejor && window.__lf_mejor.total > 0 && Math.abs(window.__lf_mejor.total - mejor_total) < 0.01){
+        mejor_rem = window.__lf_mejor.rem;
+        mejor_nr = window.__lf_mejor.nr;
+      }else{
+        // fallback: si no hay desglose, asumimos todo REM
+        mejor_rem = mejor_total;
+        mejor_nr = 0;
+      }
+
+      const dias_mes = parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
+      const vac_anuales = parseInt(($('lf_vac_an')?.value || '14'), 10) || 14;
+      const preaviso_dias = parseInt(($('lf_preaviso_dias')?.value || '0'), 10) || 0;
+      const integracion = !!$('lf_integracion')?.checked;
+      const sac_preaviso = !!$('lf_sac_preaviso')?.checked;
+      const sac_integracion = !!$('lf_sac_integracion')?.checked;
+
+      // mismos controles que mensual
+      const osecac = !!$('osecac')?.checked;
+      const afiliado = !!$('afiliado')?.checked;
+      const jubilado = !!$('jubilado')?.checked;
+      const sind_pct = parseFloat(($('sind_pct')?.value || '0')) || 0;
+      const sind_fijo = parseMoneyInput(($('sind_fijo')?.value || '0'));
+      const embargo = parseMoneyInput(($('embargo')?.value || '0'));
+
+      const qs = new URLSearchParams({
+        rama, agrup, categoria,
+        fecha_ingreso: fi,
+        fecha_egreso: fe,
+        tipo,
+        mejor_rem: String(mejor_rem),
+        mejor_nr: String(mejor_nr),
+        mejor_total: String(mejor_total),
+        dias_mes: String(dias_mes),
+        vac_anuales: String(vac_anuales),
+        preaviso_dias: String(preaviso_dias),
+        integracion: String(integracion),
+        sac_preaviso: String(sac_preaviso),
+        sac_integracion: String(sac_integracion),
+        osecac: String(osecac),
+        afiliado: String(afiliado),
+        sind_pct: String(sind_pct),
+        sind_fijo: String(sind_fijo),
+        jubilado: String(jubilado),
+        embargo: String(embargo),
+      });
+
+      setText('diagFinal', 'Calculando...');
+      const data = await fetchJSON('/calcular-final?' + qs.toString());
+
+      // Render tabla
+      const tbody = document.getElementById('tbodyFinal');
+      if(tbody) tbody.innerHTML = '';
+
+      const showBase = !!document.getElementById('toggleBase')?.checked;
+      const addRow = (c, base, r, n, i, d) => {
+        const tr = document.createElement('tr');
+        const tdC = document.createElement('td');
+        tdC.innerHTML = escapeHtml(c) + (showBase && base ? `<div class="muted" style="font-size:11px;">Base: ${escapeHtml(base)}</div>` : '');
+        tr.appendChild(tdC);
+        const tdR = document.createElement('td'); tdR.className='num'; tdR.textContent = money(r||0); tr.appendChild(tdR);
+        const tdN = document.createElement('td'); tdN.className='num'; tdN.textContent = money(n||0); tr.appendChild(tdN);
+        const tdI = document.createElement('td'); tdI.className='num'; tdI.textContent = money(i||0); tr.appendChild(tdI);
+        const tdD = document.createElement('td'); tdD.className='num'; tdD.textContent = money(d||0); tr.appendChild(tdD);
+        tbody.appendChild(tr);
+      };
+
+      (data.items || []).forEach(it => addRow(it.concepto, it.base, it.r, it.n, it.i, it.d));
+
+      const t = data.totales || {};
+      setText('lf_totRem', money(t.rem || 0));
+      setText('lf_totNR', money(t.nr || 0));
+      setText('lf_totInd', money(t.ind || 0));
+      setText('lf_totDed', money(t.ded || 0));
+      setText('lf_neto', money(t.neto || 0));
+
+      // Completar auxiliares
+      if($('lf_anios') && data.anios_antig!=null) $('lf_anios').value = String(data.anios_antig);
+      if($('lf_vac_an') && data.vac_anuales!=null) $('lf_vac_an').value = String(data.vac_anuales);
+      if($('lf_vac_calc') && data.vac_prop!=null) $('lf_vac_calc').value = String(Number(data.vac_prop).toFixed(2));
+      if($('lf_preaviso_dias') && data.preaviso_dias!=null && !($('lf_preaviso_dias').value)) $('lf_preaviso_dias').value = String(data.preaviso_dias);
+
+      // Encabezado
+      setText('lf_outRama', data.rama || rama);
+      setText('lf_outAgrup', data.agrup || agrup);
+      setText('lf_outCat', data.categoria || categoria);
+
+      setText('diagFinal', 'Calculado.');
+
+    }catch(err){
+      console.error(err);
+      alert('Error al calcular Liquidación Final (API).');
+      setText('diagFinal', 'Error al calcular.');
+    }
+  };
   document.addEventListener("DOMContentLoaded", async () => {
     try{
       wire();

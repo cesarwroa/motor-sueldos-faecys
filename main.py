@@ -13,6 +13,7 @@ from escalas import (
     get_titulo_pct_por_nivel,
     get_regla_cajero,
     get_regla_km,
+    calcular_final_payload,
 )
 
 app = FastAPI(title="motor-sueldos-faecys")
@@ -152,6 +153,59 @@ def calcular(
         fun_adic=(";".join(fun_adic) if fun_adic else ""),
     )
 
+
+
+# ========= CALCULAR FINAL (liquidación final) =========
+@app.get("/calcular-final")
+def calcular_final(
+    rama: str,
+    agrup: str,
+    categoria: str,
+    fecha_ingreso: str,
+    fecha_egreso: str,
+    tipo: str = "RENUNCIA",
+    # Mejor salario mensual normal y habitual (ideal: desglosado)
+    mejor_rem: float = 0,
+    mejor_nr: float = 0,
+    mejor_total: float = 0,
+    # Parámetros
+    dias_mes: int = 0,
+    vac_anuales: int = 14,
+    preaviso_dias: int = 0,
+    integracion: bool = True,
+    sac_preaviso: bool = False,
+    sac_integracion: bool = True,
+    # Mismos flags/descuentos que mensual
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0,
+    sind_fijo: float = 0,
+    jubilado: bool = False,
+    embargo: float = 0,
+):
+    return calcular_final_payload(
+        rama=rama,
+        agrup=agrup,
+        categoria=categoria,
+        fecha_ingreso=fecha_ingreso,
+        fecha_egreso=fecha_egreso,
+        tipo=tipo,
+        mejor_rem=mejor_rem,
+        mejor_nr=mejor_nr,
+        mejor_total=mejor_total,
+        dias_mes=dias_mes,
+        vac_anuales=vac_anuales,
+        preaviso_dias=preaviso_dias,
+        integracion=integracion,
+        sac_sobre_preaviso=sac_preaviso,
+        sac_sobre_integracion=sac_integracion,
+        osecac=osecac,
+        afiliado=afiliado,
+        sind_pct=sind_pct,
+        sind_fijo=sind_fijo,
+        jubilado=jubilado,
+        embargo=embargo,
+    )
 # ========= FUNEBRES =========
 @app.get("/adicionales-funebres")
 def adicionales_funebres(mes: str):
