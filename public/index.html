@@ -599,7 +599,7 @@ Recibo Mensual</div>
       url.searchParams.set("titulo_pct", String(titulo_pct));
 
       // Extras (inputs avanzados)
-      url.searchParams.set("a_cuenta", String(num($("aCuentaNR")?.value || 0)));
+      url.searchParams.set("a_cuenta_rem", String(num($("aCuentaNR")?.value || 0)));
       url.searchParams.set("zona_pct", String(num($("zona")?.value || 0)));
       url.searchParams.set("viaticos_nr", String(num($("viaticosNR")?.value || 0)));
       url.searchParams.set("hex50", String(num($("hex50")?.value || 0)));

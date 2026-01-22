@@ -442,6 +442,9 @@ def calcular_payload(
     km_tipo: str = "",
     km_menos100: float = 0,
     km_mas100: float = 0,
+    # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
+    a_cuenta_rem: float = 0,
+    viaticos_nr: float = 0,
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -674,6 +677,16 @@ def calcular_payload(
     # Remunerativos
     pct_ant = float(anios_antig or 0.0) * 0.01
 
+    # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
+    def _fpos(x) -> float:
+        try:
+            return max(0.0, float(x or 0.0))
+        except Exception:
+            return 0.0
+
+    a_cuenta = _fpos(a_cuenta_rem)
+    viaticos = _fpos(viaticos_nr)
+
     # Zona desfavorable (porcentaje sobre Básico prorrateado)
     try:
         zona_pct_f = float(zona_pct or 0.0)
@@ -689,11 +702,12 @@ def calcular_payload(
     # Regla Presentismo: se pierde con 2 (dos) o más ausencias injustificadas.
     aus_dias = max(0, int(aus_inj or 0))
     presentismo_habil = (aus_dias < 2)
-    # Presentismo: doceava parte de (Básico + Zona + Antigüedad + Horas)
-    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total)
+    # Presentismo: doceava parte de (Básico + Zona + Antigüedad + Horas + Adicionales)
+    # Incluye: horas extra/nocturnas, adicional por KM y A cuenta (REM).
+    base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + a_cuenta)
     presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
 
-    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total)
+    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + a_cuenta)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
@@ -704,6 +718,11 @@ def calcular_payload(
     presentismo_nr = round2(base_pres_nr / 12.0) if (base_pres_nr and presentismo_habil) else 0.0
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr + hex50_nr + hex100_nr + noct_nr)
+
+    # Viáticos (NR sin aportes): se suman al NR a pagar, pero NO integran bases de aportes
+    # ni el Presentismo sobre NR.
+    if viaticos:
+        nr_total = round2(nr_total + viaticos)
 
     # -------- FUNEBRES: Adicionales (según maestro) --------
     fun_rows: List[Dict[str, Any]] = []
@@ -811,9 +830,10 @@ def calcular_payload(
     noct_rem_os = round2(hora_rem_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_rem_os and hs_noct_h) else 0.0
     noct_nr_os = round2(hora_nr_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_nr_os and hs_noct_h) else 0.0
 
-    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total)
+    # Incluye A cuenta (REM) como monto fijo (no se prorratea por la simulación a 48hs).
+    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + a_cuenta)
     presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
-    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total)
+    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + a_cuenta)
 
     antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
     presentismo_nr_os = (
@@ -880,9 +900,12 @@ def calcular_payload(
     os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
     osecac_100 = 100.0 if bool(osecac) else 0.0
 
+    # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
+    nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0)))
+
     sind = 0.0
     if bool(afiliado) and float(sind_pct or 0) > 0:
-        sind = round2((rem_aportes + nr_total) * (float(sind_pct) / 100.0))
+        sind = round2((rem_aportes + nr_aportable_real) * (float(sind_pct) / 100.0))
 
     ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + aus_rem)
     neto = round2((rem_total + nr_total) - ded_total)
@@ -928,6 +951,13 @@ def calcular_payload(
         else:
             tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
             items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
+
+    # A cuenta futuros aumentos (REM)
+    if a_cuenta:
+        items.append(item(
+            "A cuenta futuros aumentos (REM)",
+            r=a_cuenta,
+        ))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
     if presentismo_habil and presentismo:
@@ -984,6 +1014,13 @@ def calcular_payload(
     if sf:
         items.append(item(labels.get("suma_fija", "Suma Fija (NR)"), n=sf))
 
+    # Viáticos (NR sin aportes)
+    if viaticos:
+        items.append(item(
+            "Viáticos (NR sin aportes)",
+            n=viaticos,
+        ))
+
     # Derivados sobre NR (desglosado como filas NR)
     if antig_nr:
         items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total))
@@ -1027,7 +1064,7 @@ def calcular_payload(
         items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
 
     if sind:
-        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_total)))
+        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
 
     return {
         "ok": True,
