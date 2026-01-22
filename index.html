@@ -140,11 +140,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <div id="funList" class="grid cols-4" style="margin-top:6px"></div>
   <div id="funHint" style="margin-top:6px; color:#64748b"></div>
 </div>
-<div class="grid cols-4" style="margin-top:8px"><div class="grid cols-4" style="margin-top:8px">
-</div><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
+<div class="grid cols-4" style="margin-top:8px"><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
 <option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
 </select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
-<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B (anual, /12).</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
 <div><label>Adelanto de sueldo (desc.)</label><input id="adelantoSueldo" min="0" step="0.01" type="number" value="0"/></div>
@@ -807,15 +806,28 @@ function applyBranchUI(){
   }
 
   function parseAfiliadoBool(){
-    const el = $("afiliado");
-    if(el && el.type === "checkbox") return !!el.checked;
-    // si hay selector "afiliado_selector" con valores
+    const cb = $("afiliado");
+    const cbOn = !!(cb && cb.type === "checkbox" && cb.checked);
     const sel = $("afiliado_selector");
-    if(sel){
-      const v = (sel.value||"").toLowerCase();
-      return v.includes("afiliado") && !v.includes("no");
-    }
-    return false;
+    const selRaw = (sel ? (sel.value || "") : "").toString().trim();
+    const selUp = selRaw.toUpperCase();
+    const fijo = num($("afiliado_fijo")?.value || 0);
+
+    // Se considera afiliado si:
+    // - el checkbox está marcado, o
+    // - el selector no es "NO", o
+    // - hay monto fijo > 0
+    return cbOn || (selUp && selUp !== "NO") || fijo > 0;
+  }
+
+  function parseSindPct(){
+    const sel = $("afiliado_selector");
+    if(!sel) return 0;
+    const v = (sel.value || "").toString().trim().toUpperCase();
+    if(!v || v === "NO") return 0;
+    // admite "2", "2.5", "2,5"
+    const n = Number(v.replace(",", "."));
+    return (Number.isFinite(n) ? n : 0);
   }
 
   async function refreshPayload(){
@@ -931,7 +943,8 @@ function applyBranchUI(){
       const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
       const zona_pct = num($('zona')?.value || 0) || 0;
-      const sind_pct = 0;
+      const sind_pct = afiliado ? parseSindPct() : 0;
+      const sind_fijo = afiliado ? num($("afiliado_fijo")?.value || 0) : 0;
       const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
       const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
         ? String($("aguaConexCat")?.value || "").trim()
@@ -958,6 +971,7 @@ function applyBranchUI(){
       url.searchParams.set("osecac", osecac ? "true" : "false");
       url.searchParams.set("afiliado", afiliado ? "true" : "false");
       url.searchParams.set("sind_pct", String(sind_pct));
+      url.searchParams.set("sind_fijo", String(sind_fijo));
       url.searchParams.set("titulo_pct", String(titulo_pct));
       url.searchParams.set("zona_pct", String(zona_pct));
       url.searchParams.set("fer_no_trab", String(fer_no_trab));

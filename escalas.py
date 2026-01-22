@@ -428,6 +428,7 @@ def calcular_payload(
     osecac: bool = True,
     afiliado: bool = False,
     sind_pct: float = 0,
+    sind_fijo: float = 0,
     titulo_pct: float = 0,
     zona_pct: float = 0,
     fer_no_trab: int = 0,
@@ -696,6 +697,7 @@ def calcular_payload(
 
     # Etapa 7: Manejo de Caja / Vidriera / Adelanto / Faltante
     # - Manejo de Caja (REM): A/C 12,25% sobre básico inicial Cajero A; B 48% sobre básico inicial Cajero B.
+    #   Regla del sistema: el adicional se considera ANUAL, por lo que se liquida mensualmente como (importe anual / 12).
     # - Armado de vidriera (REM): 3,83% sobre básico inicial Vendedor B.
     # - Adelanto de sueldo y Faltante de caja: descuentos (no afectan bases de aportes).
 
@@ -712,8 +714,9 @@ def calcular_payload(
             caja_base = _basico_ref(rama, mes, ["CAJERO B", "CAJEROS B", "CAJERO  B", "CAJERO B "])
             caja_pct = 0.48
 
-    caja_rem = round2(caja_base * caja_pct * factor) if (caja_base and caja_pct) else 0.0
-    caja_rem_os = round2(caja_base * caja_pct) if (caja_base and caja_pct) else 0.0
+    # ANUAL -> mensual (/12). Se prorratea por jornada usando factor (j/48).
+    caja_rem = round2((caja_base * caja_pct * factor) / 12.0) if (caja_base and caja_pct) else 0.0
+    caja_rem_os = round2((caja_base * caja_pct) / 12.0) if (caja_base and caja_pct) else 0.0
 
     vid_base = _basico_ref(rama, mes, ["VENDEDOR B", "Vendedor B", "VENDEDOR  B"]) if bool(armado_vidriera) else 0.0
     vid_pct = 0.0383
@@ -942,10 +945,22 @@ def calcular_payload(
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0)))
 
     sind = 0.0
-    if bool(afiliado) and float(sind_pct or 0) > 0:
-        sind = round2((rem_aportes + nr_aportable_real) * (float(sind_pct) / 100.0))
+    sind_fijo_monto = 0.0
+    if bool(afiliado):
+        try:
+            sp = float(sind_pct or 0.0)
+        except Exception:
+            sp = 0.0
+        if sp > 0:
+            sind = round2((rem_aportes + nr_aportable_real) * (sp / 100.0))
 
-    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + aus_rem + faltante_desc + adelanto)
+        # Monto fijo de sindicato (se aplica SOLO si está afiliado).
+        try:
+            sind_fijo_monto = round2(max(0.0, float(sind_fijo or 0.0)))
+        except Exception:
+            sind_fijo_monto = 0.0
+
+    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + sind_fijo_monto + aus_rem + faltante_desc + adelanto)
     neto = round2((rem_total + nr_total) - ded_total)
 
     def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
@@ -1134,6 +1149,8 @@ def calcular_payload(
 
     if sind:
         items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
+    if sind_fijo_monto:
+        items.append(item("Sindicato (fijo)", d=sind_fijo_monto))
 
     return {
         "ok": True,
@@ -1146,6 +1163,7 @@ def calcular_payload(
         "osecac": bool(osecac),
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
+        "sind_fijo": float(sind_fijo or 0),
         "titulo_pct": float(titulo_pct or 0),
         "zona_pct": float(zona_pct_f),
 
