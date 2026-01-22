@@ -389,7 +389,9 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
 
-    jub = 0.0 if jubilado else total_rem * 0.11
+    # Regla del sistema (admin): si es JUBILADO, no se descuenta PAMI ni Obra Social,
+    # pero sí Jubilación 11% (y los aportes solidarios/afiliación que correspondan).
+    jub = total_rem * 0.11
     pami = 0.0 if jubilado else total_rem * 0.03
 
     os_3 = 0.0
@@ -600,7 +602,7 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     viaticos_nr = _f(p.get('viaticos_nr') or 0)
     base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
 
-    jub = 0.0 if jubilado else total_rem * 0.11
+    jub = total_rem * 0.11
     pami = 0.0 if jubilado else total_rem * 0.03
     os_3 = (base_ap * 0.03) if (osecac and not jubilado) else 0.0
     os_100 = 100.0 if (osecac and not jubilado) else 0.0

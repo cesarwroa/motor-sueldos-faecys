@@ -897,6 +897,11 @@ function applyBranchUI(){
       const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
       const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
 
+      // Etapa 8: Jubilado / Licencia sin goce / Embargo
+      const jubilado  = !!($("coJub")?.checked);
+      const susp_dias = Math.max(0, parseInt($("coLicSG")?.value || "0", 10) || 0);
+      const embargo   = Math.max(0, parseMoneyText($("coEmbargo")?.value || ""));
+
       // Horas extras / nocturnas
       const hex50 = num($("hex50")?.value || 0) || 0;
       const hex100 = num($("hex100")?.value || 0) || 0;
@@ -951,6 +956,10 @@ function applyBranchUI(){
       url.searchParams.set("fer_no_trab", String(fer_no_trab));
       url.searchParams.set("fer_trab", String(fer_trab));
       url.searchParams.set("aus_inj", String(aus_inj));
+      // Etapa 8
+      url.searchParams.set("jubilado", jubilado ? "true" : "false");
+      url.searchParams.set("susp_dias", String(susp_dias));
+      url.searchParams.set("embargo", String(embargo));
       url.searchParams.set("hex50", String(hex50));
       url.searchParams.set("hex100", String(hex100));
       url.searchParams.set("hs_noct", String(hs_noct));

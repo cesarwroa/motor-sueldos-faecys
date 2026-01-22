@@ -434,6 +434,10 @@ def calcular_payload(
     fer_no_trab: int = 0,
     fer_trab: int = 0,
     aus_inj: int = 0,
+    # Etapa 8: Jubilado / Suspensión-Licencia sin goce / Embargo
+    jubilado: bool = False,
+    susp_dias: int = 0,
+    embargo: float = 0,
     # Horas (cantidades)
     hex50: float = 0,
     hex100: float = 0,
@@ -843,12 +847,24 @@ def calcular_payload(
     base_dia_aus = round2((bas + zona + antig) / 30.0) if (bas or zona or antig) else 0.0
     aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
 
-    # Base imponible para aportes: REM - ausencias
-    rem_aportes = max(0.0, round2(rem_total - aus_rem))
+    # -------- Suspensión / Licencia sin goce (descuento) --------
+    susp_d = max(0, int(susp_dias or 0))
+    base_dia_susp = base_dia_aus  # mismo criterio que ausencias (Básico+Zona+Antig) / 30
+    susp_rem = round2(susp_d * base_dia_susp) if susp_d else 0.0
+
+    # Base imponible para aportes: REM - ausencias - suspensión/LSG
+    rem_aportes = max(0.0, round2(rem_total - aus_rem - susp_rem))
 
     # Descuentos
+    # Regla especial (definida por el admin): cuando el trabajador es JUBILADO,
+    # los descuentos de ley quedan:
+    #   - Jubilación 11%
+    #   - FAECYS 0,5%
+    #   - Sindicato 2%
+    #   - Afiliación 2% (solo si está marcado Afiliado)
+    # y NO se descuenta PAMI/OS/OSECAC.
     jub = round2(rem_aportes * 0.11)
-    pami = round2(rem_aportes * 0.03)
+    pami = 0.0 if bool(jubilado) else round2(rem_aportes * 0.03)
     # Obra Social (OSECAC): BASE JORNADA COMPLETA (48hs), sin prorrateo por jornada.
     # Importante: no "desprorrateamos" totales, porque eso infla importes fijos (p.ej. a-cuenta).
     # Recalculamos una simulación a 48hs manteniendo el resto de parámetros (antig., zona, feriados, ausencias, etc.).
@@ -935,33 +951,80 @@ def calcular_payload(
     # Ausencias (48hs)
     base_dia_aus_os = round2((bas_os + zona_os + antig_os) / 30.0) if (bas_os or zona_os or antig_os) else 0.0
     aus_rem_os = round2(aus_dias * base_dia_aus_os) if aus_dias else 0.0
-    rem_aportes_os = max(0.0, round2(rem_total_os - aus_rem_os))
+    susp_rem_os = round2(susp_d * base_dia_aus_os) if susp_d else 0.0
+    rem_aportes_os = max(0.0, round2(rem_total_os - aus_rem_os - susp_rem_os))
 
-    os_base = round2((rem_aportes_os + nr_total_os) if bool(osecac) else rem_aportes_os)
-    os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
-    osecac_100 = 100.0 if bool(osecac) else 0.0
+    # Obra social y aporte fijo: para JUBILADO se anulan, aun si está tildado OSECAC.
+    if bool(jubilado):
+        os_base = round2(rem_aportes_os + nr_total_os)
+        os_aporte = 0.0
+        osecac_100 = 0.0
+    else:
+        os_base = round2((rem_aportes_os + nr_total_os) if bool(osecac) else rem_aportes_os)
+        os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
+        osecac_100 = 100.0 if bool(osecac) else 0.0
 
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0)))
 
+    # Aportes sindicales/FAECYS: base = REM aportable + NR aportable (excluye viáticos).
+    # Para JUBILADO, el set de descuentos se reduce a: Jub 11% + FAECYS 0,5% + Sindicato 2% (+ Afiliación 2% si aplica).
+    base_fs = 0.0
+    faecys = 0.0
+    sind_solid = 0.0
+    sind_af = 0.0
+
     sind = 0.0
     sind_fijo_monto = 0.0
-    if bool(afiliado):
-        try:
-            sp = float(sind_pct or 0.0)
-        except Exception:
-            sp = 0.0
-        if sp > 0:
-            sind = round2((rem_aportes + nr_aportable_real) * (sp / 100.0))
 
-        # Monto fijo de sindicato (se aplica SOLO si está afiliado).
-        try:
-            sind_fijo_monto = round2(max(0.0, float(sind_fijo or 0.0)))
-        except Exception:
-            sind_fijo_monto = 0.0
+    if bool(jubilado):
+        base_fs = round2(rem_aportes + nr_aportable_real)
+        faecys = round2(base_fs * 0.005)
+        sind_solid = round2(base_fs * 0.02)
+        sind_af = round2(base_fs * 0.02) if bool(afiliado) else 0.0
+        # No se aplica sindicato porcentual/fijo en jubilado (usa solidario + afiliación fija).
+        sind = 0.0
+        sind_fijo_monto = 0.0
+    else:
+        if bool(afiliado):
+            try:
+                sp = float(sind_pct or 0.0)
+            except Exception:
+                sp = 0.0
+            if sp > 0:
+                sind = round2((rem_aportes + nr_aportable_real) * (sp / 100.0))
 
-    ded_total = round2(jub + pami + os_aporte + osecac_100 + sind + sind_fijo_monto + aus_rem + faltante_desc + adelanto)
-    neto = round2((rem_total + nr_total) - ded_total)
+            # Monto fijo de sindicato (se aplica SOLO si está afiliado).
+            try:
+                sind_fijo_monto = round2(max(0.0, float(sind_fijo or 0.0)))
+            except Exception:
+                sind_fijo_monto = 0.0
+
+    ded_pre = round2(
+        jub
+        + pami
+        + os_aporte
+        + osecac_100
+        + faecys
+        + sind_solid
+        + sind_af
+        + sind
+        + sind_fijo_monto
+        + aus_rem
+        + susp_rem
+        + faltante_desc
+        + adelanto
+    )
+    neto_pre = round2((rem_total + nr_total) - ded_pre)
+    emb_in = 0.0
+    try:
+        emb_in = float(embargo or 0.0)
+    except Exception:
+        emb_in = 0.0
+    emb_in = max(0.0, emb_in)
+    embargo_monto = round2(min(emb_in, max(0.0, neto_pre))) if emb_in else 0.0
+    ded_total = round2(ded_pre + embargo_monto)
+    neto = round2(neto_pre - embargo_monto)
 
     def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
         out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
@@ -1125,6 +1188,14 @@ def calcular_payload(
             base_num=base_dia_aus,
         ))
 
+    # Suspensión / Licencia sin goce (descuento)
+    if susp_rem:
+        items.append(item(
+            f"Licencia sin goce / suspensión ({susp_d} día{'s' if susp_d != 1 else ''})",
+            d=susp_rem,
+            base_num=base_dia_susp,
+        ))
+
     if faltante_desc:
         items.append(item(
             "Faltante de caja (desc.)",
@@ -1138,19 +1209,33 @@ def calcular_payload(
             d=adelanto,
         ))
 
-    items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
-    items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
+    if embargo_monto:
+        items.append(item(
+            "Embargo (desc.)",
+            d=embargo_monto,
+            base_num=neto_pre,
+        ))
 
-    if bool(osecac):
-        items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
-        items.append(item("OSECAC $100", d=osecac_100))
+    if bool(jubilado):
+        items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
+        items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
+        items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
+        if sind_af:
+            items.append(item("Afiliación 2%", d=sind_af, base_num=base_fs))
     else:
-        items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
+        items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
+        items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
 
-    if sind:
-        items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
-    if sind_fijo_monto:
-        items.append(item("Sindicato (fijo)", d=sind_fijo_monto))
+        if bool(osecac):
+            items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
+            items.append(item("OSECAC $100", d=osecac_100))
+        else:
+            items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
+
+        if sind:
+            items.append(item(f"Sindicato {float(sind_pct):g}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
+        if sind_fijo_monto:
+            items.append(item("Sindicato (fijo)", d=sind_fijo_monto))
 
     return {
         "ok": True,
