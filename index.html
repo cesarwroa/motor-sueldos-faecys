@@ -211,7 +211,36 @@ Recibo Mensual</div>
 <div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
 <div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
 <div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
+<div id="lf_hsWrap"><label>Jornada</label>
+  <input id="lf_hs" type="number" min="1" max="48" value="48" list="lf_hs_list"/>
+  <datalist id="lf_hs_list">
+    <option value="48"></option>
+    <option value="45"></option>
+    <option value="44"></option>
+    <option value="42"></option>
+    <option value="40"></option>
+    <option value="39"></option>
+    <option value="38"></option>
+    <option value="37"></option>
+    <option value="36"></option>
+    <option value="35"></option>
+    <option value="34"></option>
+    <option value="33"></option>
+    <option value="32"></option>
+    <option value="30"></option>
+    <option value="28"></option>
+    <option value="27"></option>
+    <option value="24"></option>
+    <option value="21"></option>
+    <option value="20"></option>
+    <option value="18"></option>
+    <option value="16"></option>
+    <option value="12"></option>
+    <option value="6"></option>
+  </datalist>
+</div>
 <div><label>MEJOR SALARIO (editable)</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
+<div id="lf_hs_slot"></div>
 </div>
 <div class="note" id="lf_aguaBlock" style="display:none; margin-top:6px">
   <strong>Agua Potable:</strong> Conexiones
@@ -675,15 +704,24 @@ function toggleManejoCajaUI(){
     const cat = $("categoria")?.value || "";
     const h = parseHorasCategoria(cat);
     if(h && $("hs")) $("hs").value = String(h);
-  }
+    if(h && $("lf_hs")) $("lf_hs").value = String(h);
+}
 
   function getEffectiveJornada(){
     const rama = $("rama")?.value || "";
     if(isCallRama(rama)){
       const h = parseHorasCategoria($("categoria")?.value || "");
+      // Call Center: jornada deriva de la categoría
+      if(h){
+        if($("hs")) $("hs").value = String(h);
+        if($("lf_hs")) $("lf_hs").value = String(h);
+      }
       return (h || 48);
     }
-    return num($("hs")?.value || 48) || 48;
+    const isFinal = !!document.getElementById('tabFinal')?.classList.contains('active');
+    const src = isFinal ? $("lf_hs") : $("hs");
+    const fallback = num($("hs")?.value || 48) || 48;
+    return num(src?.value || fallback) || fallback;
   }
 
   function updateCallCenterUI(){
@@ -693,6 +731,11 @@ function toggleManejoCajaUI(){
       const hsWrap = $('hsWrap');
       if(hsWrap) hsWrap.style.display = showCall ? 'none' : '';
       if($('hs')) $('hs').disabled = !!showCall;
+
+      const lfHsWrap = $('lf_hsWrap');
+      if(lfHsWrap) lfHsWrap.style.display = showCall ? 'none' : '';
+      if($('lf_hs')) $('lf_hs').disabled = !!showCall;
+
       if(showCall){ try{ syncCallJornadaFromCategoria(); }catch{} }
     }catch(e){}
   }
@@ -1453,8 +1496,15 @@ function wire(){
     toggleManejoCajaUI();
 
     // Liquidación final: autocompletar años/vacaciones/días y sugerir MEJOR SALARIO
-    ['lf_ingreso','lf_egreso','lf_tipo','lf_preaviso','lf_integracion','lf_use_lastday','lf_vac_anuales','lf_vac_no_goz'].forEach(id => {
+    ['lf_ingreso','lf_egreso','lf_hs','lf_tipo','lf_preaviso','lf_integracion','lf_use_lastday','lf_vac_anuales','lf_vac_no_goz'].forEach(id => {
       $(id)?.addEventListener('change', () => {
+        if(id === 'lf_hs'){
+          try{
+            const lfhs = $('lf_hs');
+            if(lfhs) lfhs.dataset.manual = '1';
+            if($('hs') && lfhs?.value) $('hs').value = String(lfhs.value);
+          }catch(_){ }
+        }
         _lfUpdateDerived();
         try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
       });
@@ -1519,7 +1569,35 @@ function wire(){
   // =====================
   // Etapa 9: Tabs + Liquidación Final
   // =====================
-  function switchTab(tab){
+  
+  // UI: en Liquidación Final, mostrar la Jornada dentro del panel (reutilizando el mismo input #hs)
+  let _hsWrapHome = null;
+  function placeHsWrap(tab){
+    const hsWrap = document.getElementById('hsWrap');
+    if(!hsWrap) return;
+    if(!_hsWrapHome){
+      _hsWrapHome = { parent: hsWrap.parentNode, next: hsWrap.nextSibling };
+    }
+    if(tab === 'final'){
+      const slot = document.getElementById('lf_hs_slot');
+      if(slot){
+        slot.innerHTML = '';
+        slot.appendChild(hsWrap);
+      }
+    }else{
+      const home = _hsWrapHome;
+      if(home && home.parent){
+        if(home.next && home.next.parentNode === home.parent){
+          home.parent.insertBefore(hsWrap, home.next);
+        }else{
+          home.parent.appendChild(hsWrap);
+        }
+      }
+    }
+  }
+  window.placeHsWrap = placeHsWrap;
+
+function switchTab(tab){
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
     const pMens = document.getElementById('paneMensual');
@@ -1531,12 +1609,25 @@ function wire(){
       tMens.classList.remove('active');
       pFinal.style.display = '';
       pMens.style.display = 'none';
+      try{ placeHsWrap('final'); }catch(_){ }
+      try{
+        const hs = $('hs');
+        const lfhs = $('lf_hs');
+        if(lfhs && hs && !lfhs.dataset.manual) lfhs.value = String(hs.value || 48);
+      }catch(_){ }
+
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }else{
       tMens.classList.add('active');
       tFinal.classList.remove('active');
+      try{
+        const hs = $('hs');
+        const lfhs = $('lf_hs');
+        if(hs && lfhs && lfhs.value) hs.value = String(lfhs.value);
+      }catch(_){ }
       pMens.style.display = '';
       pFinal.style.display = 'none';
+      try{ placeHsWrap('mensual'); }catch(_){ }
     }
   }
   window.switchTab = switchTab;
