@@ -1539,6 +1539,7 @@ def calcular_final_payload(
     mejor_total: float = 0.0,
     dias_mes: int = 0,
     vac_anuales: int = 0,
+    vac_no_gozadas_dias: float = 0.0,
     preaviso_dias: int = 0,
     integracion: bool = True,
     sac_sobre_preaviso: bool = False,
@@ -1554,7 +1555,7 @@ def calcular_final_payload(
 
     - Usa MRMNH / Mejor salario como base (Rem + NR) y prorratea por día.
     - SAC proporcional por días de semestre (base * días / 360).
-    - Vacaciones no gozadas proporcionales por días del año (vac_anuales * días / 365) y pago 1/25.
+    - Vacaciones no gozadas (días) editable, pago 1/25, como indemnizatorio + SAC s/vac (sin descuentos).
     - Despido sin causa: incluye indemnización art. 245 + preaviso (opción) + integración (opción).
 
     Devuelve items con columnas: r (rem), n (no rem), i (indemnizatorio), d (descuentos).
@@ -1600,12 +1601,16 @@ def calcular_final_payload(
     if vac_an <= 0:
         vac_an = _vac_anuales_por_antig(anios_antig)
 
-    # Días trabajados del año (para proporción de vacaciones)
+    # Días trabajados del año (para sugerir vacaciones)
     start_year = max(fi, _dt.date(fe.year, 1, 1))
     dias_anio = (fe - start_year).days + 1
     dias_anio = max(0, dias_anio)
 
-    vac_prop = round2(vac_an * (dias_anio / 365.0)) if dias_anio else 0.0
+    # Sugerencia de vacaciones por proporción, pero el usuario define los días finales
+    vac_sugeridas = round2(vac_an * (dias_anio / 365.0)) if dias_anio else 0.0
+    vac_no_goz = float(vac_no_gozadas_dias or 0.0)
+    if vac_no_goz <= 0:
+        vac_no_goz = float(vac_sugeridas or 0.0)
 
     # Días trabajados del semestre (para SAC proporcional)
     sem_start = _dt.date(fe.year, 1, 1) if fe.month <= 6 else _dt.date(fe.year, 7, 1)
@@ -1624,14 +1629,11 @@ def calcular_final_payload(
     hab_mes_total = round2(base_total * (dm / 30.0))
     hab_mes_r, hab_mes_n = split_amount(hab_mes_total)
 
-    # Vacaciones no gozadas: pago 1/25
-    vac_pago_total = round2((base_total / 25.0) * vac_prop) if vac_prop else 0.0
-    vac_r, vac_n = split_amount(vac_pago_total)
+    # Vacaciones no gozadas (indemnizatorio): pago 1/25 sobre base total (incluye NR)
+    vac_pago_total = round2((base_total / 25.0) * vac_no_goz) if vac_no_goz else 0.0
 
-    # SAC sobre vacaciones (siempre que haya vac)
+    # SAC sobre vacaciones no gozadas (indemnizatorio)
     sac_vac_total = round2(vac_pago_total / 12.0) if vac_pago_total else 0.0
-    sac_vac_r, sac_vac_n = split_amount(sac_vac_total)
-
     # SAC proporcional del semestre
     sac_prop_total = round2(base_total * (dias_sem / 360.0)) if dias_sem else 0.0
     sac_prop_r, sac_prop_n = split_amount(sac_prop_total)
@@ -1651,9 +1653,14 @@ def calcular_final_payload(
 
     # Indemnización antigüedad (art. 245)
     ind_antig = 0.0
+    # Indemnización por fallecimiento (art. 248)
+    ind_fall = 0.0
     tipo_n = (tipo or '').strip().upper()
     if tipo_n in ('DESPIDO_SIN_CAUSA', 'DESPIDO SIN CAUSA', 'SIN_CAUSA'):
         ind_antig = round2(base_total * float(anios_245 or 0))
+
+    if tipo_n == 'FALLECIMIENTO':
+        ind_fall = round2(base_total * float(anios_245 or 0))
 
     # Armado de items
     def item(concepto: str, r: float = 0.0, n: float = 0.0, i: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
@@ -1665,11 +1672,10 @@ def calcular_final_payload(
     items: List[Dict[str, Any]] = []
 
     items.append(item(f"Días trabajados del mes ({dm} día{'s' if dm != 1 else ''})", r=hab_mes_r, n=hab_mes_n, base_num=base_total))
-
-    if vac_prop:
-        items.append(item(f"Vacaciones no gozadas (prop.) {vac_prop:g} día{'s' if vac_prop != 1 else ''}", r=vac_r, n=vac_n, base_num=base_total))
+    if vac_pago_total:
+        items.append(item(f"Vacaciones no gozadas (Indem.)", i=vac_pago_total, base_num=base_total))
         if sac_vac_total:
-            items.append(item("SAC s/ vacaciones", r=sac_vac_r, n=sac_vac_n, base_num=vac_pago_total))
+            items.append(item("SAC s/ Vacaciones no gozadas (Indem.)", i=sac_vac_total, base_num=vac_pago_total))
 
     if sac_prop_total:
         items.append(item("SAC proporcional", r=sac_prop_r, n=sac_prop_n, base_num=base_total))
@@ -1683,6 +1689,9 @@ def calcular_final_payload(
         items.append(item(f"Preaviso ({prev_dias} día{'s' if prev_dias != 1 else ''})", i=prev_total, base_num=base_total))
         if sac_prev_total:
             items.append(item("SAC s/ preaviso", i=sac_prev_total, base_num=prev_total))
+
+    if ind_fall:
+        items.append(item("Indemnización por fallecimiento (Art. 248)", i=ind_fall, base_num=base_total))
 
     if ind_antig:
         items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_total))
@@ -1794,7 +1803,8 @@ def calcular_final_payload(
         "dias_mes": dm,
         "dias_semestre": dias_sem,
         "vac_anuales": vac_an,
-        "vac_prop": vac_prop,
+        "vac_no_gozadas_dias": vac_no_goz,
+        "vac_sugeridas": vac_sugeridas,
         "items": items,
         "totales": {
             "rem": rem_total,

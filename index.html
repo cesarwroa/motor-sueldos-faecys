@@ -227,7 +227,7 @@ Recibo Mensual</div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Días trabajados del mes (auto)</label><input id="lf_dias_mes" class="readonly" disabled readonly max="31" min="0" type="number" value="0"/></div>
 <div><label>Vacaciones anuales (auto/edi.)</label><input id="lf_vac_anuales" min="0" type="number" value="14"/></div>
-<div><label>Vacaciones proporcionales</label><input class="readonly" disabled="" id="lf_vac_calc" readonly="" type="number" value="0"/></div>
+<div><label>Vacaciones no gozadas (días)</label><input id="lf_vac_no_goz" min="0" step="0.01" type="number" value="0"/></div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
 </div>
 <div class="note small">MEJOR SALARIO se sugiere automáticamente con Básico + NR + Antigüedad + Presentismo (editable).</div>
@@ -1310,7 +1310,7 @@ function wire(){
     toggleManejoCajaUI();
 
     // Liquidación final: autocompletar años/vacaciones/días y sugerir MEJOR SALARIO
-    ['lf_ingreso','lf_egreso','lf_tipo','lf_preaviso','lf_integracion','lf_use_lastday','lf_vac_anuales'].forEach(id => {
+    ['lf_ingreso','lf_egreso','lf_tipo','lf_preaviso','lf_integracion','lf_use_lastday','lf_vac_anuales','lf_vac_no_goz'].forEach(id => {
       $(id)?.addEventListener('change', () => {
         _lfUpdateDerived();
         try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
@@ -1332,7 +1332,22 @@ function wire(){
       });
     }
 
+    // Vacaciones no gozadas (LF): si el usuario edita, no autocompletar más
+    const vacNG = $('lf_vac_no_goz');
+    if(vacNG){
+      vacNG.addEventListener('input', () => {
+        const v = (vacNG.value || '').toString().trim();
+        if(v && Number(v) > 0){
+          vacNG.dataset.manual = '1';
+        }else{
+          delete vacNG.dataset.manual;
+          try{ _lfUpdateDerived(); }catch(_){ }
+        }
+      });
+    }
+
     // Toggle Base (mensual)
+
     const paneM = $('paneMensual');
     const tBaseM = $('toggleBaseMensual');
     if(paneM) paneM.classList.add('hide-base-col');
@@ -1410,6 +1425,26 @@ function wire(){
     const y = _lfYearsComplete(fi, fe);
     if($('lf_anios')) $('lf_anios').value = String(y);
     if($('lf_vac_anuales')) $('lf_vac_anuales').value = String(_lfDefaultVacAnuales(y));
+    // Vacaciones no gozadas sugeridas (editable)
+    try{
+      const vng = $('lf_vac_no_goz');
+      if(vng && !vng.dataset.manual){
+        const vacAn = parseFloat($('lf_vac_anuales')?.value || '0') || _lfDefaultVacAnuales(y);
+        const dfi = new Date(fi);
+        const dfe = new Date(fe);
+        if(!Number.isNaN(dfi.getTime()) && !Number.isNaN(dfe.getTime())){
+          const startYear = new Date(dfe.getFullYear(), 0, 1);
+          const start = (dfi > startYear) ? dfi : startYear;
+          const msDay = 24*60*60*1000;
+          const diasAnio = Math.max(0, Math.floor((dfe - start) / msDay) + 1);
+          const sug = diasAnio ? (vacAn * (diasAnio/365.0)) : 0;
+          const cur = parseFloat(vng.value || '0') || 0;
+          if(cur <= 0){
+            vng.value = Number.isFinite(sug) ? sug.toFixed(2) : '0';
+          }
+        }
+      }
+    }catch(_){ }
     // Días trabajados del mes: automático (1 al día de egreso)
     try{
       const el = $('lf_dias_mes');
@@ -1676,6 +1711,7 @@ function wire(){
         return parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
       })();
       const vac_anuales = parseInt(($('lf_vac_anuales')?.value || '14'), 10) || 14;
+      const vac_no_gozadas_dias = Math.max(0, parseFloat(($('lf_vac_no_goz')?.value || '0')) || 0);
       const preaviso_dias = parseInt(($('lf_preaviso')?.value || '0'), 10) || 0;
       const integracion = !!$('lf_integracion')?.checked;
       const sac_preaviso = !!$('lf_sac_pre')?.checked;
@@ -1698,6 +1734,7 @@ function wire(){
         mejor_total: String(mejor_total),
         dias_mes: String(dias_mes),
         vac_anuales: String(vac_anuales),
+        vac_no_gozadas_dias: String(vac_no_gozadas_dias),
         preaviso_dias: String(preaviso_dias),
         integracion: String(integracion),
         sac_preaviso: String(sac_preaviso),
@@ -1744,7 +1781,7 @@ function wire(){
       // Completar auxiliares
       if($('lf_anios') && data.anios_antig!=null) $('lf_anios').value = String(data.anios_antig);
       if($('lf_vac_anuales') && data.vac_anuales!=null) $('lf_vac_anuales').value = String(data.vac_anuales);
-      if($('lf_vac_calc') && data.vac_prop!=null) $('lf_vac_calc').value = String(Number(data.vac_prop).toFixed(2));
+      if($('lf_vac_no_goz') && data.vac_no_gozadas_dias!=null && !($('lf_vac_no_goz').dataset.manual)) $('lf_vac_no_goz').value = String(Number(data.vac_no_gozadas_dias).toFixed(2));
 
       // Encabezado
       setText('lf_outRama', data.rama || rama);

@@ -173,6 +173,7 @@ def calcular_final(
     # Parámetros
     dias_mes: int = 0,
     vac_anuales: int = 14,
+    vac_no_gozadas_dias: float = 0.0,
     preaviso_dias: int = 0,
     integracion: bool = True,
     sac_preaviso: bool = False,
@@ -197,6 +198,7 @@ def calcular_final(
         mejor_total=mejor_total,
         dias_mes=dias_mes,
         vac_anuales=vac_anuales,
+        vac_no_gozadas_dias=vac_no_gozadas_dias,
         preaviso_dias=preaviso_dias,
         integracion=integracion,
         sac_sobre_preaviso=sac_preaviso,
