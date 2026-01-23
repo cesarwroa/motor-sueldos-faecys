@@ -52,7 +52,8 @@ def calcular_final(payload: Dict[str, Any]) -> Dict[str, Any]:
     incluye_preaviso = (tipo == "DESPIDO_SIN_CAUSA" and preaviso_dias > 0)
 
     art245 = mejor_salario * anios if incluye_245 else 0.0
-    art248 = mejor_salario * anios if incluye_248 else 0.0
+    # Art. 248: 50% de la indemnización art. 245 (misma base y años)
+    art248 = (mejor_salario * anios * 0.5) if incluye_248 else 0.0
 
     vac_ind = (mejor_salario / 25.0) * vac_no_gozadas_dias if vac_no_gozadas_dias > 0 else 0.0
     sac_vac = (vac_ind / 12.0) if incluir_sac_vac and vac_ind else 0.0

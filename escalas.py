@@ -1660,7 +1660,8 @@ def calcular_final_payload(
         ind_antig = round2(base_total * float(anios_245 or 0))
 
     if tipo_n == 'FALLECIMIENTO':
-        ind_fall = round2(base_total * float(anios_245 or 0))
+        # Art. 248: indemnización por fallecimiento = 50% de la indemnización art. 245
+        ind_fall = round2(base_total * float(anios_245 or 0) * 0.5)
 
     # Armado de items
     def item(concepto: str, r: float = 0.0, n: float = 0.0, i: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:

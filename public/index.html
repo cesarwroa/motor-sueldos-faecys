@@ -1092,7 +1092,10 @@ function applyBranchUI(){
     const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || '—';
     const agrup = (isFinal ? $('lf_outAgrup')?.textContent : $('outAgrup')?.textContent) || $('agrup')?.value || '—';
     const cat  = (isFinal ? $('lf_outCat')?.textContent : $('outCat')?.textContent) || $('categoria')?.value || '—';
-    const escala = (!isFinal ? ($('outEscala')?.textContent || '') : (`Escala ${$('mes')?.value || ''}`)).trim();
+    const escala = (!isFinal
+      ? ($('outEscala')?.textContent || '')
+      : (`Escala ${(($('lf_egreso')?.value || '').slice(0,7)) || ($('mes')?.value || '')}`)
+    ).trim();
 
     const tbl = cloneTableForPrint(tab);
 
