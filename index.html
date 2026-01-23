@@ -127,14 +127,18 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="card" id="paneMensual">
 <div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div class="note" id="aguaBlock" style="display:none">
-  <strong>Agua Potable:</strong> Seleccione conexiones A/B/C/D
-  <select id="aguaConexCat" style="max-width:180px; margin-left:6px">
+  <strong>Agua Potable:</strong> Conexiones
+  <span style="margin-left:6px">Cantidad:</span>
+  <input id="aguaConexiones" type="number" min="0" step="1" value="0" style="max-width:120px; margin-left:4px"/>
+  <span style="margin-left:8px">Categoría:</span>
+  <select id="aguaConexCat" style="max-width:180px; margin-left:4px">
     <option value="">—</option>
     <option value="A">A (hasta 500)</option>
     <option value="B">B (+7% s/A)</option>
     <option value="C">C (+7% s/B)</option>
     <option value="D">D (+7% s/C)</option>
   </select>
+  <div id="aguaConexInfo" style="margin-top:6px; color:#64748b"></div>
 </div>
 <div class="note" id="funBlock" style="display:none">
   <strong>Fúnebres:</strong> Adicionales mensuales
@@ -208,6 +212,20 @@ Recibo Mensual</div>
 <div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
 <div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
 <div><label>MEJOR SALARIO (editable)</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
+</div>
+<div class="note" id="lf_aguaBlock" style="display:none; margin-top:6px">
+  <strong>Agua Potable:</strong> Conexiones
+  <span style="margin-left:6px">Cantidad:</span>
+  <input id="lf_aguaConexiones" type="number" min="0" step="1" value="0" style="max-width:120px; margin-left:4px"/>
+  <span style="margin-left:8px">Categoría:</span>
+  <select id="lf_aguaConexCat" style="max-width:180px; margin-left:4px">
+    <option value="">—</option>
+    <option value="A">A (hasta 500)</option>
+    <option value="B">B (+7% s/A)</option>
+    <option value="C">C (+7% s/B)</option>
+    <option value="D">D (+7% s/C)</option>
+  </select>
+  <div id="lf_aguaConexInfo" style="margin-top:6px; color:#64748b"></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><div class="campo tipo-lf">
@@ -574,10 +592,66 @@ function toggleManejoCajaUI(){
     }
   }
 
-  // Agua Potable: selector A/B/C/D (no muestra texto extra)
-  function updateAguaConexInfo(){
-    // placeholder por si a futuro querés mostrar algo; hoy no mostramos nada.
+  // Agua Potable: conexiones (cantidad -> categoría y %)
+  async function updateAguaConexInfo(){
+    try{
+      const rama = $('rama')?.value || '';
+      if(!isAguaRama(rama)) return;
+      if(window.__aguaConexLock) return;
+      window.__aguaConexLock = true;
+
+      const qtyMEl = document.getElementById('aguaConexiones');
+      const qtyFEl = document.getElementById('lf_aguaConexiones');
+      const selMEl = document.getElementById('aguaConexCat');
+      const selFEl = document.getElementById('lf_aguaConexCat');
+
+      let qtyM = qtyMEl ? parseInt(qtyMEl.value || '0', 10) : 0;
+      let qtyF = qtyFEl ? parseInt(qtyFEl.value || '0', 10) : 0;
+      if(!isFinite(qtyM)) qtyM = 0;
+      if(!isFinite(qtyF)) qtyF = 0;
+
+      // Sincronizar cantidades (prioriza la que sea >0)
+      let qty = 0;
+      if(qtyF > 0) qty = qtyF;
+      else if(qtyM > 0) qty = qtyM;
+
+      if(qtyMEl && String(qtyMEl.value||'0') !== String(qty)) qtyMEl.value = String(qty);
+      if(qtyFEl && String(qtyFEl.value||'0') !== String(qty)) qtyFEl.value = String(qty);
+
+      const nivel = (selFEl?.value || selMEl?.value || '').trim();
+
+      const params = new URLSearchParams();
+      if(qty > 0) params.set('cantidad', String(qty));
+      else if(nivel) params.set('nivel', nivel);
+      else{
+        setText('aguaConexInfo','');
+        setText('lf_aguaConexInfo','');
+        return;
+      }
+
+      const url = new URL(`${API_BASE}/regla-conexiones`);
+      url.search = params.toString();
+      const regla = await fetchJSON(url.toString());
+
+      const cat = (regla && regla.cat) ? String(regla.cat) : '';
+      const pct = (regla && typeof regla.pct === 'number') ? (regla.pct * 100.0) : 0.0;
+
+      if(cat){
+        if(selMEl) selMEl.value = cat;
+        if(selFEl) selFEl.value = cat;
+      }
+
+      const qtyTxt = qty > 0 ? ` (${qty})` : '';
+      const txt = cat ? `Adicional por conexiones${qtyTxt} – Categoría ${cat}: +${pct.toFixed(2)}%` : '';
+      setText('aguaConexInfo', txt);
+      setText('lf_aguaConexInfo', txt);
+    }catch(err){
+      console.warn('updateAguaConexInfo', err);
+    }finally{
+      window.__aguaConexLock = false;
+    }
   }
+
 
   
   function isCallRama(rama){
@@ -648,6 +722,8 @@ function applyBranchUI(){
 
     const aguaBlock = $('aguaBlock');
     if(aguaBlock) aguaBlock.style.display = showAgua ? '' : 'none';
+    const aguaBlockLf = $('lf_aguaBlock');
+    if(aguaBlockLf) aguaBlockLf.style.display = showAgua ? '' : 'none';
 
     const boxTitulo = $('boxTitulo');
     if(boxTitulo) boxTitulo.style.display = showTur ? '' : 'none';
@@ -659,8 +735,31 @@ function applyBranchUI(){
     if(!showAgua){
       const a = $('aguaConexCat');
       if(a) a.value = '';
+      const af = $('lf_aguaConexCat');
+      if(af) af.value = '';
+      const q = $('aguaConexiones');
+      if(q) q.value = '0';
+      const qf = $('lf_aguaConexiones');
+      if(qf) qf.value = '0';
+      setText('aguaConexInfo', '');
+      setText('lf_aguaConexInfo', '');
     }
-    else{ try{ updateAguaConexInfo(); }catch{} }
+    else{
+      // sincronizar selector y cantidad de conexiones entre Mensual y Final
+      const a = $('aguaConexCat');
+      const af = $('lf_aguaConexCat');
+      if(a && af){
+        if(a.value && !af.value) af.value = a.value;
+        if(af.value && !a.value) a.value = af.value;
+      }
+      const q = $('aguaConexiones');
+      const qf = $('lf_aguaConexiones');
+      if(q && qf){
+        if((q.value || '0') !== '0' && (qf.value || '0') === '0') qf.value = q.value;
+        if((qf.value || '0') !== '0' && (q.value || '0') === '0') q.value = qf.value;
+      }
+      try{ updateAguaConexInfo(); }catch{}
+    }
     if(!showTur){
       const t = $('turTitulo');
       if(t) t.value = '0';
@@ -850,14 +949,15 @@ function applyBranchUI(){
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("jornada", String(jornada));
-      // Agua Potable: selector de conexiones A/B/C/D (impacta en básicos y NR)
+      // Agua Potable: conexiones (cantidad y/o categoría)
       const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
       if(isAgua){
         const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+        const conexiones = parseInt(document.getElementById("aguaConexiones")?.value || "0", 10) || 0;
         if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+        if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
       }
-
-      const p = await fetchJSON(url.toString());
+const p = await fetchJSON(url.toString());
       if(!p || p.ok === false) throw new Error((p && p.status) ? p.status : "payload error");
 
       setVal("basico", (p.basico_base ?? p.basico ?? 0));
@@ -953,7 +1053,8 @@ function applyBranchUI(){
     const km_menos100 = Math.max(0, parseInt($("kmMenos100")?.value || "0", 10) || 0);
     const km_mas100 = Math.max(0, parseInt($("kmMas100")?.value || "0", 10) || 0);
     // Agua potable
-    const conex_cat = $("conexCat")?.value || "";
+    const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+    const conexiones = Math.max(0, parseInt(document.getElementById("aguaConexiones")?.value || "0", 10) || 0);
     // Fúnebres
     const fun_adics = getFunebresAdics();
 
@@ -990,7 +1091,8 @@ function applyBranchUI(){
     url.searchParams.set("km_tipo", km_tipo);
     url.searchParams.set("km_menos100", String(km_menos100));
     url.searchParams.set("km_mas100", String(km_mas100));
-    url.searchParams.set("conex_cat", conex_cat);
+    if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+    if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
     url.searchParams.set("fun_adic", fun_adics.join(","));
     return url;
   }
@@ -1055,11 +1157,13 @@ function applyBranchUI(){
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("mes", mes);
       url.searchParams.set("jornada", String(jornada));
-      // Agua Potable: selector de conexiones A/B/C/D (impacta en básicos y NR)
+      // Agua Potable: conexiones (cantidad y/o categoría)
       const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
       if(isAgua){
         const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
+        const conexiones = parseInt(document.getElementById("aguaConexiones")?.value || "0", 10) || 0;
         if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+        if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
       }
       url.searchParams.set("anios_antig", String(anios_antig));
       url.searchParams.set("osecac", osecac ? "true" : "false");
@@ -1092,7 +1196,8 @@ function applyBranchUI(){
       if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
       url.searchParams.set("km_menos100", String(km_menos100));
       url.searchParams.set("km_mas100", String(km_mas100));
-      url.searchParams.set("conex_cat", conex_cat);
+      if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+    if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());
@@ -1305,8 +1410,43 @@ function wire(){
     $("mes")?.addEventListener("change", refreshPayload);
     $("hs")?.addEventListener("change", refreshPayload);
 
-    // Agua: selector de conexiones
-    $("aguaConexCat")?.addEventListener("change", refreshPayload);
+    // Agua: conexiones (sincroniza Mensual ↔ Final)
+    const _syncAguaConex = (fromId, toId) => {
+      try{
+        const a = $(fromId);
+        const b = $(toId);
+        if(a && b) b.value = a.value;
+      }catch(_){ }
+    };
+    const _setAguaConexQty = (val) => {
+      try{
+        if($("aguaConexiones")) $("aguaConexiones").value = String(val);
+        if($("lf_aguaConexiones")) $("lf_aguaConexiones").value = String(val);
+      }catch(_){ }
+    };
+    const _afterAguaConexChange = () => {
+      try{ updateAguaConexInfo && updateAguaConexInfo(); }catch(_){ }
+      refreshPayload();
+      try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
+    };
+    $("aguaConexCat")?.addEventListener("change", () => {
+      _setAguaConexQty(0);
+      _syncAguaConex("aguaConexCat", "lf_aguaConexCat");
+      _afterAguaConexChange();
+    });
+    $("lf_aguaConexCat")?.addEventListener("change", () => {
+      _setAguaConexQty(0);
+      _syncAguaConex("lf_aguaConexCat", "aguaConexCat");
+      _afterAguaConexChange();
+    });
+    $("aguaConexiones")?.addEventListener("input", () => {
+      _syncAguaConex("aguaConexiones", "lf_aguaConexiones");
+      _afterAguaConexChange();
+    });
+    $("lf_aguaConexiones")?.addEventListener("input", () => {
+      _syncAguaConex("lf_aguaConexiones", "aguaConexiones");
+      _afterAguaConexChange();
+    });
 
     // Manejo de caja
     $("manejoCaja")?.addEventListener('change', toggleManejoCajaUI);
@@ -1539,12 +1679,14 @@ function wire(){
     url.searchParams.set('km_menos100', '0');
     url.searchParams.set('km_mas100', '0');
 
-    // Agua Potable: conexiones (impacta en básicos y NR)
+    // Agua Potable: conexiones (cantidad y/o categoría)
     try{
       const r = normRama(rama);
       if(r.startsWith('AGUA')){
-        const conex = (document.getElementById('aguaConexCat')?.value || '').trim();
+        const conex = (document.getElementById('lf_aguaConexCat')?.value || document.getElementById('aguaConexCat')?.value || '').trim();
+        const qty = parseInt((document.getElementById('lf_aguaConexiones')?.value || document.getElementById('aguaConexiones')?.value || '0'), 10) || 0;
         if(conex && conex !== '--') url.searchParams.set('conex_cat', conex);
+        if(qty > 0) url.searchParams.set('conexiones', String(qty));
       }
     }catch(_){/* ignore */}
 
@@ -1610,7 +1752,7 @@ function wire(){
     const jornada = getEffectiveJornada();
     const fe = $('lf_egreso')?.value || '';
     const mes_baja = fe ? fe.slice(0,7) : '';
-    const key = [rama, agrup, categoria, mes_baja, jornada, $('lf_ingreso')?.value || '', fe, document.getElementById('aguaConexCat')?.value || '' ].join('|');
+    const key = [rama, agrup, categoria, mes_baja, jornada, $('lf_ingreso')?.value || '', fe, (document.getElementById('lf_aguaConexCat')?.value || document.getElementById('aguaConexCat')?.value || ''), (document.getElementById('lf_aguaConexiones')?.value || document.getElementById('aguaConexiones')?.value || '0') ].join('|');
 
     if(window.__lf_mejor_key === key && !force) return;
     window.__lf_mejor_key = key;
