@@ -1588,15 +1588,8 @@ def calcular_final_payload(
     # Días del mes de egreso
     dim = _cal.monthrange(fe.year, fe.month)[1]
     dia_baja = fe.day
-
-    # Días trabajados del mes (default: día de egreso)
-    try:
-        dm = int(dias_mes or 0)
-    except Exception:
-        dm = 0
-    if dm <= 0:
-        dm = dia_baja
-    dm = max(0, min(dim, dm))
+    # Días trabajados del mes: automático (1 al día de egreso)
+    dm = max(0, min(dim, dia_baja))
 
     # Antigüedad
     anios_antig = _years_complete(fi, fe)

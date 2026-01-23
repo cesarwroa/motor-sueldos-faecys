@@ -225,7 +225,7 @@ Recibo Mensual</div>
 <div><label>SAC sobre integración</label><input checked="" id="lf_sac_int" type="checkbox"/></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
-<div><label>Días trabajados del mes</label><input id="lf_dias_mes" max="31" min="0" type="number" value="0"/></div>
+<div><label>Días trabajados del mes (auto)</label><input id="lf_dias_mes" class="readonly" disabled readonly max="31" min="0" type="number" value="0"/></div>
 <div><label>Vacaciones anuales (auto/edi.)</label><input id="lf_vac_anuales" min="0" type="number" value="14"/></div>
 <div><label>Vacaciones proporcionales</label><input class="readonly" disabled="" id="lf_vac_calc" readonly="" type="number" value="0"/></div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
@@ -1410,14 +1410,15 @@ function wire(){
     const y = _lfYearsComplete(fi, fe);
     if($('lf_anios')) $('lf_anios').value = String(y);
     if($('lf_vac_anuales')) $('lf_vac_anuales').value = String(_lfDefaultVacAnuales(y));
-
-    // Default días trabajados = día de egreso
+    // Días trabajados del mes: automático (1 al día de egreso)
     try{
-      const d = new Date(fe);
-      if(!Number.isNaN(d.getTime()) && $('lf_dias_mes')){
-        const cur = Number($('lf_dias_mes').value || 0);
-        if(!Number.isFinite(cur) || cur <= 0){
-          $('lf_dias_mes').value = String(d.getDate());
+      const el = $('lf_dias_mes');
+      if(el){
+        const d = new Date(fe);
+        if(!Number.isNaN(d.getTime())){
+          el.value = String(d.getDate());
+        }else{
+          el.value = '0';
         }
       }
     }catch(_){/* ignore */}
@@ -1440,9 +1441,107 @@ function wire(){
     return 0.01 * Math.max(0, anios);
   }
 
-  function _calcMejorSalarioSugerido(){
+  // MEJOR SALARIO (Liquidación Final)
+  // Se sugiere con: Básico + NR (var+SF) + Antigüedad + Presentismo,
+  // tomando categoría + mes de la baja (YYYY-MM) + jornada.
+  async function _lfFetchMejorFromAPI(){
     const rama = $('rama')?.value || '';
-    const anios = num($('lf_anios')?.value || $('anios')?.value || 0) || 0;
+    const agrup = $('agrup')?.value || '';
+    const categoria = $('categoria')?.value || '';
+    const jornada = getEffectiveJornada();
+
+    let fe = $('lf_egreso')?.value || '';
+    if(!fe && $('lf_use_lastday')?.checked){
+      const msel = $('mes')?.value || '';
+      const last = _lastDayOfYYYYMM(msel);
+      if(last){
+        fe = last;
+        if($('lf_egreso')) $('lf_egreso').value = fe;
+        _lfUpdateDerived();
+      }
+    }
+    if(!rama || !agrup || !categoria || !fe) return null;
+
+    const fi = $('lf_ingreso')?.value || '';
+    const anios = _lfYearsComplete(fi, fe);
+    const mes_baja = fe.slice(0, 7); // YYYY-MM
+
+    const url = new URL('/calcular', API_BASE);
+    url.searchParams.set('rama', rama);
+    url.searchParams.set('mes', mes_baja);
+    url.searchParams.set('agrup', agrup);
+    url.searchParams.set('categoria', categoria);
+    url.searchParams.set('jornada', String(jornada));
+    url.searchParams.set('anios_antig', String(anios || 0));
+
+    // sin extras: solo base + antig + presentismo
+    url.searchParams.set('osecac', parseOsecacBool() ? 'true' : 'false');
+    url.searchParams.set('afiliado', 'false');
+    url.searchParams.set('sind_pct', '0');
+    url.searchParams.set('sind_fijo', '0');
+    url.searchParams.set('titulo_pct', '0');
+    url.searchParams.set('zona_pct', '0');
+    url.searchParams.set('fer_no_trab', '0');
+    url.searchParams.set('fer_trab', '0');
+    url.searchParams.set('aus_inj', '0');
+    url.searchParams.set('jubilado', 'false');
+    url.searchParams.set('susp_dias', '0');
+    url.searchParams.set('embargo', '0');
+    url.searchParams.set('hex50', '0');
+    url.searchParams.set('hex100', '0');
+    url.searchParams.set('hs_noct', '0');
+    url.searchParams.set('a_cuenta_rem', '0');
+    url.searchParams.set('viaticos_nr', '0');
+    url.searchParams.set('adelanto_sueldo', '0');
+    url.searchParams.set('manejo_caja', 'false');
+    url.searchParams.set('cajero_tipo', '');
+    url.searchParams.set('faltante_caja', '0');
+    url.searchParams.set('armado_vidriera', 'false');
+    url.searchParams.set('km_tipo', '');
+    url.searchParams.set('km_menos100', '0');
+    url.searchParams.set('km_mas100', '0');
+
+    // Agua Potable: conexiones (impacta en básicos y NR)
+    try{
+      const r = normRama(rama);
+      if(r.startsWith('AGUA')){
+        const conex = (document.getElementById('aguaConexCat')?.value || '').trim();
+        if(conex && conex !== '--') url.searchParams.set('conex_cat', conex);
+      }
+    }catch(_){/* ignore */}
+
+    const data = await fetchJSON(url.toString());
+    if(!data || data.ok === false) return null;
+
+    const bas = num(data.basico || 0);
+    const nrBase = (num(data.no_rem || 0) || 0) + (num(data.suma_fija || 0) || 0);
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    const find = (name, field) => {
+      const key = (name || '').toString().toLowerCase();
+      for(const it of items){
+        const c = ((it.concepto || '') + '').toLowerCase();
+        if(c === key) return num(it[field] || 0) || 0;
+      }
+      return 0;
+    };
+
+    const antigRem = find('Antigüedad', 'r');
+    const presRem  = find('Presentismo', 'r');
+    const antigNr  = find('Antigüedad (NR)', 'n');
+    const presNr   = find('Presentismo (NR)', 'n');
+
+    const mejorRem = bas + antigRem + presRem;
+    const mejorNr  = nrBase + antigNr + presNr;
+    const total    = mejorRem + mejorNr;
+
+    return { total, mejorRem, mejorNr, mes: mes_baja, jornada };
+  }
+
+  // Fallback (si falla la API): aproximación con bases cargadas
+  function _lfCalcMejorFallback(){
+    const rama = $('rama')?.value || '';
+    const anios = num($('lf_anios')?.value || 0) || 0;
 
     const baseRem = num($('basico')?.value || 0) || 0;
     const baseNr = (num($('nrVar')?.value || 0) || 0) + (num($('nrSF')?.value || 0) || 0);
@@ -1467,8 +1566,30 @@ function wire(){
     if(!inp) return;
     if(inp.dataset.manual && !force) return;
 
-    const s = _calcMejorSalarioSugerido();
-    if(!Number.isFinite(s.total) || s.total <= 0){
+    const rama = $('rama')?.value || '';
+    const agrup = $('agrup')?.value || '';
+    const categoria = $('categoria')?.value || '';
+    const jornada = getEffectiveJornada();
+    const fe = $('lf_egreso')?.value || '';
+    const mes_baja = fe ? fe.slice(0,7) : '';
+    const key = [rama, agrup, categoria, mes_baja, jornada, $('lf_ingreso')?.value || '', fe, document.getElementById('aguaConexCat')?.value || '' ].join('|');
+
+    if(window.__lf_mejor_key === key && !force) return;
+    window.__lf_mejor_key = key;
+
+    let s = null;
+    try{
+      s = await _lfFetchMejorFromAPI();
+    }catch(err){
+      console.warn('lf_autofill_mejor api error', err);
+      s = null;
+    }
+
+    if(!s || !Number.isFinite(s.total) || s.total <= 0){
+      try{ s = _lfCalcMejorFallback(); }catch(_){ s = null; }
+    }
+
+    if(!s || !Number.isFinite(s.total) || s.total <= 0){
       inp.value = '0.00';
       window.__lf_mejor = null;
       window.__lf_mejor_ratio = null;
@@ -1478,7 +1599,8 @@ function wire(){
     inp.value = s.total.toFixed(2);
     window.__lf_mejor = { rem: s.mejorRem, nr: s.mejorNr, total: s.total };
     window.__lf_mejor_ratio = { rem: (s.mejorRem / s.total), nr: (s.mejorNr / s.total) };
-    setText('diagFinal', 'MEJOR SALARIO sugerido (editable).');
+    const mesTxt = s.mes || mes_baja || '—';
+    setText('diagFinal', `MEJOR SALARIO sugerido (Mes baja ${mesTxt} · Jornada ${jornada}hs) — editable.`);
   };
 
   function _mapTipoFinal(ui){
@@ -1517,6 +1639,7 @@ function wire(){
       if(!fe && $('lf_use_lastday')?.checked){
         fe = _lastDayOfYYYYMM($('mes')?.value || '');
         if($('lf_egreso')) $('lf_egreso').value = fe;
+        try{ _lfUpdateDerived(); }catch(_){ }
       }
 
       if(!fi || !fe){
@@ -1535,16 +1658,23 @@ function wire(){
         shareRem = window.__lf_mejor_ratio.rem;
         shareNr = window.__lf_mejor_ratio.nr;
       }else{
-        const s = _calcMejorSalarioSugerido();
-        if(s.total > 0){
-          shareRem = s.mejorRem / s.total;
-          shareNr = s.mejorNr / s.total;
-        }
+        try{
+          const s = _lfCalcMejorFallback();
+          if(s && s.total > 0){
+            shareRem = s.mejorRem / s.total;
+            shareNr = s.mejorNr / s.total;
+          }
+        }catch(_){/* ignore */}
       }
       const mejor_rem = mejor_total * shareRem;
       const mejor_nr = mejor_total * shareNr;
-
-      const dias_mes = parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
+      const dias_mes = (()=>{
+        try{
+          const d = new Date(fe);
+          if(!Number.isNaN(d.getTime())) return d.getDate();
+        }catch(_){ }
+        return parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
+      })();
       const vac_anuales = parseInt(($('lf_vac_anuales')?.value || '14'), 10) || 14;
       const preaviso_dias = parseInt(($('lf_preaviso')?.value || '0'), 10) || 0;
       const integracion = !!$('lf_integracion')?.checked;
