@@ -179,6 +179,8 @@ def calcular_final(
     sac_preaviso: bool = False,
     sac_integracion: bool = True,
     # Mismos flags/descuentos que mensual
+    hs: float = 48,
+    # Mismos flags/descuentos que mensual
     osecac: bool = True,
     afiliado: bool = False,
     sind_pct: float = 0,
@@ -203,6 +205,7 @@ def calcular_final(
         integracion=integracion,
         sac_sobre_preaviso=sac_preaviso,
         sac_sobre_integracion=sac_integracion,
+        hs=hs,
         osecac=osecac,
         afiliado=afiliado,
         sind_pct=sind_pct,

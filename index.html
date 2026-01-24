@@ -434,6 +434,22 @@ Recibo Mensual</div>
   // Compat: algunos bloques viejos usan parseMoneyInput
   const parseMoneyInput = (s) => parseMoneyText(s);
 
+  // Parseo de fecha YYYY-MM-DD como fecha local (evita corrimiento por timezone al usar new Date('YYYY-MM-DD'))
+  function parseYMDLocal(s){
+    try{
+      const raw = (s ?? "").toString().trim();
+      const m = raw.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+      if(!m) return new Date(raw);
+      const y = parseInt(m[1], 10);
+      const mo = parseInt(m[2], 10) - 1;
+      const d = parseInt(m[3], 10);
+      return new Date(y, mo, d);
+    }catch(_){
+      return new Date(s);
+    }
+  }
+
+
   async function fetchJSON(url){
     const res = await fetch(url, { credentials:"omit" });
     const txt = await res.text();
@@ -1244,6 +1260,11 @@ const p = await fetchJSON(url.toString());
 
       const data = await fetchJSON(url.toString());
 
+      // Sincronizar días trabajados (evita desfases por parseo de fecha)
+      if(document.getElementById('lf_dias_mes') && data && (data.dias_mes !== undefined)) {
+        document.getElementById('lf_dias_mes').value = String(data.dias_mes);
+      }
+
       // Guardar el último cálculo mensual para reutilizar en Liquidación Final (MEJOR SALARIO)
       window.__lastMensualCalc = data;
       window.__lastMensualKey = [rama, agrup, categoria, mes, jornada, anios_antig, osecac, afiliado, sind_pct, sind_fijo, titulo_pct, zona_pct].join("|");
@@ -1603,8 +1624,8 @@ function wire(){
 
   function _lfYearsComplete(fi, fe){
     try{
-      const a = new Date(fi);
-      const b = new Date(fe);
+      const a = parseYMDLocal(fi);
+      const b = parseYMDLocal(fe);
       if(Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
       let y = b.getFullYear() - a.getFullYear();
       const m = b.getMonth() - a.getMonth();
@@ -1633,8 +1654,8 @@ function wire(){
       const vng = $('lf_vac_no_goz');
       if(vng && !vng.dataset.manual){
         const vacAn = parseFloat($('lf_vac_anuales')?.value || '0') || _lfDefaultVacAnuales(y);
-        const dfi = new Date(fi);
-        const dfe = new Date(fe);
+        const dfi = parseYMDLocal(fi);
+        const dfe = parseYMDLocal(fe);
         if(!Number.isNaN(dfi.getTime()) && !Number.isNaN(dfe.getTime())){
           const startYear = new Date(dfe.getFullYear(), 0, 1);
           const start = (dfi > startYear) ? dfi : startYear;
@@ -1652,7 +1673,7 @@ function wire(){
     try{
       const el = $('lf_dias_mes');
       if(el){
-        const d = new Date(fe);
+        const d = parseYMDLocal(fe);
         if(!Number.isNaN(d.getTime())){
           el.value = String(d.getDate());
         }else{
@@ -1889,6 +1910,8 @@ function wire(){
 
       const tipo = _mapTipoFinal($('lf_tipo')?.value || 'RENUNCIA');
 
+      const hs = (()=>{ try{ return parseInt(($('lf_hs')?.value||'48'),10) || 48; }catch(_){ return 48; } })();
+
       const mejor_total = parseMoneyInput($('lf_mrmnh')?.value || '0');
 
       // desglosar MEJOR SALARIO (REM/NR) usando ratio sugerido
@@ -1910,7 +1933,7 @@ function wire(){
       const mejor_nr = mejor_total * shareNr;
       const dias_mes = (()=>{
         try{
-          const d = new Date(fe);
+          const d = parseYMDLocal(fe);
           if(!Number.isNaN(d.getTime())) return d.getDate();
         }catch(_){ }
         return parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
@@ -1937,6 +1960,7 @@ function wire(){
         mejor_rem: String(mejor_rem),
         mejor_nr: String(mejor_nr),
         mejor_total: String(mejor_total),
+        hs: String(hs || 48),
         dias_mes: String(dias_mes),
         vac_anuales: String(vac_anuales),
         vac_no_gozadas_dias: String(vac_no_gozadas_dias),

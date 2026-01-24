@@ -1544,6 +1544,7 @@ def calcular_final_payload(
     integracion: bool = True,
     sac_sobre_preaviso: bool = False,
     sac_sobre_integracion: bool = True,
+    hs: float = 48.0,
     osecac: bool = True,
     afiliado: bool = False,
     sind_pct: float = 0.0,
@@ -1829,10 +1830,31 @@ def calcular_final_payload(
                 sind_fijo_monto = round2(float(sind_fijo))
     else:
         jub = round2(rem_aportes * 0.11)
-        pami = round2(rem_aportes * 0.03)
-
-        # Obra social: base = rem_aportes. (simplificado)
+        pami = round2(rem_aportes * 0.03)        # Obra social (regla por jornada):
+        # - Call Center: proporcional a la jornada
+        # - Resto: NO se prorratea (se calcula como si fuera 48hs)
         os_base = rem_aportes
+        try:
+            rnorm = norm_rama(rama)
+        except Exception:
+            rnorm = str(rama or "").strip().upper()
+        is_call = rnorm in ("CALL CENTER", "CALLCENTER", "CALL", "CENTRO DE LLAMADAS", "CENTRO DE LLAMADA")
+
+        try:
+            hs_val = float(hs or 48.0)
+        except Exception:
+            hs_val = 48.0
+        if hs_val <= 0:
+            hs_val = 48.0
+
+        if not is_call:
+            factor = hs_val / 48.0
+            if factor <= 0:
+                factor = 1.0
+            if factor > 1.0:
+                factor = 1.0
+            os_base = round2(os_base / factor)
+
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
         osecac_100 = 100.0 if bool(osecac) else 0.0
 
@@ -1877,7 +1899,7 @@ def calcular_final_payload(
             items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
         if pami:
             items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
-        items.append(item("Obra Social 3%", d=os_aporte, base_num=rem_aportes))
+        items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
         if osecac_100:
             items.append(item("OSECAC $100", d=osecac_100))
         if sind:
