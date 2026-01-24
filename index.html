@@ -126,7 +126,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="card" id="paneMensual">
 <div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
-<div id="hostExtrasMensual"><div id="coExtrasMes">
+<div id="mensualExtrasHost"><div id="mensualExtrasRoot">
 <div class="note" id="aguaBlock" style="display:none">
   <strong>Agua Potable:</strong> Conexiones
   <span style="margin-left:6px">Cantidad:</span>
@@ -158,15 +158,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
 <div><label>Feriados trabajados (días)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
 <div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
-<div style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
+<div id="autoAntigWrap" style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
 </div>
-</div></div>
-<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-<button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="coSacProp" type="checkbox"/> SAC proporcional (mes)</label>
-<span id="diagMensual" style="color:#64748b"></span>
-</div>
-<div class="badge" style="margin-top:8px">
+<div class="note" id="licenciasBox" style="margin-top:8px">
+
 <div class="grid cols-4" style="margin-top:8px">
 <div>
 <label>Jubilado</label>
@@ -183,10 +178,17 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div><label>Ausencias injustificadas (días)</label><input id="coAus" min="0" step="1" type="number" value="0"/></div>
 <div><label>Embargo (monto)</label><input id="coEmbargo" min="0" step="0.01" type="number" value="0"/></div>
-
 </div>
+</div></div>
+<!--MENSUAL_EXTRAS_END-->
+<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="calcularMensual()" type="button">Calcular mensual</button>
+<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label>
+<span id="diagMensual" style="color:#64748b"></span>
+</div>
+<div class="badge" style="margin-top:8px">Recibo Mensual</div>
 
-Recibo Mensual</div>
+
 <div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
 <div class="table-wrapper">
 <table class="table">
@@ -257,12 +259,6 @@ Recibo Mensual</div>
   </select>
   <div id="lf_aguaConexInfo" style="margin-top:6px; color:#64748b"></div>
 </div>
-<details class="note" id="lf_extras_details" style="margin-top:8px">
-  <summary style="cursor:pointer; font-weight:800">Extras del mes de baja</summary>
-  <div style="margin-top:10px">
-    <div id="hostExtrasFinal"></div>
-  </div>
-</details>
 <div class="grid cols-4" style="margin-top:8px">
 <div><div class="campo tipo-lf">
 <label for="lf_tipo">Tipo de liquidación</label>
@@ -284,6 +280,11 @@ Recibo Mensual</div>
 <div><label>Vacaciones no gozadas (días)</label><input id="lf_vac_no_goz" min="0" step="0.01" type="number" value="0"/></div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
 </div>
+<details class="note" id="lf_extras_details" style="margin-top:8px">
+  <summary style="cursor:pointer; font-weight:800">Extras del mes de baja</summary>
+  <div id="lfExtrasHost" style="margin-top:8px"></div>
+</details>
+
 <div class="note small">MEJOR SALARIO se sugiere automáticamente con Básico + NR + Antigüedad + Presentismo (editable).</div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
   <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
@@ -773,24 +774,6 @@ function toggleManejoCajaUI(){
   }
 
 
-
-  // =====================
-  // Etapa X: Reutilizar Extras Mensual en Liquidación Final (mover DOM, sin duplicar IDs)
-  // =====================
-  function coIsExtrasInFinal(){
-    const ex = document.getElementById('coExtrasMes');
-    const hostF = document.getElementById('hostExtrasFinal');
-    return !!(ex && hostF && hostF.contains(ex));
-  }
-
-  function coMoveExtrasTo(tab){
-    const ex = document.getElementById('coExtrasMes');
-    const hostM = document.getElementById('hostExtrasMensual');
-    const hostF = document.getElementById('hostExtrasFinal');
-    if(!ex || !hostM || !hostF) return;
-    (tab === 'final' ? hostF : hostM).appendChild(ex);
-  }
-
 function applyBranchUI(){
     const rama = $('rama')?.value || '';
     const showAgua = isAguaRama(rama);
@@ -816,9 +799,7 @@ function applyBranchUI(){
     const aguaBlock = $('aguaBlock');
     if(aguaBlock) aguaBlock.style.display = showAgua ? '' : 'none';
     const aguaBlockLf = $('lf_aguaBlock');
-    const exInFinal = coIsExtrasInFinal();
-    // Si los extras del mes se movieron a Final, ocultar el bloque duplicado (lf_aguaBlock)
-    if(aguaBlockLf) aguaBlockLf.style.display = (showAgua && !exInFinal) ? '' : 'none';
+    if(aguaBlockLf) aguaBlockLf.style.display = showAgua ? '' : 'none';
 
     const boxTitulo = $('boxTitulo');
     if(boxTitulo) boxTitulo.style.display = showTur ? '' : 'none';
@@ -1620,7 +1601,20 @@ function wire(){
   // =====================
   // Etapa 9: Tabs + Liquidación Final
   // =====================
-  function switchTab(tab){
+  function mountExtrasForTab(tab){
+  const root = $("mensualExtrasRoot");
+  const hostM = $("mensualExtrasHost");
+  const hostF = $("lfExtrasHost");
+  if(root && hostM && hostF){
+    (tab==="final" ? hostF : hostM).appendChild(root);
+  }
+  const autoWrap = $("autoAntigWrap");
+  if(autoWrap) autoWrap.style.display = (tab==="final") ? "none" : "";
+  const lfAgua = $("lf_aguaBlock");
+  if(lfAgua) lfAgua.style.display = "none";
+}
+
+function switchTab(tab){
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
     const pMens = document.getElementById('paneMensual');
@@ -1632,8 +1626,6 @@ function wire(){
       tMens.classList.remove('active');
       pFinal.style.display = '';
       pMens.style.display = 'none';
-      try{ coMoveExtrasTo('final'); }catch(_){ }
-      try{ applyBranchUI(); }catch(_){ }
       try{
         const hs = $('hs');
         const lfhs = $('lf_hs');
@@ -1651,8 +1643,6 @@ function wire(){
       }catch(_){ }
       pMens.style.display = '';
       pFinal.style.display = 'none';
-      try{ coMoveExtrasTo('mensual'); }catch(_){ }
-      try{ applyBranchUI(); }catch(_){ }
     }
   }
   window.switchTab = switchTab;
