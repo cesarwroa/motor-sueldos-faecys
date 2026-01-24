@@ -1610,9 +1610,7 @@ function wire(){
     (tab==="final" ? hostF : hostM).appendChild(root);
   }
   const autoWrap = $("autoAntigWrap");
-  if(autoWrap) autoWrap.style.display = (tab==="final") ? "none" : "";
-  const lfAgua = $("lf_aguaBlock");
-  if(lfAgua) lfAgua.style.display = "none";
+  if(autoWrap) autoWrap.style.display = "none";
 }
 
 function switchTab(tab){
@@ -1621,6 +1619,9 @@ function switchTab(tab){
     const pMens = document.getElementById('paneMensual');
     const pFinal = document.getElementById('paneFinal');
     if(!tMens || !tFinal || !pMens || !pFinal) return;
+
+    try{ mountExtrasForTab(tab); }catch(_){ }
+
 
     if(tab === 'final'){
       tFinal.classList.add('active');
