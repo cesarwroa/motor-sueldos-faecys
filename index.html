@@ -851,6 +851,15 @@ function applyBranchUI(){
 
     // selector de KM: cambia según rama (Turismo vs resto)
     try{ updateKmUI(); }catch{}
+
+    // En Liquidación Final: abrir automáticamente el panel de extras cuando la rama
+    // tiene opciones propias visibles dentro de ese panel (Turismo / Fúnebres / Agua).
+    try{
+      if(window.__activeTab === 'final'){
+        const det = $('lf_extras_details');
+        if(det) det.open = !!(showTur || showFun || showAgua);
+      }
+    }catch{}
   }
 
   function updateKmUI(){
@@ -1008,6 +1017,11 @@ function applyBranchUI(){
     // admite "2", "2.5", "2,5"
     const n = Number(v.replace(",", "."));
     return (Number.isFinite(n) ? n : 0);
+  }
+
+  function parseSindFijo(){
+    // Monto fijo opcional de afiliación sindical (cuando corresponde)
+    return num($("afiliado_fijo")?.value || 0) || 0;
   }
 
   async function refreshPayload(){
@@ -1614,6 +1628,7 @@ function wire(){
 }
 
 function switchTab(tab){
+    window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
     const pMens = document.getElementById('paneMensual');
@@ -1621,6 +1636,7 @@ function switchTab(tab){
     if(!tMens || !tFinal || !pMens || !pFinal) return;
 
     try{ mountExtrasForTab(tab); }catch(_){ }
+    try{ applyBranchUI(); }catch(_){ }
 
 
     if(tab === 'final'){
@@ -1986,6 +2002,39 @@ function switchTab(tab){
       const sind_fijo = afiliado ? parseSindFijo() : 0;
       const embargo = Math.max(0, parseMoneyText($('coEmbargo')?.value || ''));
 
+      // === Extras del mes de baja (mismos controles que Mensual) ===
+      const zona_pct = num($('zona')?.value || 0) || 0;
+      const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
+
+      const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
+      const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+      const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
+      const susp_dias   = Math.max(0, parseInt($("coLicSG")?.value || "0", 10) || 0);
+
+      const hex50   = num($("hex50")?.value || 0) || 0;
+      const hex100  = num($("hex100")?.value || 0) || 0;
+      const hs_noct = num($("hsNoct")?.value || 0) || 0;
+
+      const km_tipo = String($("kmTipo")?.value || "").trim();
+      const km_menos100 = Math.max(0, parseInt($("kmMenos100")?.value || "0", 10) || 0);
+      const km_mas100   = Math.max(0, parseInt($("kmMas100")?.value || "0", 10) || 0);
+
+      const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
+      const viaticos_nr  = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
+
+      const manejo_caja = !!($("manejoCaja")?.checked);
+      const cajero_tipo = ($("cajero_tipo")?.value || "").toString();
+      const faltante_caja = Math.max(0, parseMoneyText($("faltanteCajaInput")?.value || ""));
+
+      const armado_vidriera = !!($("armadoAuto")?.checked);
+      const adelanto_sueldo = Math.max(0, num($("adelantoSueldo")?.value || 0) || 0);
+
+      const fun_adics = (isFunebresRama(rama))
+        ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
+            .map(el => (el && el.value != null) ? String(el.value) : "")
+            .filter(v => v)
+        : [];
+
       const qs = new URLSearchParams({
         rama, agrup, categoria,
         jornada: String(jornada || 48),
@@ -2006,9 +2055,42 @@ function switchTab(tab){
         afiliado: afiliado ? 'true' : 'false',
         sind_pct: String(sind_pct || 0),
         sind_fijo: String(sind_fijo || 0),
+        titulo_pct: String(titulo_pct || 0),
+        zona_pct: String(zona_pct || 0),
+        fer_no_trab: String(fer_no_trab),
+        fer_trab: String(fer_trab),
+        aus_inj: String(aus_inj),
+        susp_dias: String(susp_dias),
+        hex50: String(hex50),
+        hex100: String(hex100),
+        hs_noct: String(hs_noct),
+        a_cuenta_rem: String(a_cuenta_rem),
+        viaticos_nr: String(viaticos_nr),
+        manejo_caja: manejo_caja ? 'true' : 'false',
+        cajero_tipo: cajero_tipo,
+        faltante_caja: String(faltante_caja),
+        armado_vidriera: armado_vidriera ? 'true' : 'false',
+        adelanto_sueldo: String(adelanto_sueldo),
+        km_tipo: km_tipo,
+        km_menos100: String(km_menos100),
+        km_mas100: String(km_mas100),
         jubilado: jubilado ? 'true' : 'false',
         embargo: String(embargo || 0),
       });
+
+      // Fúnebres: múltiples adicionales
+      try{
+        for(const id of fun_adics){
+          if(id) qs.append('fun_adic', id);
+        }
+      }catch(_){ }
+
+      // Fúnebres: múltiples ids
+      try{
+        for(const id of fun_adics){
+          if(id) qs.append('fun_adic', id);
+        }
+      }catch(_){ }
 
       setText('diagFinal', 'Calculando...');
       const url = new URL('/calcular-final', API_BASE);

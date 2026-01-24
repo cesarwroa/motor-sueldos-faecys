@@ -1549,6 +1549,27 @@ def calcular_final_payload(
     afiliado: bool = False,
     sind_pct: float = 0.0,
     sind_fijo: float = 0.0,
+    # Extras del mes de baja (mismos parámetros que mensual)
+    titulo_pct: float = 0.0,
+    zona_pct: float = 0.0,
+    fer_no_trab: int = 0,
+    fer_trab: int = 0,
+    aus_inj: int = 0,
+    susp_dias: int = 0,
+    hex50: float = 0.0,
+    hex100: float = 0.0,
+    hs_noct: float = 0.0,
+    km_tipo: str = "",
+    km_menos100: int = 0,
+    km_mas100: int = 0,
+    a_cuenta_rem: float = 0.0,
+    viaticos_nr: float = 0.0,
+    manejo_caja: bool = False,
+    cajero_tipo: str = "",
+    faltante_caja: float = 0.0,
+    armado_vidriera: bool = False,
+    adelanto_sueldo: float = 0.0,
+    fun_adic: str = "",
     jubilado: bool = False,
     embargo: float = 0.0,
 ) -> Dict[str, Any]:
@@ -1799,6 +1820,80 @@ def calcular_final_payload(
 
     if ind_antig:
         items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_total))
+
+    # -----------------
+    # Extras del mes de baja (mismos conceptos que en mensual, pero dentro de Liquidación Final)
+    # Nota: se calculan reutilizando el motor mensual del mes de egreso, y se agregan SOLO los
+    # conceptos distintos de Básico/Antigüedad/Presentismo y deducciones.
+    # -----------------
+    try:
+        mes_baja = f"{fe.year:04d}-{fe.month:02d}"
+
+        # Fúnebres: lista de adicionales seleccionados (separados por ';')
+        fun_list: List[str] = []
+        if fun_adic:
+            fun_list = [x.strip() for x in str(fun_adic).replace(",", ";").split(";") if x.strip()]
+
+        mensual = calcular_payload(
+            rama=rama,
+            agrup=agrup,
+            categoria=categoria,
+            mes=mes_baja,
+            jornada=jornada,
+            anios_antig=anios_antig,
+            osecac=osecac,
+            afiliado=afiliado,
+            sind_pct=float(sind_pct or 0),
+            titulo_pct=float(titulo_pct or 0),
+            zona_pct=float(zona_pct or 0),
+            fer_no_trab=int(fer_no_trab or 0),
+            fer_trab=int(fer_trab or 0),
+            aus_inj=int(aus_inj or 0),
+            susp_dias=int(susp_dias or 0),
+            hex50=float(hex50 or 0),
+            hex100=float(hex100 or 0),
+            hs_noct=float(hs_noct or 0),
+            km_tipo=str(km_tipo or ""),
+            km_menos100=int(km_menos100 or 0),
+            km_mas100=int(km_mas100 or 0),
+            a_cuenta_rem=float(a_cuenta_rem or 0),
+            viaticos_nr=float(viaticos_nr or 0),
+            manejo_caja=bool(manejo_caja),
+            cajero_tipo=str(cajero_tipo or ""),
+            faltante_caja=float(faltante_caja or 0),
+            armado_vidriera=bool(armado_vidriera),
+            adelanto_sueldo=float(adelanto_sueldo or 0),
+            jubilado=bool(jubilado),
+            embargo=0.0,
+            fun_adic=(";".join(fun_list) if fun_list else ""),
+        )
+
+        def _skip_concepto(con: str) -> bool:
+            c = (con or "").strip().lower()
+            if not c:
+                return True
+            # excluir bases y deducciones (ya se calculan en final)
+            claves = [
+                "básico", "basico", "antigüedad", "antiguedad", "presentismo",
+                "incr.", "recomp.",
+                "jubil", "pami", "obra social", "osecac", "faecys", "sindicato",
+                "embargo", "total", "neto",
+            ]
+            return any((c == k) or c.startswith(k) or (k in c and k not in ("incr.", "recomp.")) for k in claves)
+
+        for it in (mensual or {}).get("items", []) or []:
+            con = str(it.get("concepto", ""))
+            if _skip_concepto(con):
+                continue
+            r = float(it.get("r", 0.0) or 0.0)
+            n = float(it.get("n", 0.0) or 0.0)
+            d = float(it.get("d", 0.0) or 0.0)
+            if abs(r) + abs(n) + abs(d) <= 0:
+                continue
+            items.append(item(con, r=r, n=n, d=d))
+    except Exception:
+        # Si algo falla, no frenamos la liquidación final.
+        pass
 
     # Totales antes de descuentos
     rem_total = round2(sum(x.get('r', 0.0) for x in items))
