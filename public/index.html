@@ -158,7 +158,6 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
 <div><label>Feriados trabajados (días)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
 <div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
-<div id="autoAntigWrap" style="align-self:end"><button onclick="autocalcularAntiguedad()" type="button">Auto antigüedad</button></div>
 </div>
 <div class="note" id="licenciasBox" style="margin-top:8px">
 
@@ -296,11 +295,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyFinal"></tbody>
 <tfoot>
-<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNR">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
-<tr><td class="right" colspan="4"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
+<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
+<tr><td class="right" colspan="3"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
 </tfoot>
 </table>
 </div>
@@ -1100,10 +1099,10 @@ const p = await fetchJSON(url.toString());
     if(!tb) return;
     const tr = document.createElement("tr");
     const tdC = document.createElement("td"); tdC.textContent = concepto;
-    const tdB = document.createElement("td"); tdB.textContent = base != null ? money(base) : "";
-    const tdR = document.createElement("td"); tdR.textContent = money(r||0);
-    const tdN = document.createElement("td"); tdN.textContent = money(n||0);
-    const tdD = document.createElement("td"); tdD.textContent = money(d||0);
+    const tdB = document.createElement("td"); tdB.className='right col-base-num'; tdB.textContent = base != null ? money(base) : "";
+    const tdR = document.createElement("td"); tdR.className='right'; tdR.textContent = money(r||0);
+    const tdN = document.createElement("td"); tdN.className='right'; tdN.textContent = money(n||0);
+    const tdD = document.createElement("td"); tdD.className='right'; tdD.textContent = money(d||0);
     tr.append(tdC, tdB, tdR, tdN, tdD);
     tb.appendChild(tr);
   }
@@ -2052,8 +2051,8 @@ function switchTab(tab){
         tdC.innerHTML = escapeHtml(c) + baseHtml;
         tr.appendChild(tdC);
         const tdR = document.createElement('td'); tdR.className='num'; tdR.textContent = money(r||0); tr.appendChild(tdR);
-        const tdN = document.createElement('td'); tdN.className='num'; tdN.textContent = money(n||0); tr.appendChild(tdN);
-        const tdI = document.createElement('td'); tdI.className='num'; tdI.textContent = money(i||0); tr.appendChild(tdI);
+        const ind = (i||0) + (n||0);
+        const tdI = document.createElement('td'); tdI.className='num'; tdI.textContent = money(ind||0); tr.appendChild(tdI);
         const tdD = document.createElement('td'); tdD.className='num'; tdD.textContent = money(d||0); tr.appendChild(tdD);
         tbody.appendChild(tr);
       };
@@ -2062,11 +2061,11 @@ function switchTab(tab){
 
       const t = data.totales || {};
       setText('lf_totRem', money(t.rem || 0));
-      setText('lf_totNR', money(t.nr || 0));
-      setText('lf_totInd', money(t.ind || 0));
+      setText('lf_totInd', money((t.ind || 0) + (t.nr || 0)));
       setText('lf_totDed', money(t.ded || 0));
       setText('lf_neto', money(t.neto || 0));
-
+      setText('lf_totNR', '');
+      //
       // Completar auxiliares
       if($('lf_anios') && data.anios_antig!=null) $('lf_anios').value = String(data.anios_antig);
       if($('lf_vac_anuales') && data.vac_anuales!=null) $('lf_vac_anuales').value = String(data.vac_anuales);
