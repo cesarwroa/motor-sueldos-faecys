@@ -1254,8 +1254,7 @@ const p = await fetchJSON(url.toString());
       if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
       url.searchParams.set("km_menos100", String(km_menos100));
       url.searchParams.set("km_mas100", String(km_mas100));
-      if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
-    if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
+      // (Conexiones Agua Potable ya se envían más arriba en el bloque isAgua)
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());
