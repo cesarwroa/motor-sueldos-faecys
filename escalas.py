@@ -1808,11 +1808,15 @@ def calcular_final_payload(
         label_base: str,
         ctx: str,
         base_num_first: float,
+        incluir_presentismo: bool = True,
     ) -> None:
-        """Agrega 3 filas: Básico / Antigüedad / Presentismo.
+        """Agrega filas de desglose.
 
-        Se prorratea por días (sobre 30) y se ajusta el residuo por redondeo en Presentismo
-        para que la suma coincida EXACTO con los totales objetivo (Rem/NR).
+        - Si incluir_presentismo=True: 3 filas (Básico / Antigüedad / Presentismo).
+        - Si incluir_presentismo=False: 2 filas (Básico / Antigüedad) y NO se muestra Presentismo.
+
+        Se prorratea por días (sobre 30) y se ajusta el residuo por redondeo para que
+        la suma coincida EXACTO con los totales objetivo (Rem/NR).
         """
         if dias <= 0:
             return
@@ -1820,30 +1824,52 @@ def calcular_final_payload(
 
         b_r = round2(bas_full_r * frac)
         a_r = round2(ant_full_r * frac)
-        p_r = round2(pres_full_r * frac)
         b_n = round2(bas_full_n * frac)
         a_n = round2(ant_full_n * frac)
-        p_n = round2(pres_full_n * frac)
 
-        # Ajustes por redondeo
-        dr = round2(round2(total_r_obj) - round2(b_r + a_r + p_r))
-        if dr:
-            p_r = round2(p_r + dr)
-        dn = round2(round2(total_n_obj) - round2(b_n + a_n + p_n))
-        if dn:
-            p_n = round2(p_n + dn)
+        if incluir_presentismo:
+            p_r = round2(pres_full_r * frac)
+            p_n = round2(pres_full_n * frac)
 
-        # Evitar presentismo negativo por ajustes de redondeo
-        if p_r < 0:
-            b_r = round2(b_r + p_r)
-            p_r = 0.0
-        if p_n < 0:
-            b_n = round2(b_n + p_n)
-            p_n = 0.0
+            # Ajustes por redondeo (residuo va a Presentismo)
+            dr = round2(round2(total_r_obj) - round2(b_r + a_r + p_r))
+            if dr:
+                p_r = round2(p_r + dr)
+            dn = round2(round2(total_n_obj) - round2(b_n + a_n + p_n))
+            if dn:
+                p_n = round2(p_n + dn)
+
+            # Evitar presentismo negativo por ajustes de redondeo
+            if p_r < 0:
+                b_r = round2(b_r + p_r)
+                p_r = 0.0
+            if p_n < 0:
+                b_n = round2(b_n + p_n)
+                p_n = 0.0
+
+            items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
+            items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
+            items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n))
+            return
+
+        # Sin presentismo: ajuste por redondeo contra (Básico + Antigüedad)
+        dr2 = round2(round2(total_r_obj) - round2(b_r + a_r))
+        if dr2:
+            a_r = round2(a_r + dr2)
+        dn2 = round2(round2(total_n_obj) - round2(b_n + a_n))
+        if dn2:
+            a_n = round2(a_n + dn2)
+
+        # Evitar negativos por ajustes
+        if a_r < 0:
+            b_r = round2(max(0.0, b_r + a_r))
+            a_r = 0.0
+        if a_n < 0:
+            b_n = round2(max(0.0, b_n + a_n))
+            a_n = 0.0
 
         items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
         items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
-        items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n))
 
     suf_dm = f"{dm} día{'s' if dm != 1 else ''}"
     _prorratear_componentes(
@@ -1853,6 +1879,7 @@ def calcular_final_payload(
         f"Días trabajados del mes ({suf_dm}) — Básico",
         f"Días trabajados del mes ({suf_dm})",
         base_total,
+        incluir_presentismo=presentismo_habil_baja,
     )
 
     if vac_pago_total:
@@ -1872,6 +1899,7 @@ def calcular_final_payload(
             f"Integración mes despido ({suf_int}) — Básico",
             f"Integración mes despido ({suf_int})",
             base_total,
+            incluir_presentismo=presentismo_habil_baja,
         )
         if sac_integ_total:
             items.append(item("SAC s/ integración", r=sac_integ_r, n=sac_integ_n, base_num=integ_total))
