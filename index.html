@@ -724,19 +724,28 @@ function toggleManejoCajaUI(){
 
   function getEffectiveJornada(){
     const rama = $("rama")?.value || "";
-    if(isCallRama(rama)){
-      const h = parseHorasCategoria($("categoria")?.value || "");
-      // Call Center: jornada deriva de la categoría
-      if(h){
-        if($("hs")) $("hs").value = String(h);
-        if($("lf_hs")) $("lf_hs").value = String(h);
-      }
-      return (h || 48);
-    }
     const isFinal = !!document.getElementById('tabFinal')?.classList.contains('active');
     const src = isFinal ? $("lf_hs") : $("hs");
-    const fallback = num($("hs")?.value || 48) || 48;
-    return num(src?.value || fallback) || fallback;
+
+    let j = 48;
+
+    // Call Center: jornada deriva de la categoria (siempre 1..48)
+    if(isCallRama(rama)){
+      const h = parseHorasCategoria($("categoria")?.value || "");
+      if(h) j = h;
+    }else{
+      const fallback = num($("hs")?.value || 48) || 48;
+      j = num(src?.value || fallback) || fallback;
+    }
+
+    // Clamp: minimo 1 / maximo 48
+    j = Math.max(1, Math.min(48, j));
+
+    // Reflejar en ambos inputs (aunque esten ocultos)
+    if($("hs")) $("hs").value = String(j);
+    if($("lf_hs")) $("lf_hs").value = String(j);
+
+    return j;
   }
 
   function updateCallCenterUI(){
@@ -1255,8 +1264,6 @@ const p = await fetchJSON(url.toString());
       if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
       url.searchParams.set("km_menos100", String(km_menos100));
       url.searchParams.set("km_mas100", String(km_mas100));
-      if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
-    if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());

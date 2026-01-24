@@ -1841,7 +1841,6 @@ def calcular_final_payload(
             j_in = 48.0
         if j_in <= 0:
             j_in = 48.0
-        rnorm = normRama(rama)
         # Obra Social: base jornada completa (48hs) para TODAS las ramas (sin prorrateo por jornada).
         factor_os = 1.0 if j_in >= 48.0 else (48.0 / j_in)
         rem_aportes_os = round2(rem_aportes * factor_os)
