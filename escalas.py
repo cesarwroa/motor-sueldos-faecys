@@ -433,6 +433,7 @@ def calcular_payload(
     zona_pct: float = 0,
     fer_no_trab: int = 0,
     fer_trab: int = 0,
+    vac_goz: int = 0,
     aus_inj: int = 0,
     # Etapa 8: Jubilado / Suspensión-Licencia sin goce / Embargo
     jubilado: bool = False,
@@ -845,6 +846,17 @@ def calcular_payload(
     rem_total = round2(rem_total + fer_no_rem + fer_si_rem)
     nr_total = round2(nr_total + fer_no_nr + fer_si_nr)
 
+    # -------- Vacaciones gozadas --------
+    # Para mensualizados: plus por divisor 1/25 vs día normal (1/30).
+    vac_goz_dias = max(0, int(vac_goz or 0))
+    vac_goz_rem = 0.0
+    vac_goz_nr = 0.0
+    if vac_goz_dias:
+        vac_goz_rem = round2(vac_goz_dias * (vdia25_rem - vdia30_rem))
+        vac_goz_nr = round2(vac_goz_dias * (vdia25_nr - vdia30_nr))
+        rem_total = round2(rem_total + vac_goz_rem)
+        nr_total = round2(nr_total + vac_goz_nr)
+
     # -------- SAC (Jun/Dic) o SAC proporcional (mes) --------
     sac_concepto = ""
     sac_row_rem = 0.0
@@ -981,6 +993,13 @@ def calcular_payload(
 
     rem_total_os = round2(rem_total_os + fer_no_rem_os + fer_si_rem_os)
     nr_total_os = round2(nr_total_os + fer_no_nr_os + fer_si_nr_os)
+
+    # Vacaciones gozadas: plus divisor... (mismo criterio, pero sobre base OS)
+    if vac_goz_dias:
+        vac_goz_rem_os = round2(vac_goz_dias * (vdia25_rem_os - vdia30_rem_os))
+        vac_goz_nr_os = round2(vac_goz_dias * (vdia25_nr_os - vdia30_nr_os))
+        rem_total_os = round2(rem_total_os + vac_goz_rem_os)
+        nr_total_os = round2(nr_total_os + vac_goz_nr_os)
 
     # SAC (48hs para base de Obra Social)
     if mes_num in (6, 12):
@@ -1209,6 +1228,14 @@ def calcular_payload(
             base_num=base_fer_rem,
         ))
 
+    # Vacaciones gozadas: plus por divisor 1/25 vs 1/30
+    if vac_goz_dias and vac_goz_rem:
+        items.append(item(
+            f"Vacaciones gozadas (plus 1/25) ({vac_goz_dias} día{'s' if vac_goz_dias != 1 else ''})",
+            r=vac_goz_rem,
+            base_num=base_fer_rem,
+        ))
+
     labels = _nr_labels(base["rama"])
 
     if nr:
@@ -1245,6 +1272,13 @@ def calcular_payload(
         items.append(item(
             f"Feriado trabajado (NR) ({fer_si} día{'s' if fer_si != 1 else ''})",
             n=fer_si_nr,
+            base_num=base_fer_nr,
+        ))
+
+    if vac_goz_dias and vac_goz_nr:
+        items.append(item(
+            f"Vacaciones gozadas (NR) (plus 1/25) ({vac_goz_dias} día{'s' if vac_goz_dias != 1 else ''})",
+            n=vac_goz_nr,
             base_num=base_fer_nr,
         ))
 
@@ -1554,6 +1588,7 @@ def calcular_final_payload(
     zona_pct: float = 0.0,
     fer_no_trab: int = 0,
     fer_trab: int = 0,
+    vac_goz: int = 0,
     aus_inj: int = 0,
     susp_dias: int = 0,
     hex50: float = 0.0,
@@ -1690,9 +1725,26 @@ def calcular_final_payload(
             pres = round2(pres + resid)
         return bas, ant, pres
 
-    # Haberes base del mes
-    hab_mes_total = round2(base_total * (dm / 30.0))
-    hab_mes_r, hab_mes_n = split_amount(hab_mes_total)
+    # -------- Mes de baja (Liquidación del mes) --------
+    # El MEJOR SALARIO (base indemnizatoria) no pierde presentismo.
+    # En la liquidación del mes (y su integración), si hubo 2+ ausencias injustificadas,
+    # se pierde el presentismo de ese mes.
+    pct_ant_final = _antig_pct_rama(rama, anios_antig)
+    bas_full_r, ant_full_r, pres_full_r = _desglosar_base(mr, pct_ant_final)
+    bas_full_n, ant_full_n, pres_full_n = _desglosar_base(nn, pct_ant_final)
+
+    aus_dias = max(0, int(aus_inj or 0))
+    presentismo_habil_baja = aus_dias < 2
+
+    base_mes_r = mr if presentismo_habil_baja else round2(mr - pres_full_r)
+    base_mes_n = nn if presentismo_habil_baja else round2(nn - pres_full_n)
+    base_mes_r = max(0.0, base_mes_r)
+    base_mes_n = max(0.0, base_mes_n)
+
+    frac_mes = (dm / 30.0) if dm else 0.0
+    hab_mes_r = round2(base_mes_r * frac_mes)
+    hab_mes_n = round2(base_mes_n * frac_mes)
+    hab_mes_total = round2(hab_mes_r + hab_mes_n)
 
     # Vacaciones no gozadas (indemnizatorio): pago 1/25 sobre base total (incluye NR)
     vac_pago_total = round2((base_total / 25.0) * vac_no_goz) if vac_no_goz else 0.0
@@ -1705,11 +1757,18 @@ def calcular_final_payload(
 
     # Integración mes despido (art. 233) – default ON
     dias_int = max(0, dim - dia_baja) if integracion else 0
-    integ_total = round2(base_total * (dias_int / 30.0)) if dias_int else 0.0
-    integ_r, integ_n = split_amount(integ_total)
+    # Integración del mes (mismo criterio de presentismo que el mes de baja)
+    frac_int = (dias_int / 30.0) if dias_int else 0.0
+    integ_r = round2(base_mes_r * frac_int) if dias_int else 0.0
+    integ_n = round2(base_mes_n * frac_int) if dias_int else 0.0
+    integ_total = round2(integ_r + integ_n)
 
     sac_integ_total = round2(integ_total / 12.0) if (sac_sobre_integracion and integ_total) else 0.0
-    sac_integ_r, sac_integ_n = split_amount(sac_integ_total)
+    if sac_integ_total and (integ_r + integ_n) > 0:
+        sac_integ_r = round2(sac_integ_total * (integ_r / (integ_r + integ_n)))
+        sac_integ_n = round2(sac_integ_total - sac_integ_r)
+    else:
+        sac_integ_r, sac_integ_n = 0.0, 0.0
 
     # Preaviso (art. 231/232) – indemnizatorio
     prev_dias = int(preaviso_dias or 0)
@@ -1773,6 +1832,14 @@ def calcular_final_payload(
         dn = round2(round2(total_n_obj) - round2(b_n + a_n + p_n))
         if dn:
             p_n = round2(p_n + dn)
+
+        # Evitar presentismo negativo por ajustes de redondeo
+        if p_r < 0:
+            b_r = round2(b_r + p_r)
+            p_r = 0.0
+        if p_n < 0:
+            b_n = round2(b_n + p_n)
+            p_n = 0.0
 
         items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
         items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
@@ -1848,6 +1915,7 @@ def calcular_final_payload(
             zona_pct=float(zona_pct or 0),
             fer_no_trab=int(fer_no_trab or 0),
             fer_trab=int(fer_trab or 0),
+			vac_goz=int(vac_goz or 0),
             aus_inj=int(aus_inj or 0),
             susp_dias=int(susp_dias or 0),
             hex50=float(hex50 or 0),
@@ -1950,7 +2018,12 @@ def calcular_final_payload(
             if float(sind_fijo or 0) > 0:
                 sind_fijo_monto = round2(float(sind_fijo))
 
-    ded_pre = round2(jub + pami + os_aporte + osecac_100 + sind + sind_fijo_monto)
+    # Total de deducciones (para neto): debe contemplar todos los conceptos
+    # que efectivamente se agregan a la columna de Deducciones.
+    if bool(jubilado):
+        ded_pre = round2(jub + faecys + sind_solid + sind + sind_fijo_monto)
+    else:
+        ded_pre = round2(jub + pami + os_aporte + osecac_100 + sind + sind_fijo_monto)
 
     neto_pre = round2((rem_total + nr_total + ind_total) - ded_pre)
 

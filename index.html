@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Recibo de Sueldo</title>
+  <title>Calculadora de Comercio</title>
 <style>
 :root{ --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --grid:#e2e8f0; }
 *{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
@@ -110,7 +110,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </head>
 <body>
 <div class="container">
-<h1>Sistema de Liquidación de Haberes</h1>
+<h1>Calculadora de Comercio</h1>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
 <div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
@@ -1116,6 +1116,7 @@ const p = await fetchJSON(url.toString());
 
     const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
     const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+    const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
     const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
     const jubilado = !!($("coJub")?.checked);
     const susp_dias = Math.max(0, parseInt($("coSusp")?.value || "0", 10) || 0);
@@ -1164,6 +1165,7 @@ const p = await fetchJSON(url.toString());
     url.searchParams.set("zona_pct", String(zona_pct || 0));
     url.searchParams.set("fer_no_trab", String(fer_no_trab));
     url.searchParams.set("fer_trab", String(fer_trab));
+    url.searchParams.set("vac_goz", String(vac_goz));
     url.searchParams.set("aus_inj", String(aus_inj));
     url.searchParams.set("jubilado", jubilado ? "true" : "false");
     url.searchParams.set("susp_dias", String(susp_dias));
@@ -1202,6 +1204,7 @@ const p = await fetchJSON(url.toString());
       // Feriados / Ausencias
       const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
       const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+      const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
       const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
       // Etapa 8: Jubilado / Suspensión (días) / Embargo
       const jubilado = !!($("coJub")?.checked);
@@ -1266,6 +1269,7 @@ const p = await fetchJSON(url.toString());
       url.searchParams.set("zona_pct", String(zona_pct));
       url.searchParams.set("fer_no_trab", String(fer_no_trab));
       url.searchParams.set("fer_trab", String(fer_trab));
+    url.searchParams.set("vac_goz", String(vac_goz));
       url.searchParams.set("aus_inj", String(aus_inj));
       // Etapa 8
       url.searchParams.set("jubilado", jubilado ? "true" : "false");
@@ -2008,6 +2012,7 @@ function switchTab(tab){
 
       const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
       const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+        const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
       const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
       const susp_dias   = Math.max(0, parseInt($("coLicSG")?.value || "0", 10) || 0);
 
@@ -2059,6 +2064,7 @@ function switchTab(tab){
         zona_pct: String(zona_pct || 0),
         fer_no_trab: String(fer_no_trab),
         fer_trab: String(fer_trab),
+          vac_goz: String(vac_goz),
         aus_inj: String(aus_inj),
         susp_dias: String(susp_dias),
         hex50: String(hex50),
