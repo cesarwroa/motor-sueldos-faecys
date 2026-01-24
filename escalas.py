@@ -1531,6 +1531,7 @@ def calcular_final_payload(
     rama: str,
     agrup: str,
     categoria: str,
+    jornada: float = 48.0,
     fecha_ingreso: str,
     fecha_egreso: str,
     tipo: str,
@@ -1544,7 +1545,6 @@ def calcular_final_payload(
     integracion: bool = True,
     sac_sobre_preaviso: bool = False,
     sac_sobre_integracion: bool = True,
-    hs: float = 48.0,
     osecac: bool = True,
     afiliado: bool = False,
     sind_pct: float = 0.0,
@@ -1810,6 +1810,8 @@ def calcular_final_payload(
     # -----------------
     rem_aportes = rem_total
 
+    os_base = rem_aportes  # base mostrada para Obra Social
+
     jub = 0.0
     pami = 0.0
     os_aporte = 0.0
@@ -1830,31 +1832,21 @@ def calcular_final_payload(
                 sind_fijo_monto = round2(float(sind_fijo))
     else:
         jub = round2(rem_aportes * 0.11)
-        pami = round2(rem_aportes * 0.03)        # Obra social (regla por jornada):
-        # - Call Center: proporcional a la jornada
-        # - Resto: NO se prorratea (se calcula como si fuera 48hs)
-        os_base = rem_aportes
+        pami = round2(rem_aportes * 0.03)
+
+        # Obra Social: base jornada completa (48hs) para TODAS las ramas (sin prorrateo por jornada).
         try:
-            rnorm = norm_rama(rama)
+            j_in = float(jornada or 48.0)
         except Exception:
-            rnorm = str(rama or "").strip().upper()
-        is_call = rnorm in ("CALL CENTER", "CALLCENTER", "CALL", "CENTRO DE LLAMADAS", "CENTRO DE LLAMADA")
-
-        try:
-            hs_val = float(hs or 48.0)
-        except Exception:
-            hs_val = 48.0
-        if hs_val <= 0:
-            hs_val = 48.0
-
-        if not is_call:
-            factor = hs_val / 48.0
-            if factor <= 0:
-                factor = 1.0
-            if factor > 1.0:
-                factor = 1.0
-            os_base = round2(os_base / factor)
-
+            j_in = 48.0
+        if j_in <= 0:
+            j_in = 48.0
+        rnorm = normRama(rama)
+        # Obra Social: base jornada completa (48hs) para TODAS las ramas (sin prorrateo por jornada).
+        factor_os = 1.0 if j_in >= 48.0 else (48.0 / j_in)
+        rem_aportes_os = round2(rem_aportes * factor_os)
+        nr_os = round2(nr_total * factor_os)
+        os_base = round2((rem_aportes_os + nr_os) if bool(osecac) else rem_aportes_os)
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
         osecac_100 = 100.0 if bool(osecac) else 0.0
 

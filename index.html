@@ -1203,6 +1203,7 @@ const p = await fetchJSON(url.toString());
       const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
         ? String($("aguaConexCat")?.value || "").trim()
         : "";      // Fúnebres: adicionales seleccionados (ids)
+      const conexiones = 0;
       const fun_adics = (isFunebresRama(rama))
         ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
             .map(el => (el && el.value != null) ? String(el.value) : "")
@@ -1254,15 +1255,11 @@ const p = await fetchJSON(url.toString());
       if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
       url.searchParams.set("km_menos100", String(km_menos100));
       url.searchParams.set("km_mas100", String(km_mas100));
-      // (Conexiones Agua Potable ya se envían más arriba en el bloque isAgua)
+      if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
+    if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());
-
-      // Sincronizar días trabajados (evita desfases por parseo de fecha)
-      if(document.getElementById('lf_dias_mes') && data && (data.dias_mes !== undefined)) {
-        document.getElementById('lf_dias_mes').value = String(data.dias_mes);
-      }
 
       // Guardar el último cálculo mensual para reutilizar en Liquidación Final (MEJOR SALARIO)
       window.__lastMensualCalc = data;
@@ -1669,19 +1666,22 @@ function wire(){
       }
     }catch(_){ }
     // Días trabajados del mes: automático (1 al día de egreso)
+    // IMPORTANTE: evitar corrimientos por timezone (no usar new Date('YYYY-MM-DD')).
     try{
       const el = $('lf_dias_mes');
       if(el){
-        const d = parseYMDLocal(fe);
-        if(!Number.isNaN(d.getTime())){
-          el.value = String(d.getDate());
+        let dd = 0;
+        const feStr = (fe || '').toString();
+        if(feStr.length >= 10 && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(feStr.slice(0,10))){
+          dd = parseInt(feStr.slice(8,10), 10) || 0;
         }else{
-          el.value = '0';
+          const d = parseYMDLocal(feStr);
+          dd = (!Number.isNaN(d.getTime())) ? d.getDate() : 0;
         }
+        el.value = String(dd || 0);
       }
     }catch(_){/* ignore */}
-
-    // Mostrar/ocultar bloque indemnizaciones
+// Mostrar/ocultar bloque indemnizaciones
     const tipo = $('lf_tipo')?.value || 'RENUNCIA';
     const showInd = (tipo === 'DESPIDO_SC');
     document.querySelectorAll('.lf-only-despido').forEach(el => {
@@ -1909,7 +1909,7 @@ function wire(){
 
       const tipo = _mapTipoFinal($('lf_tipo')?.value || 'RENUNCIA');
 
-      const hs = (()=>{ try{ return parseInt(($('lf_hs')?.value||'48'),10) || 48; }catch(_){ return 48; } })();
+      const jornada = getEffectiveJornada();
 
       const mejor_total = parseMoneyInput($('lf_mrmnh')?.value || '0');
 
@@ -1932,7 +1932,11 @@ function wire(){
       const mejor_nr = mejor_total * shareNr;
       const dias_mes = (()=>{
         try{
-          const d = parseYMDLocal(fe);
+          const feStr = (fe || '').toString();
+          if(feStr.length >= 10 && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(feStr.slice(0,10))){
+            return parseInt(feStr.slice(8,10), 10) || 0;
+          }
+          const d = parseYMDLocal(feStr);
           if(!Number.isNaN(d.getTime())) return d.getDate();
         }catch(_){ }
         return parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
@@ -1953,13 +1957,13 @@ function wire(){
 
       const qs = new URLSearchParams({
         rama, agrup, categoria,
+        jornada: String(jornada || 48),
         fecha_ingreso: fi,
         fecha_egreso: fe,
         tipo,
         mejor_rem: String(mejor_rem),
         mejor_nr: String(mejor_nr),
         mejor_total: String(mejor_total),
-        hs: String(hs || 48),
         dias_mes: String(dias_mes),
         vac_anuales: String(vac_anuales),
         vac_no_gozadas_dias: String(vac_no_gozadas_dias),

@@ -1203,6 +1203,7 @@ const p = await fetchJSON(url.toString());
       const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
         ? String($("aguaConexCat")?.value || "").trim()
         : "";      // Fúnebres: adicionales seleccionados (ids)
+      const conexiones = 0;
       const fun_adics = (isFunebresRama(rama))
         ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
             .map(el => (el && el.value != null) ? String(el.value) : "")
