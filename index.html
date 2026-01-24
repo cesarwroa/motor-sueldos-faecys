@@ -240,7 +240,6 @@ Recibo Mensual</div>
   </datalist>
 </div>
 <div><label>MEJOR SALARIO (editable)</label><input id="lf_mrmnh" min="0" step="0.01" type="number" value="0"/></div>
-<div id="lf_hs_slot"></div>
 </div>
 <div class="note" id="lf_aguaBlock" style="display:none; margin-top:6px">
   <strong>Agua Potable:</strong> Conexiones
@@ -1569,35 +1568,7 @@ function wire(){
   // =====================
   // Etapa 9: Tabs + Liquidación Final
   // =====================
-  
-  // UI: en Liquidación Final, mostrar la Jornada dentro del panel (reutilizando el mismo input #hs)
-  let _hsWrapHome = null;
-  function placeHsWrap(tab){
-    const hsWrap = document.getElementById('hsWrap');
-    if(!hsWrap) return;
-    if(!_hsWrapHome){
-      _hsWrapHome = { parent: hsWrap.parentNode, next: hsWrap.nextSibling };
-    }
-    if(tab === 'final'){
-      const slot = document.getElementById('lf_hs_slot');
-      if(slot){
-        slot.innerHTML = '';
-        slot.appendChild(hsWrap);
-      }
-    }else{
-      const home = _hsWrapHome;
-      if(home && home.parent){
-        if(home.next && home.next.parentNode === home.parent){
-          home.parent.insertBefore(hsWrap, home.next);
-        }else{
-          home.parent.appendChild(hsWrap);
-        }
-      }
-    }
-  }
-  window.placeHsWrap = placeHsWrap;
-
-function switchTab(tab){
+  function switchTab(tab){
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
     const pMens = document.getElementById('paneMensual');
@@ -1609,7 +1580,6 @@ function switchTab(tab){
       tMens.classList.remove('active');
       pFinal.style.display = '';
       pMens.style.display = 'none';
-      try{ placeHsWrap('final'); }catch(_){ }
       try{
         const hs = $('hs');
         const lfhs = $('lf_hs');
@@ -1627,7 +1597,6 @@ function switchTab(tab){
       }catch(_){ }
       pMens.style.display = '';
       pFinal.style.display = 'none';
-      try{ placeHsWrap('mensual'); }catch(_){ }
     }
   }
   window.switchTab = switchTab;

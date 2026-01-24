@@ -1625,6 +1625,49 @@ def calcular_final_payload(
         n = round2(t - r)
         return r, n
 
+    def _antig_pct_rama(_rama: str, _anios: int) -> float:
+        """Porcentaje de antigüedad según rama.
+
+        - Agua Potable: 2% anual acumulativo
+        - Resto: 1% por año (no acumulativo)
+        """
+        try:
+            r0 = norm_rama(_rama)
+        except Exception:
+            r0 = str(_rama or '').strip().upper()
+
+        a = max(0, int(_anios or 0))
+        if r0 in ("AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
+            # 2% anual acumulativo
+            return (pow(1.02, a) - 1.0) if a else 0.0
+        return 0.01 * float(a)
+
+    def _desglosar_base(total: float, pct_ant: float) -> Tuple[float, float, float]:
+        """Desglosa un total de (Básico + Antigüedad + Presentismo) en sus 3 componentes.
+
+        Fórmula usada en mensual:
+        - Antig = Básico * pct
+        - Pres = (Básico + Antig) / 12
+        - Total = Básico + Antig + Pres
+
+        Ajusta el residuo por redondeo en Presentismo para que la suma coincida.
+        """
+        t = round2(float(total or 0.0))
+        if t <= 0:
+            return 0.0, 0.0, 0.0
+        pct = max(0.0, float(pct_ant or 0.0))
+        denom = (1.0 + pct) * (13.0 / 12.0)
+        if denom <= 0:
+            return t, 0.0, 0.0
+        bas = round2(t / denom)
+        ant = round2(bas * pct) if pct else 0.0
+        pres = round2((bas + ant) / 12.0) if (bas or ant) else 0.0
+        # Ajuste por redondeo: todo el residuo a Presentismo
+        resid = round2(t - round2(bas + ant + pres))
+        if resid:
+            pres = round2(pres + resid)
+        return bas, ant, pres
+
     # Haberes base del mes
     hab_mes_total = round2(base_total * (dm / 30.0))
     hab_mes_r, hab_mes_n = split_amount(hab_mes_total)
@@ -1672,7 +1715,57 @@ def calcular_final_payload(
 
     items: List[Dict[str, Any]] = []
 
-    items.append(item(f"Días trabajados del mes ({dm} día{'s' if dm != 1 else ''})", r=hab_mes_r, n=hab_mes_n, base_num=base_total))
+    # Desglose de DÍAS TRABAJADOS (Básico / Antigüedad / Presentismo), manteniendo totales.
+    pct_ant_final = _antig_pct_rama(rama, anios_antig)
+    bas_full_r, ant_full_r, pres_full_r = _desglosar_base(mr, pct_ant_final)
+    bas_full_n, ant_full_n, pres_full_n = _desglosar_base(nn, pct_ant_final)
+
+    def _prorratear_componentes(
+        dias: int,
+        total_r_obj: float,
+        total_n_obj: float,
+        label_base: str,
+        ctx: str,
+        base_num_first: float,
+    ) -> None:
+        """Agrega 3 filas: Básico / Antigüedad / Presentismo.
+
+        Se prorratea por días (sobre 30) y se ajusta el residuo por redondeo en Presentismo
+        para que la suma coincida EXACTO con los totales objetivo (Rem/NR).
+        """
+        if dias <= 0:
+            return
+        frac = float(dias) / 30.0
+
+        b_r = round2(bas_full_r * frac)
+        a_r = round2(ant_full_r * frac)
+        p_r = round2(pres_full_r * frac)
+        b_n = round2(bas_full_n * frac)
+        a_n = round2(ant_full_n * frac)
+        p_n = round2(pres_full_n * frac)
+
+        # Ajustes por redondeo
+        dr = round2(round2(total_r_obj) - round2(b_r + a_r + p_r))
+        if dr:
+            p_r = round2(p_r + dr)
+        dn = round2(round2(total_n_obj) - round2(b_n + a_n + p_n))
+        if dn:
+            p_n = round2(p_n + dn)
+
+        items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
+        items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
+        items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n))
+
+    suf_dm = f"{dm} día{'s' if dm != 1 else ''}"
+    _prorratear_componentes(
+        dm,
+        hab_mes_r,
+        hab_mes_n,
+        f"Días trabajados del mes ({suf_dm}) — Básico",
+        f"Días trabajados del mes ({suf_dm})",
+        base_total,
+    )
+
     if vac_pago_total:
         items.append(item(f"Vacaciones no gozadas (Indem.)", i=vac_pago_total, base_num=base_total))
         if sac_vac_total:
@@ -1682,9 +1775,18 @@ def calcular_final_payload(
         items.append(item("SAC proporcional", r=sac_prop_r, n=sac_prop_n, base_num=base_total))
 
     if integ_total:
-        items.append(item(f"Integración mes despido ({dias_int} día{'s' if dias_int != 1 else ''})", r=integ_r, n=integ_n, base_num=base_total))
+        suf_int = f"{dias_int} día{'s' if dias_int != 1 else ''}"
+        _prorratear_componentes(
+            dias_int,
+            integ_r,
+            integ_n,
+            f"Integración mes despido ({suf_int}) — Básico",
+            f"Integración mes despido ({suf_int})",
+            base_total,
+        )
         if sac_integ_total:
             items.append(item("SAC s/ integración", r=sac_integ_r, n=sac_integ_n, base_num=integ_total))
+
 
     if prev_total:
         items.append(item(f"Preaviso ({prev_dias} día{'s' if prev_dias != 1 else ''})", i=prev_total, base_num=base_total))
