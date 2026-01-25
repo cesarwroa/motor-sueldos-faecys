@@ -1522,6 +1522,22 @@ const p = await fetchJSON(url.toString());
       const area = $('printArea');
       if(area) void area.offsetHeight;
 
+      // Si la liquidación tiene muchas filas, usar una hoja más alta para que no quede cortado.
+      // (Chrome/Edge respetan @page con tamaño personalizado en "Guardar como PDF").
+      try{
+        const iso = document.getElementById('printIsolation');
+        if(iso && !window.__coPrintStyleOriginal) window.__coPrintStyleOriginal = iso.textContent || '';
+        const sheet = document.querySelector('#printArea .sheet');
+        if(iso && sheet){
+          const pxH = Math.ceil(sheet.scrollHeight || sheet.getBoundingClientRect().height || 0);
+          const contentMm = Math.ceil(pxH * 25.4 / 96);
+          const pageMm = Math.max(297, contentMm + 20); // + márgenes
+          const baseCss = window.__coPrintStyleOriginal || (iso.textContent || '');
+          const rest = baseCss.replace(/@page\{[^}]*\}\s*/,'');
+          iso.textContent = `@page{size:210mm ${pageMm}mm;margin:10mm}\n` + rest;
+        }
+      }catch(_){ }
+
       // Nombre sugerido al “Guardar como PDF” (Chrome usa document.title)
       __coTitleBeforePrint = document.title;
       document.title = buildPrintFilename(t);
@@ -1538,6 +1554,10 @@ const p = await fetchJSON(url.toString());
   window.addEventListener('afterprint', () => {
     const area = $('printArea');
     if(area) area.innerHTML = '';
+    try{
+      const iso = document.getElementById('printIsolation');
+      if(iso && window.__coPrintStyleOriginal) iso.textContent = window.__coPrintStyleOriginal;
+    }catch(_){ }
     if(__coTitleBeforePrint != null){
       document.title = __coTitleBeforePrint;
       __coTitleBeforePrint = null;
@@ -2258,6 +2278,16 @@ function switchTab(tab){
       const mkLabelNR = (c) => c.includes('— Básico') ? c.replace('— Básico','— No Remunerativo') : c;
       const mkLabelIND = (c) => (/indem/i.test(c) || /indemn/i.test(c)) ? c : (c + ' (Indem.)');
 
+      // Etiquetas claras para conceptos que se repiten (Rem/NR)
+      const tagRemNR = (c, kind) => {
+        const k = (kind || '').toUpperCase();
+        if(/\(Rem\)|\(NR\)/i.test(c)) return c;
+        if(/—\s*Remunerativo|—\s*No\s*Remunerativo/i.test(c)) return c;
+        if(/^Antigüedad\b/i.test(c)) return c.replace(/^Antigüedad\b/i, `Antigüedad (${k==='REM'?'Rem':'NR'})`);
+        if(/^Presentismo\b/i.test(c)) return c.replace(/^Presentismo\b/i, `Presentismo (${k==='REM'?'Rem':'NR'})`);
+        return c;
+      };
+
       for(const it of merged.sort((a,b)=>a.seq-b.seq)){
         const c = it.concepto;
         const base = it.base;
@@ -2268,23 +2298,18 @@ function switchTab(tab){
         const hasI = Math.abs(i) > 1e-6;
         const hasD = Math.abs(d) > 1e-6;
 
-        let usedBase = false;
-
+        // En LF preferimos mostrar base en cada fila (Ver base), así no quedan conceptos sin base.
         if(hasR){
-          pushRow(c, base, r, 0, 0, 0, 'REM', it.seq);
-          usedBase = true;
+          pushRow(tagRemNR(c, 'REM'), base, r, 0, 0, 0, 'REM', it.seq);
         }
         if(hasN){
-          pushRow(mkLabelNR(c), usedBase ? '' : base, 0, n, 0, 0, 'NR', it.seq);
-          usedBase = true;
+          pushRow(tagRemNR(mkLabelNR(c), 'NR'), base, 0, n, 0, 0, 'NR', it.seq);
         }
         if(hasI){
-          pushRow(mkLabelIND(c), usedBase ? '' : base, 0, 0, i, 0, 'IND', it.seq);
-          usedBase = true;
+          pushRow(mkLabelIND(c), base, 0, 0, i, 0, 'IND', it.seq);
         }
         if(hasD){
-          pushRow(c, usedBase ? '' : base, 0, 0, 0, d, 'DED', it.seq);
-          usedBase = true;
+          pushRow(c, base, 0, 0, 0, d, 'DED', it.seq);
         }
       }
 

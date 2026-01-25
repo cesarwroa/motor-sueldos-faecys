@@ -1859,8 +1859,13 @@ def calcular_final_payload(
                 p_n = 0.0
 
             items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
-            items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
-            items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n))
+            # Base para auditoría:
+            # - Antigüedad: se calcula sobre Básico (prorrateado)
+            # - Presentismo: se calcula sobre (Básico + Antigüedad) (prorrateados)
+            base_ant = round2(b_r + b_n)
+            base_pre = round2(b_r + b_n + a_r + a_n)
+            items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n, base_num=base_ant))
+            items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n, base_num=base_pre))
             return
 
         # Sin presentismo: ajuste por redondeo contra (Básico + Antigüedad)
@@ -1880,7 +1885,8 @@ def calcular_final_payload(
             a_n = 0.0
 
         items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
-        items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
+        # Sin presentismo, la antigüedad sigue basándose en el Básico prorrateado.
+        items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n, base_num=round2(b_r + b_n)))
 
     if mes_completo:
         suf_dm = f"mes completo ({dim} días)"
@@ -2001,7 +2007,14 @@ def calcular_final_payload(
             d = float(it.get("d", 0.0) or 0.0)
             if abs(r) + abs(n) + abs(d) <= 0:
                 continue
-            items.append(item(con, r=r, n=n, d=d))
+            # Preservar base numérica (ej. valor hora en horas extra) si viene del mensual
+            base_num = 0.0
+            try:
+                if it.get("base") not in (None, ""):
+                    base_num = float(it.get("base"))
+            except Exception:
+                base_num = 0.0
+            items.append(item(con, r=r, n=n, d=d, base_num=base_num))
     except Exception:
         # Si algo falla, no frenamos la liquidación final.
         pass
