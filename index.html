@@ -25,7 +25,7 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:12px}
 .tabs{display:flex;gap:6px;margin:12px 0} .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
 .right{text-align:right}
-@media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} }
+@media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
 
 /* === FORCE FORMAT · MVP exacto + OnePage === */
 @page { size: A4; margin: 10mm; } /* área util 190mm x 277mm */
@@ -457,6 +457,47 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }catch(_){
       return new Date(s);
     }
+  }
+
+  // ===== Impresión / PDF: nombre sugerido del archivo =====
+  // Al usar window.print(), Chrome suele sugerir como nombre del PDF el document.title.
+  let __coTitleBeforePrint = null;
+
+  function coMonthYearLabel(ym){
+    // ym esperado: YYYY-MM  ->  MM-YYYY
+    if(typeof ym === 'string' && /^\d{4}-\d{2}$/.test(ym)) return ym.slice(5,7) + '-' + ym.slice(0,4);
+    return (ym || '').toString();
+  }
+
+  function coSanitizeFilename(name){
+    try{
+      const s = (name || '').toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\\/:"*?<>|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return s.length > 140 ? s.slice(0, 140).trim() : s;
+    }catch(_){
+      return (name || '').toString().replace(/\s+/g,' ').trim();
+    }
+  }
+
+  function buildPrintFilename(tab){
+    const t = (tab || 'mensual');
+    const app = 'Calculadora de Comercio';
+    const rama = ($('rama')?.value || '').toString().trim();
+    const cat = ($('categoria')?.value || '').toString().trim();
+    const hs = ($('hs')?.value || '').toString().trim();
+    const mes = ($('mes')?.value || '').toString().trim();
+    const my = coMonthYearLabel(mes);
+
+    if(t === 'final'){
+      const fi = (fmtDateISO($('lf_ingreso')?.value || '') || '').toString().split('/').join('-');
+      const fe = (fmtDateISO($('lf_egreso')?.value || '') || '').toString().split('/').join('-');
+      return coSanitizeFilename(`Liquidacion Final ${app} ${rama} ${cat} ${hs}hs ${my} Ingreso ${fi} Egreso ${fe}`);
+    }
+
+    return coSanitizeFilename(`Mensual ${app} ${rama} ${cat} ${hs}hs ${my}`);
   }
 
 
@@ -1474,10 +1515,17 @@ const p = await fetchJSON(url.toString());
   function imprimirPDF(tab){
     // Construye el printArea ANTES de imprimir.
     try{
-      buildPrintArea(tab || 'mensual');
+      const t = tab || 'mensual';
+      buildPrintArea(t);
+
       // Forzar reflow para que el navegador “vea” el contenido
       const area = $('printArea');
       if(area) void area.offsetHeight;
+
+      // Nombre sugerido al “Guardar como PDF” (Chrome usa document.title)
+      __coTitleBeforePrint = document.title;
+      document.title = buildPrintFilename(t);
+
       // Dejar un tick para que pinte antes de abrir el diálogo
       setTimeout(() => window.print(), 60);
     }catch(err){
@@ -1490,6 +1538,10 @@ const p = await fetchJSON(url.toString());
   window.addEventListener('afterprint', () => {
     const area = $('printArea');
     if(area) area.innerHTML = '';
+    if(__coTitleBeforePrint != null){
+      document.title = __coTitleBeforePrint;
+      __coTitleBeforePrint = null;
+    }
   });
 
   window.imprimirPDF = imprimirPDF;
