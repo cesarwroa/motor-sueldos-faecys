@@ -297,11 +297,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo / Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyFinal"></tbody>
 <tfoot>
-<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNR">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
-<tr><td class="right" colspan="4"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
+<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNRI">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
+<tr><td class="right" colspan="3"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
 </tfoot>
 </table>
 </div>
@@ -2202,57 +2202,134 @@ function switchTab(tab){
       url.search = qs.toString();
       const data = await fetchJSON(url.toString());
 
-      // Render tabla
+      
+      // Render tabla (LF): ordenar por tipo y unificar columna NR/Indemnizatorio
       const tbody = document.getElementById('tbodyFinal');
       if(tbody) tbody.innerHTML = '';
 
-      const addRowFinal = (c, base, r, n, i, d) => {
+      const baseNum = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n.toFixed(2) : '';
+      };
+
+      const raw = (data.items || []).map((it, idx) => ({
+        concepto: String(it?.concepto || '').trim() || '—',
+        base: (it?.base!=null && it.base!=='') ? String(it.base) : '',
+        r: Number(it?.r || 0) || 0,
+        n: Number(it?.n || 0) || 0,
+        i: Number(it?.i || 0) || 0,
+        d: Number(it?.d || 0) || 0,
+        seq: idx
+      }));
+
+      // 1) Unificar Integración mes despido en 2 filas (Rem / NR)
+      const reInt = /Integración mes despido\s*\((\d+)\s*d[ií]as?\)/i;
+      let intDays = null;
+      let intSeq = null;
+      let intRem = 0, intNR = 0;
+      const rawKeep = [];
+      for(const it of raw){
+        const c = it.concepto;
+        if(c.includes('Integración mes despido') || c.includes('(Integración mes despido')){
+          const m = c.match(reInt);
+          if(m && intDays==null) intDays = Number(m[1]);
+          if(intSeq==null) intSeq = it.seq;
+          intRem += it.r;
+          intNR  += it.n;
+          continue;
+        }
+        rawKeep.push(it);
+      }
+      const merged = [...rawKeep];
+      if(intDays && (Math.abs(intRem)>1e-6 || Math.abs(intNR)>1e-6)){
+        const baseRem = intDays ? (intRem * 30 / intDays) : 0;
+        const baseNR  = intDays ? (intNR  * 30 / intDays) : 0;
+        const s = (intSeq!=null) ? intSeq : -1;
+        merged.push({ concepto:`Integración mes despido (${intDays} días) — Remunerativo`, base: baseNum(baseRem), r:intRem, n:0, i:0, d:0, seq:s + 0.01 });
+        merged.push({ concepto:`Integración mes despido (${intDays} días) — No Remunerativo`, base: baseNum(baseNR), r:0, n:intNR, i:0, d:0, seq:s + 0.02 });
+      }
+
+      // 2) Desglosar filas mixtas (si existieran) y clasificar para ordenar
+      const rows = [];
+      const pushRow = (concepto, base, r, n, i, d, kind, seq) => {
+        rows.push({ concepto, base: base || '', r, n, i, d, kind, seq });
+      };
+
+      const mkLabelNR = (c) => c.includes('— Básico') ? c.replace('— Básico','— No Remunerativo') : c;
+      const mkLabelIND = (c) => (/indem/i.test(c) || /indemn/i.test(c)) ? c : (c + ' (Indem.)');
+
+      for(const it of merged.sort((a,b)=>a.seq-b.seq)){
+        const c = it.concepto;
+        const base = it.base;
+        const r = it.r, n = it.n, i = it.i, d = it.d;
+
+        const hasR = Math.abs(r) > 1e-6;
+        const hasN = Math.abs(n) > 1e-6;
+        const hasI = Math.abs(i) > 1e-6;
+        const hasD = Math.abs(d) > 1e-6;
+
+        let usedBase = false;
+
+        if(hasR){
+          pushRow(c, base, r, 0, 0, 0, 'REM', it.seq);
+          usedBase = true;
+        }
+        if(hasN){
+          pushRow(mkLabelNR(c), usedBase ? '' : base, 0, n, 0, 0, 'NR', it.seq);
+          usedBase = true;
+        }
+        if(hasI){
+          pushRow(mkLabelIND(c), usedBase ? '' : base, 0, 0, i, 0, 'IND', it.seq);
+          usedBase = true;
+        }
+        if(hasD){
+          pushRow(c, usedBase ? '' : base, 0, 0, 0, d, 'DED', it.seq);
+          usedBase = true;
+        }
+      }
+
+      // 3) Orden final: Rem -> NR -> Ind -> Deducciones
+      const order = { REM:1, NR:2, IND:3, DED:4 };
+      rows.sort((a,b)=>{
+        const oa = order[a.kind] || 9;
+        const ob = order[b.kind] || 9;
+        if(oa !== ob) return oa - ob;
+        return (a.seq || 0) - (b.seq || 0);
+      });
+
+      // 4) Render (columna unificada: NR/Indemnizatorio)
+      const addRowFinal = (c, base, r, ni, d) => {
         const tr = document.createElement('tr');
+
         const tdC = document.createElement('td');
         const baseHtml = base ? `<div class="muted lf-base" style="font-size:11px;">Base: ${escapeHtml(base)}</div>` : '';
         tdC.innerHTML = escapeHtml(c) + baseHtml;
         tr.appendChild(tdC);
 
         const tdR = document.createElement('td'); tdR.className='right'; tdR.textContent = money(r||0); tr.appendChild(tdR);
-        const tdN = document.createElement('td'); tdN.className='right'; tdN.textContent = money(n||0); tr.appendChild(tdN);
-        const tdI = document.createElement('td'); tdI.className='right'; tdI.textContent = money(i||0); tr.appendChild(tdI);
+        const tdNI = document.createElement('td'); tdNI.className='right'; tdNI.textContent = money(ni||0); tr.appendChild(tdNI);
         const tdD = document.createElement('td'); tdD.className='right'; tdD.textContent = money(d||0); tr.appendChild(tdD);
 
         tbody.appendChild(tr);
       };
 
-      const addItem = (it) => {
-        if(!it) return;
-        const c = String(it.concepto || '').trim() || '—';
-        const base = it.base;
-        const r = Number(it.r || 0) || 0;
-        const n = Number(it.n || 0) || 0;
-        const i = Number(it.i || 0) || 0;
-        const d = Number(it.d || 0) || 0;
+      let totRem = 0, totNRI = 0, totDed = 0;
+      for(const rw of rows){
+        const r = Number(rw.r || 0) || 0;
+        const ni = (Number(rw.n || 0) || 0) + (Number(rw.i || 0) || 0);
+        const d = Number(rw.d || 0) || 0;
+        totRem = totRem + r;
+        totNRI = totNRI + ni;
+        totDed = totDed + d;
+        addRowFinal(rw.concepto, rw.base, r, ni, d);
+      }
 
-        const hasR = Math.abs(r) > 0.0001;
-        const hasN = Math.abs(n) > 0.0001;
+      setText('lf_totRem', money(totRem));
+      setText('lf_totNRI', money(totNRI));
+      setText('lf_totDed', money(totDed));
+      setText('lf_neto', money(totRem + totNRI - totDed));
 
-        // Si trae Rem y NR en la misma fila, desglosar en 2 filas (como en mensual)
-        if(hasR && hasN){
-          addRowFinal(c, base, r, 0, i, d);
-          const cNR = c.includes('— Básico') ? c.replace('— Básico','— No Remunerativo') : c;
-          addRowFinal(cNR, '', 0, n, 0, 0);
-          return;
-        }
-
-        addRowFinal(c, base, r, n, i, d);
-      };
-
-      (data.items || []).forEach(addItem);
-
-      const t = data.totales || {};
-      setText('lf_totRem', money(t.rem || 0));
-      setText('lf_totNR', money(t.nr || 0));
-      setText('lf_totInd', money(t.ind || 0));
-      setText('lf_totDed', money(t.ded || 0));
-      setText('lf_neto', money(t.neto || 0));
-      //
+//
       // Completar auxiliares
       if($('lf_anios') && data.anios_antig!=null) $('lf_anios').value = String(data.anios_antig);
       if($('lf_vac_anuales') && data.vac_anuales!=null) $('lf_vac_anuales').value = String(data.vac_anuales);
