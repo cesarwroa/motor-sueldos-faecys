@@ -297,11 +297,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyFinal"></tbody>
 <tfoot>
-<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
-<tr><td class="right" colspan="3"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
+<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNR">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
+<tr><td class="right" colspan="4"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
 </tfoot>
 </table>
 </div>
@@ -2206,27 +2206,52 @@ function switchTab(tab){
       const tbody = document.getElementById('tbodyFinal');
       if(tbody) tbody.innerHTML = '';
 
-      const addRow = (c, base, r, n, i, d) => {
+      const addRowFinal = (c, base, r, n, i, d) => {
         const tr = document.createElement('tr');
         const tdC = document.createElement('td');
         const baseHtml = base ? `<div class="muted lf-base" style="font-size:11px;">Base: ${escapeHtml(base)}</div>` : '';
         tdC.innerHTML = escapeHtml(c) + baseHtml;
         tr.appendChild(tdC);
-        const tdR = document.createElement('td'); tdR.className='num'; tdR.textContent = money(r||0); tr.appendChild(tdR);
-        const ind = (i||0) + (n||0);
-        const tdI = document.createElement('td'); tdI.className='num'; tdI.textContent = money(ind||0); tr.appendChild(tdI);
-        const tdD = document.createElement('td'); tdD.className='num'; tdD.textContent = money(d||0); tr.appendChild(tdD);
+
+        const tdR = document.createElement('td'); tdR.className='right'; tdR.textContent = money(r||0); tr.appendChild(tdR);
+        const tdN = document.createElement('td'); tdN.className='right'; tdN.textContent = money(n||0); tr.appendChild(tdN);
+        const tdI = document.createElement('td'); tdI.className='right'; tdI.textContent = money(i||0); tr.appendChild(tdI);
+        const tdD = document.createElement('td'); tdD.className='right'; tdD.textContent = money(d||0); tr.appendChild(tdD);
+
         tbody.appendChild(tr);
       };
 
-      (data.items || []).forEach(it => addRow(it.concepto, it.base, it.r, it.n, it.i, it.d));
+      const addItem = (it) => {
+        if(!it) return;
+        const c = String(it.concepto || '').trim() || '—';
+        const base = it.base;
+        const r = Number(it.r || 0) || 0;
+        const n = Number(it.n || 0) || 0;
+        const i = Number(it.i || 0) || 0;
+        const d = Number(it.d || 0) || 0;
+
+        const hasR = Math.abs(r) > 0.0001;
+        const hasN = Math.abs(n) > 0.0001;
+
+        // Si trae Rem y NR en la misma fila, desglosar en 2 filas (como en mensual)
+        if(hasR && hasN){
+          addRowFinal(c, base, r, 0, i, d);
+          const cNR = c.includes('— Básico') ? c.replace('— Básico','— No Remunerativo') : c;
+          addRowFinal(cNR, '', 0, n, 0, 0);
+          return;
+        }
+
+        addRowFinal(c, base, r, n, i, d);
+      };
+
+      (data.items || []).forEach(addItem);
 
       const t = data.totales || {};
       setText('lf_totRem', money(t.rem || 0));
-      setText('lf_totInd', money((t.ind || 0) + (t.nr || 0)));
+      setText('lf_totNR', money(t.nr || 0));
+      setText('lf_totInd', money(t.ind || 0));
       setText('lf_totDed', money(t.ded || 0));
       setText('lf_neto', money(t.neto || 0));
-      setText('lf_totNR', '');
       //
       // Completar auxiliares
       if($('lf_anios') && data.anios_antig!=null) $('lf_anios').value = String(data.anios_antig);

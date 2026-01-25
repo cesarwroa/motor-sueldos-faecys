@@ -297,11 +297,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyFinal"></tbody>
 <tfoot>
-<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
-<tr><td class="right" colspan="3"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
+<tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totNR">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
+<tr><td class="right" colspan="4"><strong>Neto a cobrar</strong></td><td class="right" id="lf_neto">$0,00</td></tr>
 </tfoot>
 </table>
 </div>
@@ -466,31 +466,37 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   function coMonthYearLabel(ym){
     // ym esperado: YYYY-MM  ->  MM-YYYY
     if(typeof ym === 'string' && /^\d{4}-\d{2}$/.test(ym)) return ym.slice(5,7) + '-' + ym.slice(0,4);
-    return ym || '';
+    return (ym || '').toString();
   }
 
   function coSanitizeFilename(name){
-    // Quita acentos y caracteres inválidos para nombres de archivo.
-    let out = String(name || '').trim();
-    try{ out = out.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
-    out = out.replace(/[\\/:"*?<>|]+/g, ' ');
-    out = out.replace(/\s+/g,' ').trim();
-    return out || 'Calculadora de Comercio';
+    try{
+      const s = (name || '').toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\\/:"*?<>|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return s.length > 140 ? s.slice(0, 140).trim() : s;
+    }catch(_){
+      return (name || '').toString().replace(/\s+/g,' ').trim();
+    }
   }
 
   function buildPrintFilename(tab){
+    const t = (tab || 'mensual');
     const app = 'Calculadora de Comercio';
-    const rama = ($('rama')?.value || '').trim();
-    const cat  = ($('categoria')?.value || '').trim();
-    const hs   = String($('hs')?.value || '').trim();
-    const mes  = String($('mes')?.value || '').trim();
-    const my   = coMonthYearLabel(mes);
+    const rama = ($('rama')?.value || '').toString().trim();
+    const cat = ($('categoria')?.value || '').toString().trim();
+    const hs = ($('hs')?.value || '').toString().trim();
+    const mes = ($('mes')?.value || '').toString().trim();
+    const my = coMonthYearLabel(mes);
 
-    if((tab || 'mensual') === 'final'){
-      const fi = (fmtDateISO($('lf_ingreso')?.value || '') || '').split('/').join('-');
-      const fe = (fmtDateISO($('lf_egreso')?.value || '') || '').split('/').join('-');
+    if(t === 'final'){
+      const fi = (fmtDateISO($('lf_ingreso')?.value || '') || '').toString().split('/').join('-');
+      const fe = (fmtDateISO($('lf_egreso')?.value || '') || '').toString().split('/').join('-');
       return coSanitizeFilename(`Liquidacion Final ${app} ${rama} ${cat} ${hs}hs ${my} Ingreso ${fi} Egreso ${fe}`);
     }
+
     return coSanitizeFilename(`Mensual ${app} ${rama} ${cat} ${hs}hs ${my}`);
   }
 
@@ -1509,14 +1515,17 @@ const p = await fetchJSON(url.toString());
   function imprimirPDF(tab){
     // Construye el printArea ANTES de imprimir.
     try{
-      const _tab = tab || 'mensual';
-      buildPrintArea(_tab);
+      const t = tab || 'mensual';
+      buildPrintArea(t);
+
       // Forzar reflow para que el navegador “vea” el contenido
       const area = $('printArea');
       if(area) void area.offsetHeight;
-      // Nombre sugerido del PDF (Chrome suele tomar document.title)
+
+      // Nombre sugerido al “Guardar como PDF” (Chrome usa document.title)
       __coTitleBeforePrint = document.title;
-      document.title = buildPrintFilename(_tab);
+      document.title = buildPrintFilename(t);
+
       // Dejar un tick para que pinte antes de abrir el diálogo
       setTimeout(() => window.print(), 60);
     }catch(err){
@@ -1529,8 +1538,7 @@ const p = await fetchJSON(url.toString());
   window.addEventListener('afterprint', () => {
     const area = $('printArea');
     if(area) area.innerHTML = '';
-    // Restaurar título (para no dejar el nombre de archivo como título de la página)
-    if(__coTitleBeforePrint !== null){
+    if(__coTitleBeforePrint != null){
       document.title = __coTitleBeforePrint;
       __coTitleBeforePrint = null;
     }
@@ -2198,27 +2206,52 @@ function switchTab(tab){
       const tbody = document.getElementById('tbodyFinal');
       if(tbody) tbody.innerHTML = '';
 
-      const addRow = (c, base, r, n, i, d) => {
+      const addRowFinal = (c, base, r, n, i, d) => {
         const tr = document.createElement('tr');
         const tdC = document.createElement('td');
         const baseHtml = base ? `<div class="muted lf-base" style="font-size:11px;">Base: ${escapeHtml(base)}</div>` : '';
         tdC.innerHTML = escapeHtml(c) + baseHtml;
         tr.appendChild(tdC);
-        const tdR = document.createElement('td'); tdR.className='num'; tdR.textContent = money(r||0); tr.appendChild(tdR);
-        const ind = (i||0) + (n||0);
-        const tdI = document.createElement('td'); tdI.className='num'; tdI.textContent = money(ind||0); tr.appendChild(tdI);
-        const tdD = document.createElement('td'); tdD.className='num'; tdD.textContent = money(d||0); tr.appendChild(tdD);
+
+        const tdR = document.createElement('td'); tdR.className='right'; tdR.textContent = money(r||0); tr.appendChild(tdR);
+        const tdN = document.createElement('td'); tdN.className='right'; tdN.textContent = money(n||0); tr.appendChild(tdN);
+        const tdI = document.createElement('td'); tdI.className='right'; tdI.textContent = money(i||0); tr.appendChild(tdI);
+        const tdD = document.createElement('td'); tdD.className='right'; tdD.textContent = money(d||0); tr.appendChild(tdD);
+
         tbody.appendChild(tr);
       };
 
-      (data.items || []).forEach(it => addRow(it.concepto, it.base, it.r, it.n, it.i, it.d));
+      const addItem = (it) => {
+        if(!it) return;
+        const c = String(it.concepto || '').trim() || '—';
+        const base = it.base;
+        const r = Number(it.r || 0) || 0;
+        const n = Number(it.n || 0) || 0;
+        const i = Number(it.i || 0) || 0;
+        const d = Number(it.d || 0) || 0;
+
+        const hasR = Math.abs(r) > 0.0001;
+        const hasN = Math.abs(n) > 0.0001;
+
+        // Si trae Rem y NR en la misma fila, desglosar en 2 filas (como en mensual)
+        if(hasR && hasN){
+          addRowFinal(c, base, r, 0, i, d);
+          const cNR = c.includes('— Básico') ? c.replace('— Básico','— No Remunerativo') : c;
+          addRowFinal(cNR, '', 0, n, 0, 0);
+          return;
+        }
+
+        addRowFinal(c, base, r, n, i, d);
+      };
+
+      (data.items || []).forEach(addItem);
 
       const t = data.totales || {};
       setText('lf_totRem', money(t.rem || 0));
-      setText('lf_totInd', money((t.ind || 0) + (t.nr || 0)));
+      setText('lf_totNR', money(t.nr || 0));
+      setText('lf_totInd', money(t.ind || 0));
       setText('lf_totDed', money(t.ded || 0));
       setText('lf_neto', money(t.neto || 0));
-      setText('lf_totNR', '');
       //
       // Completar auxiliares
       if($('lf_anios') && data.anios_antig!=null) $('lf_anios').value = String(data.anios_antig);
