@@ -1646,8 +1646,19 @@ def calcular_final_payload(
     # Días del mes de egreso
     dim = _cal.monthrange(fe.year, fe.month)[1]
     dia_baja = fe.day
-    # Días trabajados del mes: automático (1 al día de egreso)
-    dm = max(0, min(dim, dia_baja))
+
+    # Días trabajados del mes (criterio para evitar "inflar" o "achicar" meses de 28/29/31):
+    # - Si el trabajador estuvo TODO el mes (desde el 1 hasta el último día del mes de baja),
+    #   se liquida como mes completo (30/30), independientemente de que el mes tenga 28, 29, 30 o 31 días.
+    # - Si NO es mes completo, se prorratea por días reales trabajados en ese mes, siempre sobre divisor 30.
+    #   (Práctica estándar para mensualizados: divisor 30).
+    mes_inicio = _dt.date(fe.year, fe.month, 1)
+    mes_fin = _dt.date(fe.year, fe.month, dim)
+    inicio_trab_mes = max(fi, mes_inicio)
+    dm_real = (fe - inicio_trab_mes).days + 1 if fe >= inicio_trab_mes else 0
+    dm_real = max(0, min(dim, int(dm_real)))
+    mes_completo = (inicio_trab_mes == mes_inicio) and (fe == mes_fin)
+    dm_prorr = 30 if mes_completo else dm_real
 
     # Antigüedad
     anios_antig = _years_complete(fi, fe)
@@ -1741,7 +1752,7 @@ def calcular_final_payload(
     base_mes_r = max(0.0, base_mes_r)
     base_mes_n = max(0.0, base_mes_n)
 
-    frac_mes = (dm / 30.0) if dm else 0.0
+    frac_mes = (float(dm_prorr) / 30.0) if dm_prorr else 0.0
     hab_mes_r = round2(base_mes_r * frac_mes)
     hab_mes_n = round2(base_mes_n * frac_mes)
     hab_mes_total = round2(hab_mes_r + hab_mes_n)
@@ -1871,9 +1882,13 @@ def calcular_final_payload(
         items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
         items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n))
 
-    suf_dm = f"{dm} día{'s' if dm != 1 else ''}"
+    if mes_completo:
+        suf_dm = f"mes completo ({dim} días)"
+    else:
+        suf_dm = f"{dm_real} día{'s' if dm_real != 1 else ''}"
+
     _prorratear_componentes(
-        dm,
+        dm_prorr,
         hab_mes_r,
         hab_mes_n,
         f"Días trabajados del mes ({suf_dm}) — Básico",
@@ -2112,7 +2127,11 @@ def calcular_final_payload(
         "fecha_egreso": fecha_egreso,
         "anios_antig": anios_antig,
         "anios_245": anios_245,
-        "dias_mes": dm,
+        # Días calendario trabajados dentro del mes de egreso
+        "dias_mes": dm_real,
+        # Días usados para prorrateo (sobre divisor 30). Si es mes completo, vale 30.
+        "dias_prorr": dm_prorr,
+        "mes_completo": bool(mes_completo),
         "dias_semestre": dias_sem,
         "vac_anuales": vac_an,
         "vac_no_gozadas_dias": vac_no_goz,
