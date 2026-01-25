@@ -55,6 +55,27 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 /* Toggle columnas Base (Ver base) */
 .hide-base-col .th-base-num, .hide-base-col .col-base-num { display:none !important; }
 .hide-base-final .lf-base { display:none !important; }
+
+/* === Accesibilidad === */
+:root{ --focus:#2563eb; }
+.sr-only{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;white-space:nowrap!important;}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:9999;padding:10px 12px;border-radius:10px;border:1px solid var(--grid);background:var(--card);color:var(--ink);text-decoration:none;}
+.skip-link:focus{left:16px;outline:3px solid var(--focus);outline-offset:2px;}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+button.tab, .hc-toggle{font:inherit;color:inherit;appearance:none;-webkit-appearance:none;}
+.tabs{align-items:center;flex-wrap:wrap;}
+.hc-toggle{margin-left:auto;}
+.note-error{border-color:#fecaca;background:#fef2f2;color:#7f1d1d;}
+/* Alto contraste (opcional) */
+:root.contrast{ --bg:#000000; --card:#000000; --ink:#ffffff; --muted:#ffffff; --grid:#ffffff; --focus:#ffffff; }
+:root.contrast body{background:var(--bg);color:var(--ink);}
+:root.contrast .card{background:var(--card)!important;border-color:var(--grid)!important;}
+:root.contrast .tab, :root.contrast .hc-toggle{background:#000000!important;border-color:#ffffff!important;color:#ffffff!important;}
+:root.contrast .active{background:#111827!important;border-color:#ffffff!important;}
+:root.contrast input, :root.contrast select, :root.contrast textarea{background:#000000!important;color:#ffffff!important;border-color:#ffffff!important;}
+:root.contrast .note{background:#000000!important;color:#ffffff!important;border-color:#ffffff!important;}
+:root.contrast .note-error{background:#1f0000!important;color:#ffffff!important;border-color:#ffffff!important;}
+
 </style>
 <style>
 #co-inline-panel *{box-sizing:border-box}
@@ -109,11 +130,13 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </style>
 </head>
 <body>
-<div class="container">
+<a class="skip-link" href="#main">Saltar al contenido</a>
+<main class="container" id="main" role="main">
 <h1>Calculadora de Comercio</h1>
-<div class="tabs no-print">
-<div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
-<div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
+<div class="tabs no-print" role="tablist" aria-label="Tipo de liquidación">
+<button class="tab active" id="tabMensual" type="button" role="tab" aria-selected="true" aria-controls="paneMensual" tabindex="0">Mensual</button>
+<button class="tab" id="tabFinal" type="button" role="tab" aria-selected="false" aria-controls="paneFinal" tabindex="-1">Liquidación Final</button>
+<button class="hc-toggle" id="btnContraste" type="button" aria-pressed="false" title="Alternar alto contraste">Alto contraste</button>
 </div>
 <div class="card">
 <div class="grid cols-4">
@@ -122,9 +145,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Categoría</label><select id="categoria"></select></div>
 <div><label>Mes</label><select id="mes"></select></div>
 </div>
-<div class="note" id="status">Cargando maestro…</div>
+<div class="note" id="status" role="status" aria-live="polite" aria-atomic="true">Cargando maestro…</div>
+<div class="note note-error" id="globalError" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden></div>
 </div>
-<div class="card" id="paneMensual">
+<div class="card" id="paneMensual" role="tabpanel" aria-labelledby="tabMensual">
 <div class="grid cols-4"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div><div><label>Fecha de alta</label><input id="alta" type="date"/></div><div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div><div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div id="mensualExtrasHost"><div id="mensualExtrasRoot">
 <div class="note" id="aguaBlock" style="display:none">
@@ -191,7 +215,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right col-base-num">Base</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
+<caption class="sr-only">Detalle del recibo</caption>
+<thead><tr><th scope="col">Concepto</th><th scope="col" class="right col-base-num">Base</th><th scope="col" class="right">Remunerativo</th><th scope="col" class="right">No Remunerativo</th><th scope="col" class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyMensual"></tbody>
 <tfoot>
 <tr>
@@ -211,7 +236,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 
 </div><!-- FIX: cierre paneMensual para que Liquidación Final sea visible -->
-<div class="card" id="paneFinal" style="display:none">
+<div class="card" id="paneFinal" role="tabpanel" aria-labelledby="tabFinal" style="display:none" hidden>
 <div class="grid cols-4">
 <div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
 <div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
@@ -297,7 +322,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
-<thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
+<thead><tr><th>Concepto</th><th scope="col" class="right">Remunerativo</th><th scope="col" class="right">Indemnizatorio</th><th scope="col" class="right">Descuentos</th></tr></thead>
 <tbody id="tbodyFinal"></tbody>
 <tfoot>
 <tr><td>Total</td><td class="right" id="lf_totRem">$0,00</td><td class="right" id="lf_totInd">$0,00</td><td class="right" id="lf_totDed">$0,00</td></tr>
@@ -411,12 +436,130 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
   </style>
 
+</main>
 <script>
 (() => {
   const API_BASE = (window.API_BASE || "").trim() || window.location.origin;
 
   const $ = (id) => document.getElementById(id);
   const setText = (id, txt) => { const el=$(id); if(el) el.textContent = txt ?? ""; };
+  // === Accesibilidad / UX (no afecta el diseño normal) ===
+  const clearGlobalError = () => {
+    const el = $("globalError");
+    if(!el) return;
+    el.hidden = true;
+    el.textContent = "";
+  };
+
+  const setGlobalError = (msg) => {
+    const el = $("globalError");
+    if(!el) return;
+    if(!msg){
+      clearGlobalError();
+      return;
+    }
+    el.hidden = false;
+    el.textContent = String(msg);
+    try{ el.focus(); }catch(_){}
+  };
+
+  const markInvalid = (id, invalid) => {
+    const el = $(id);
+    if(!el) return;
+    el.setAttribute("aria-invalid", invalid ? "true" : "false");
+  };
+
+  function validateRequired(ids, message){
+    let ok = true;
+    ids.forEach(id => {
+      const el = $(id);
+      const val = (el && "value" in el) ? String(el.value||"").trim() : "";
+      const bad = !val;
+      markInvalid(id, bad);
+      if(bad) ok = false;
+    });
+    if(!ok){
+      setGlobalError(message);
+      const firstBad = ids.map(id => $(id)).find(el => el && el.getAttribute("aria-invalid")==="true");
+      try{ firstBad && firstBad.focus(); }catch(_){}
+      return false;
+    }
+    clearGlobalError();
+    return true;
+  }
+
+  function linkLabels(){
+    document.querySelectorAll("label").forEach(lbl => {
+      if(lbl.getAttribute("for")) return;
+      const p = lbl.parentElement;
+      if(!p) return;
+      const ctl = p.querySelector("input, select, textarea");
+      if(!ctl || !ctl.id) return;
+      lbl.setAttribute("for", ctl.id);
+    });
+  }
+
+  function setupTabsA11y(){
+    const tMens = document.getElementById("tabMensual");
+    const tFinal = document.getElementById("tabFinal");
+    if(!tMens || !tFinal) return;
+
+    // Reemplazar onclick legacy (si quedó) por listeners
+    tMens.onclick = () => switchTab("mensual");
+    tFinal.onclick = () => switchTab("final");
+
+    const onKey = (ev) => {
+      const k = ev.key;
+      if(k !== "ArrowLeft" && k !== "ArrowRight" && k !== "Home" && k !== "End") return;
+      ev.preventDefault();
+      const isMens = (window.__activeTab || "mensual") !== "final";
+      const tabs = [tMens, tFinal];
+      let idx = isMens ? 0 : 1;
+      if(k === "ArrowLeft") idx = (idx + tabs.length - 1) % tabs.length;
+      if(k === "ArrowRight") idx = (idx + 1) % tabs.length;
+      if(k === "Home") idx = 0;
+      if(k === "End") idx = tabs.length - 1;
+      tabs[idx].click();
+      try{ tabs[idx].focus(); }catch(_){}
+    };
+
+    tMens.addEventListener("keydown", onKey);
+    tFinal.addEventListener("keydown", onKey);
+  }
+
+  function setupHighContrast(){
+    const btn = document.getElementById("btnContraste");
+    if(!btn) return;
+    const key = "co_high_contrast";
+
+    const apply = (on) => {
+      document.documentElement.classList.toggle("contrast", !!on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    };
+
+    const saved = localStorage.getItem(key);
+    if(saved === "1") apply(true);
+
+    btn.addEventListener("click", () => {
+      const on = !document.documentElement.classList.contains("contrast");
+      apply(on);
+      try{ localStorage.setItem(key, on ? "1" : "0"); }catch(_){}
+    });
+  }
+
+  function initA11y(){
+    try{ linkLabels(); }catch(_){}
+    try{ setupTabsA11y(); }catch(_){}
+    try{ setupHighContrast(); }catch(_){}
+    // Mejorar anuncios para lectores
+    try{
+      const neto = $("neto");
+      const lfNeto = $("lf_neto");
+      if(neto){ neto.setAttribute("aria-live","polite"); neto.setAttribute("aria-atomic","true"); }
+      if(lfNeto){ lfNeto.setAttribute("aria-live","polite"); lfNeto.setAttribute("aria-atomic","true"); }
+    }catch(_){}
+  }
+
   const setVal = (id, v) => { const el=$(id); if(el) el.value = (v ?? "").toString(); };
   const num = (v) => {
     const n = Number(v);
@@ -1231,7 +1374,7 @@ const p = await fetchJSON(url.toString());
       const mes = $("mes")?.value || "";
       const agrup = $("agrup")?.value || "";
       const categoria = $("categoria")?.value || "";
-      if([rama,mes,agrup,categoria].some(v => !v)){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
+      if(!validateRequired(['rama','agrup','categoria','mes'], 'Completá Rama, Agrupamiento, Categoría y Mes antes de calcular.')) return;
 
       const jornada = getEffectiveJornada();
       const anios_antig = num($("anios")?.value || 0) || 0;
@@ -1409,7 +1552,7 @@ const p = await fetchJSON(url.toString());
       setText("status", "Calculado.");
     }catch(err){
       console.error(err);
-      alert("Error al calcular (API). Revisá conexión o datos.");
+      setGlobalError('Error al calcular (API). Revisá conexión o datos.");
       setText("status", "Error al calcular.");
     }
   }
@@ -1521,7 +1664,7 @@ const p = await fetchJSON(url.toString());
       setTimeout(() => window.print(), 60);
     }catch(err){
       console.error(err);
-      alert('No se pudo preparar la impresión. Revisá consola.');
+      setGlobalError('No se pudo preparar la impresión. Revisá consola.');
     }
   }
 
@@ -1725,6 +1868,16 @@ function switchTab(tab){
     const pMens = document.getElementById('paneMensual');
     const pFinal = document.getElementById('paneFinal');
     if(!tMens || !tFinal || !pMens || !pFinal) return;
+    // ARIA tabs
+    try{
+      tMens.setAttribute("role","tab");
+      tFinal.setAttribute("role","tab");
+      pMens.setAttribute("role","tabpanel");
+      pFinal.setAttribute("role","tabpanel");
+      pMens.setAttribute("aria-labelledby","tabMensual");
+      pFinal.setAttribute("aria-labelledby","tabFinal");
+    }catch(_){}
+
 
     try{ mountExtrasForTab(tab); }catch(_){ }
     try{ applyBranchUI(); }catch(_){ }
@@ -1734,7 +1887,12 @@ function switchTab(tab){
       tFinal.classList.add('active');
       tMens.classList.remove('active');
       pFinal.style.display = '';
+      pFinal.hidden = false;
+      pFinal.setAttribute('aria-hidden','false');
       pMens.style.display = 'none';
+      pMens.hidden = true;
+      pMens.setAttribute('aria-hidden','true');
+      try{ tFinal.setAttribute('aria-selected','true'); tFinal.tabIndex = 0; tMens.setAttribute('aria-selected','false'); tMens.tabIndex = -1; }catch(_){ }
       try{
         const hs = $('hs');
         const lfhs = $('lf_hs');
@@ -1751,7 +1909,12 @@ function switchTab(tab){
         if(hs && lfhs && lfhs.value) hs.value = String(lfhs.value);
       }catch(_){ }
       pMens.style.display = '';
+      pMens.hidden = false;
+      pMens.setAttribute('aria-hidden','false');
       pFinal.style.display = 'none';
+      pFinal.hidden = true;
+      pFinal.setAttribute('aria-hidden','true');
+      try{ tMens.setAttribute('aria-selected','true'); tMens.tabIndex = 0; tFinal.setAttribute('aria-selected','false'); tFinal.tabIndex = -1; }catch(_){ }
     }
 
     // UX: asegurar reinserción de extras y volver arriba al cambiar de pestaña
@@ -2031,10 +2194,7 @@ function switchTab(tab){
       const rama = $('rama')?.value || '';
       const agrup = $('agrup')?.value || '';
       const categoria = $('categoria')?.value || '';
-      if(!rama || !agrup || !categoria){
-        alert('Elegí Rama/Agrup/Categoría.');
-        return;
-      }
+      if(!validateRequired(['rama','agrup','categoria'], 'Completá Rama, Agrupamiento y Categoría antes de calcular la liquidación final.')) return;
 
       let fi = $('lf_ingreso')?.value || '';
       let fe = $('lf_egreso')?.value || '';
@@ -2045,7 +2205,7 @@ function switchTab(tab){
       }
 
       if(!fi || !fe){
-        alert('Completá Fecha de Alta (Ingreso) y Fecha de Baja (Egreso).');
+        setGlobalError('Completá Fecha de Alta (Ingreso) y Fecha de Baja (Egreso).');
         return;
       }
 
@@ -2239,20 +2399,21 @@ function switchTab(tab){
 
     }catch(err){
       console.error(err);
-      alert('Error al calcular Liquidación Final (API).');
+      setGlobalError('Error al calcular Liquidación Final (API).');
       setText('diagFinal', 'Error al calcular.');
     }
   };
 
   document.addEventListener('DOMContentLoaded', async () => {
     try{
+      initA11y();
       wire();
       await loadMeta();
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }catch(err){
       console.error(err);
       setText('status', 'Error al cargar maestro.');
-      alert('Error al cargar maestro (meta). Ver consola.');
+      setGlobalError('Error al cargar maestro.');
     }
   });
 
