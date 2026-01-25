@@ -294,7 +294,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
-<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span></div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
 <thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
@@ -1391,6 +1391,16 @@ const p = await fetchJSON(url.toString());
       .replace(/'/g,"&#039;");
   }
 
+  function fmtDateISO(iso){
+    if(!iso) return '–';
+    const parts = String(iso).split('-');
+    if(parts.length !== 3) return String(iso);
+    const [y,m,d] = parts;
+    if(!y || !m || !d) return String(iso);
+    return `${d}/${m}/${y}`;
+  }
+
+
   function cloneTableForPrint(tab){
     const sel = (tab === 'final') ? '#paneFinal table.table' : '#paneMensual table.table';
     const src = document.querySelector(sel);
@@ -1436,13 +1446,17 @@ const p = await fetchJSON(url.toString());
       : (`Escala ${(($('lf_egreso')?.value || '').slice(0,7)) || ($('mes')?.value || '')}`)
     ).trim();
 
+    const fiFmt = isFinal ? fmtDateISO($('lf_ingreso')?.value || '') : '';
+    const feFmt = isFinal ? fmtDateISO($('lf_egreso')?.value || '') : '';
+    const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : '';
+
     const tbl = cloneTableForPrint(tab);
 
     if(!tbl){
       area.innerHTML = `
         <div class="sheet">
           <div class="title">${escapeHtml(titulo)}</div>
-          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
           <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
         </div>`;
       return;
@@ -1452,7 +1466,7 @@ const p = await fetchJSON(url.toString());
     area.innerHTML = `
       <div class="sheet">
         <div class="title">${escapeHtml(titulo)}</div>
-        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
         ${tbl.outerHTML}
       </div>`;
   }
@@ -1620,13 +1634,42 @@ function wire(){
   // =====================
   // Etapa 9: Tabs + Liquidación Final
   // =====================
-  function mountExtrasForTab(tab){
+  function ensureExtrasAnchors(){
+  if(window.__extrasAnchorsReady) return;
   const root = $("mensualExtrasRoot");
   const hostM = $("mensualExtrasHost");
   const hostF = $("lfExtrasHost");
-  if(root && hostM && hostF){
+  if(root && hostM && !window.__extrasAnchorM){
+    const aM = document.createComment("CO_EXTRAS_MENSUAL");
+    hostM.insertBefore(aM, root);
+    window.__extrasAnchorM = aM;
+  }
+  if(hostF && !window.__extrasAnchorF){
+    const aF = document.createComment("CO_EXTRAS_FINAL");
+    hostF.appendChild(aF);
+    window.__extrasAnchorF = aF;
+  }
+  window.__extrasAnchorsReady = true;
+}
+
+function mountExtrasForTab(tab){
+  ensureExtrasAnchors();
+  const root = $("mensualExtrasRoot");
+  const hostM = $("mensualExtrasHost");
+  const hostF = $("lfExtrasHost");
+  const aM = window.__extrasAnchorM;
+  const aF = window.__extrasAnchorF;
+
+  if(root && hostM && hostF && aM && aF){
+    if(tab==="final"){
+      hostF.insertBefore(root, aF.nextSibling);
+    }else{
+      hostM.insertBefore(root, aM.nextSibling);
+    }
+  }else if(root && hostM && hostF){
     (tab==="final" ? hostF : hostM).appendChild(root);
   }
+
   const autoWrap = $("autoAntigWrap");
   if(autoWrap) autoWrap.style.display = "none";
 }
@@ -1666,6 +1709,10 @@ function switchTab(tab){
       pMens.style.display = '';
       pFinal.style.display = 'none';
     }
+
+    // UX: asegurar reinserción de extras y volver arriba al cambiar de pestaña
+    try{ mountExtrasForTab(tab); }catch(_){ }
+    try{ requestAnimationFrame(() => { try{ window.scrollTo({top:0,left:0,behavior:'auto'}); }catch(__){ try{ window.scrollTo(0,0); }catch(___){} } }); }catch(_){ try{ window.scrollTo(0,0); }catch(__){} }
   }
   window.switchTab = switchTab;
 
@@ -2138,6 +2185,8 @@ function switchTab(tab){
       setText('lf_outRama', data.rama || rama);
       setText('lf_outAgrup', data.agrup || agrup);
       setText('lf_outCat', data.categoria || categoria);
+      setText('lf_outIngreso', fmtDateISO(fi));
+      setText('lf_outEgreso', fmtDateISO(fe));
 
       // Guardar para re-render si se necesita
       window.__lastFinalCalc = data;

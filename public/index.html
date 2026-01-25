@@ -294,7 +294,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
-<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span></div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
 <thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
@@ -516,30 +516,6 @@ function toggleManejoCajaUI(){
   let META = null;
   let ALL_MESES = [];
 
-  function syncLFfromMensual(){
-    try{
-      const rSel = $('rama');
-      const aSel = $('agrup');
-      const cSel = $('categoria');
-      const lfR = $('lf_rama');
-      const lfA = $('lf_agrup');
-      const lfC = $('lf_categoria');
-      if(lfR && rSel){
-        lfR.innerHTML = rSel.innerHTML;
-        if(rSel.value) lfR.value = rSel.value;
-      }
-      if(lfA && aSel){
-        lfA.innerHTML = aSel.innerHTML;
-        lfA.value = aSel.value || '';
-      }
-      if(lfC && cSel){
-        lfC.innerHTML = cSel.innerHTML;
-        lfC.value = cSel.value || '';
-      }
-    }catch(_){ }
-  }
-
-
   function normRama(r){
     try{
       return (r||"").toString().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -758,19 +734,28 @@ function toggleManejoCajaUI(){
 
   function getEffectiveJornada(){
     const rama = $("rama")?.value || "";
-    if(isCallRama(rama)){
-      const h = parseHorasCategoria($("categoria")?.value || "");
-      // Call Center: jornada deriva de la categoría
-      if(h){
-        if($("hs")) $("hs").value = String(h);
-        if($("lf_hs")) $("lf_hs").value = String(h);
-      }
-      return (h || 48);
-    }
     const isFinal = !!document.getElementById('tabFinal')?.classList.contains('active');
     const src = isFinal ? $("lf_hs") : $("hs");
-    const fallback = num($("hs")?.value || 48) || 48;
-    return num(src?.value || fallback) || fallback;
+
+    let j = 48;
+
+    // Call Center: jornada deriva de la categoria (siempre 1..48)
+    if(isCallRama(rama)){
+      const h = parseHorasCategoria($("categoria")?.value || "");
+      if(h) j = h;
+    }else{
+      const fallback = num($("hs")?.value || 48) || 48;
+      j = num(src?.value || fallback) || fallback;
+    }
+
+    // Clamp: minimo 1 / maximo 48
+    j = Math.max(1, Math.min(48, j));
+
+    // Reflejar en ambos inputs (aunque esten ocultos)
+    if($("hs")) $("hs").value = String(j);
+    if($("lf_hs")) $("lf_hs").value = String(j);
+
+    return j;
   }
 
   function updateCallCenterUI(){
@@ -866,6 +851,15 @@ function applyBranchUI(){
 
     // selector de KM: cambia según rama (Turismo vs resto)
     try{ updateKmUI(); }catch{}
+
+    // En Liquidación Final: abrir automáticamente el panel de extras cuando la rama
+    // tiene opciones propias visibles dentro de ese panel (Turismo / Fúnebres / Agua).
+    try{
+      if(window.__activeTab === 'final'){
+        const det = $('lf_extras_details');
+        if(det) det.open = !!(showTur || showFun || showAgua);
+      }
+    }catch{}
   }
 
   function updateKmUI(){
@@ -916,11 +910,9 @@ function applyBranchUI(){
     ALL_MESES = (mesesRaw||[]).filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
 
     fillSelect($("rama"), ramas, "Rama");
-    fillSelect($("lf_rama"), ramas, "Rama");
 
     // defaults
     if(ramas.includes("GENERAL")) $("rama").value = "GENERAL";
-    if(ramas.includes("GENERAL") && $("lf_rama")) $("lf_rama").value = "GENERAL";
     refreshMesesForRama($("rama")?.value || "GENERAL");
 
     applyBranchUI();
@@ -973,7 +965,6 @@ function applyBranchUI(){
     try{ updateKmUI(); }catch{}
 
     await refreshPayload();
-    try{ syncLFfromMensual(); }catch(_){ }
   }
 
   async function refreshCatsOnly(){
@@ -993,7 +984,6 @@ function applyBranchUI(){
 
     try{ updateKmUI(); }catch{}
     await refreshPayload();
-    try{ syncLFfromMensual(); }catch(_){ }
   }
 
   function parseOsecacBool(){
@@ -1027,6 +1017,11 @@ function applyBranchUI(){
     // admite "2", "2.5", "2,5"
     const n = Number(v.replace(",", "."));
     return (Number.isFinite(n) ? n : 0);
+  }
+
+  function parseSindFijo(){
+    // Monto fijo opcional de afiliación sindical (cuando corresponde)
+    return num($("afiliado_fijo")?.value || 0) || 0;
   }
 
   async function refreshPayload(){
@@ -1121,6 +1116,7 @@ const p = await fetchJSON(url.toString());
 
     const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
     const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+    const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
     const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
     const jubilado = !!($("coJub")?.checked);
     const susp_dias = Math.max(0, parseInt($("coSusp")?.value || "0", 10) || 0);
@@ -1135,7 +1131,9 @@ const p = await fetchJSON(url.toString());
     const faltante_caja = Math.max(0, num($("faltanteCaja")?.value || 0) || 0);
     const armado_vidriera = !!($("armadoAuto")?.checked);
     const adelanto_sueldo = Math.max(0, num($("adelantoSueldo")?.value || 0) || 0);
-const osecac = parseOsecacBool();
+    const sac_prop_mes = !!($("coSacProp")?.checked);
+
+    const osecac = parseOsecacBool();
     const afiliado = parseAfiliadoBool();
     const sind_pct = parseSindPct();
     const sind_fijo = parseSindFijo();
@@ -1167,6 +1165,7 @@ const osecac = parseOsecacBool();
     url.searchParams.set("zona_pct", String(zona_pct || 0));
     url.searchParams.set("fer_no_trab", String(fer_no_trab));
     url.searchParams.set("fer_trab", String(fer_trab));
+    url.searchParams.set("vac_goz", String(vac_goz));
     url.searchParams.set("aus_inj", String(aus_inj));
     url.searchParams.set("jubilado", jubilado ? "true" : "false");
     url.searchParams.set("susp_dias", String(susp_dias));
@@ -1181,7 +1180,8 @@ const osecac = parseOsecacBool();
     url.searchParams.set("faltante_caja", String(faltante_caja));
     url.searchParams.set("armado_vidriera", armado_vidriera ? "true" : "false");
     url.searchParams.set("adelanto_sueldo", String(adelanto_sueldo));
-url.searchParams.set("km_tipo", km_tipo);
+    if(sac_prop_mes) url.searchParams.set("sac_prop_mes", "true");
+    url.searchParams.set("km_tipo", km_tipo);
     url.searchParams.set("km_menos100", String(km_menos100));
     url.searchParams.set("km_mas100", String(km_mas100));
     if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
@@ -1204,6 +1204,7 @@ url.searchParams.set("km_tipo", km_tipo);
       // Feriados / Ausencias
       const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
       const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+      const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
       const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
       // Etapa 8: Jubilado / Suspensión (días) / Embargo
       const jubilado = !!($("coJub")?.checked);
@@ -1227,7 +1228,9 @@ url.searchParams.set("km_tipo", km_tipo);
       const faltante_caja = Math.max(0, parseMoneyText($('faltanteCajaInput')?.value || ''));
       const armado_vidriera = !!($('armadoAuto')?.checked);
       const adelanto_sueldo = Math.max(0, num($('adelantoSueldo')?.value || 0) || 0);
-const osecac = parseOsecacBool();
+      const sac_prop_mes = !!($('coSacProp')?.checked);
+
+      const osecac = parseOsecacBool();
       const afiliado = parseAfiliadoBool();
       const zona_pct = num($('zona')?.value || 0) || 0;
       const sind_pct = afiliado ? parseSindPct() : 0;
@@ -1266,6 +1269,7 @@ const osecac = parseOsecacBool();
       url.searchParams.set("zona_pct", String(zona_pct));
       url.searchParams.set("fer_no_trab", String(fer_no_trab));
       url.searchParams.set("fer_trab", String(fer_trab));
+    url.searchParams.set("vac_goz", String(vac_goz));
       url.searchParams.set("aus_inj", String(aus_inj));
       // Etapa 8
       url.searchParams.set("jubilado", jubilado ? "true" : "false");
@@ -1283,12 +1287,11 @@ const osecac = parseOsecacBool();
       url.searchParams.set("faltante_caja", String(faltante_caja));
       url.searchParams.set("armado_vidriera", armado_vidriera ? "true" : "false");
       url.searchParams.set("adelanto_sueldo", String(adelanto_sueldo));
-// KM
+      if(sac_prop_mes) url.searchParams.set("sac_prop_mes", "true");
+      // KM
       if(km_tipo) url.searchParams.set("km_tipo", km_tipo);
       url.searchParams.set("km_menos100", String(km_menos100));
       url.searchParams.set("km_mas100", String(km_mas100));
-      if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
-    if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
 
       const data = await fetchJSON(url.toString());
@@ -1388,6 +1391,16 @@ const osecac = parseOsecacBool();
       .replace(/'/g,"&#039;");
   }
 
+  function fmtDateISO(iso){
+    if(!iso) return '–';
+    const parts = String(iso).split('-');
+    if(parts.length !== 3) return String(iso);
+    const [y,m,d] = parts;
+    if(!y || !m || !d) return String(iso);
+    return `${d}/${m}/${y}`;
+  }
+
+
   function cloneTableForPrint(tab){
     const sel = (tab === 'final') ? '#paneFinal table.table' : '#paneMensual table.table';
     const src = document.querySelector(sel);
@@ -1433,13 +1446,17 @@ const osecac = parseOsecacBool();
       : (`Escala ${(($('lf_egreso')?.value || '').slice(0,7)) || ($('mes')?.value || '')}`)
     ).trim();
 
+    const fiFmt = isFinal ? fmtDateISO($('lf_ingreso')?.value || '') : '';
+    const feFmt = isFinal ? fmtDateISO($('lf_egreso')?.value || '') : '';
+    const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : '';
+
     const tbl = cloneTableForPrint(tab);
 
     if(!tbl){
       area.innerHTML = `
         <div class="sheet">
           <div class="title">${escapeHtml(titulo)}</div>
-          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
           <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
         </div>`;
       return;
@@ -1449,7 +1466,7 @@ const osecac = parseOsecacBool();
     area.innerHTML = `
       <div class="sheet">
         <div class="title">${escapeHtml(titulo)}</div>
-        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)} · ${escapeHtml(escala)}</div>
+        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
         ${tbl.outerHTML}
       </div>`;
   }
@@ -1496,29 +1513,6 @@ function wire(){
       updateCallCenterUI();
       try{ updateKmUI(); }catch(_){ }
       await refreshPayload();
-      try{ syncLFfromMensual(); }catch(_){ }
-    });
-
-    // Selectores LF: sincronizan hacia Mensual (reutiliza lógica y evita duplicar IDs)
-    $("lf_rama")?.addEventListener("change", async () => {
-      const v = $("lf_rama")?.value || "";
-      if($("rama")) $("rama").value = v;
-      await refreshAgrupCat();
-    });
-
-    $("lf_agrup")?.addEventListener("change", async () => {
-      const v = $("lf_agrup")?.value || "";
-      if($("agrup")) $("agrup").value = v;
-      await refreshCatsOnly();
-    });
-
-    $("lf_categoria")?.addEventListener("change", async () => {
-      const v = $("lf_categoria")?.value || "";
-      if($("categoria")) $("categoria").value = v;
-      updateCallCenterUI();
-      try{ updateKmUI(); }catch(_){ }
-      await refreshPayload();
-      try{ syncLFfromMensual(); }catch(_){ }
     });
 
     $("mes")?.addEventListener("change", refreshPayload);
@@ -1640,18 +1634,48 @@ function wire(){
   // =====================
   // Etapa 9: Tabs + Liquidación Final
   // =====================
-  function mountExtrasForTab(tab){
+  function ensureExtrasAnchors(){
+  if(window.__extrasAnchorsReady) return;
   const root = $("mensualExtrasRoot");
   const hostM = $("mensualExtrasHost");
   const hostF = $("lfExtrasHost");
-  if(root && hostM && hostF){
+  if(root && hostM && !window.__extrasAnchorM){
+    const aM = document.createComment("CO_EXTRAS_MENSUAL");
+    hostM.insertBefore(aM, root);
+    window.__extrasAnchorM = aM;
+  }
+  if(hostF && !window.__extrasAnchorF){
+    const aF = document.createComment("CO_EXTRAS_FINAL");
+    hostF.appendChild(aF);
+    window.__extrasAnchorF = aF;
+  }
+  window.__extrasAnchorsReady = true;
+}
+
+function mountExtrasForTab(tab){
+  ensureExtrasAnchors();
+  const root = $("mensualExtrasRoot");
+  const hostM = $("mensualExtrasHost");
+  const hostF = $("lfExtrasHost");
+  const aM = window.__extrasAnchorM;
+  const aF = window.__extrasAnchorF;
+
+  if(root && hostM && hostF && aM && aF){
+    if(tab==="final"){
+      hostF.insertBefore(root, aF.nextSibling);
+    }else{
+      hostM.insertBefore(root, aM.nextSibling);
+    }
+  }else if(root && hostM && hostF){
     (tab==="final" ? hostF : hostM).appendChild(root);
   }
+
   const autoWrap = $("autoAntigWrap");
   if(autoWrap) autoWrap.style.display = "none";
 }
 
 function switchTab(tab){
+    window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
     const pMens = document.getElementById('paneMensual');
@@ -1659,6 +1683,8 @@ function switchTab(tab){
     if(!tMens || !tFinal || !pMens || !pFinal) return;
 
     try{ mountExtrasForTab(tab); }catch(_){ }
+    try{ applyBranchUI(); }catch(_){ }
+
 
     if(tab === 'final'){
       tFinal.classList.add('active');
@@ -1683,6 +1709,10 @@ function switchTab(tab){
       pMens.style.display = '';
       pFinal.style.display = 'none';
     }
+
+    // UX: asegurar reinserción de extras y volver arriba al cambiar de pestaña
+    try{ mountExtrasForTab(tab); }catch(_){ }
+    try{ requestAnimationFrame(() => { try{ window.scrollTo({top:0,left:0,behavior:'auto'}); }catch(__){ try{ window.scrollTo(0,0); }catch(___){} } }); }catch(_){ try{ window.scrollTo(0,0); }catch(__){} }
   }
   window.switchTab = switchTab;
 
@@ -1734,19 +1764,22 @@ function switchTab(tab){
       }
     }catch(_){ }
     // Días trabajados del mes: automático (1 al día de egreso)
+    // IMPORTANTE: evitar corrimientos por timezone (no usar new Date('YYYY-MM-DD')).
     try{
       const el = $('lf_dias_mes');
       if(el){
-        const d = parseYMDLocal(fe);
-        if(!Number.isNaN(d.getTime())){
-          el.value = String(d.getDate());
+        let dd = 0;
+        const feStr = (fe || '').toString();
+        if(feStr.length >= 10 && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(feStr.slice(0,10))){
+          dd = parseInt(feStr.slice(8,10), 10) || 0;
         }else{
-          el.value = '0';
+          const d = parseYMDLocal(feStr);
+          dd = (!Number.isNaN(d.getTime())) ? d.getDate() : 0;
         }
+        el.value = String(dd || 0);
       }
     }catch(_){/* ignore */}
-
-    // Mostrar/ocultar bloque indemnizaciones
+// Mostrar/ocultar bloque indemnizaciones
     const tipo = $('lf_tipo')?.value || 'RENUNCIA';
     const showInd = (tipo === 'DESPIDO_SC');
     document.querySelectorAll('.lf-only-despido').forEach(el => {
@@ -1768,9 +1801,9 @@ function switchTab(tab){
   // Se sugiere con: Básico + NR (var+SF) + Antigüedad + Presentismo,
   // tomando categoría + mes de la baja (YYYY-MM) + jornada.
   async function _lfFetchMejorFromAPI(){
-    const rama = $('lf_rama')?.value || $('rama')?.value || '';
-    const agrup = $('lf_agrup')?.value || $('agrup')?.value || '';
-    const categoria = $('lf_categoria')?.value || $('categoria')?.value || '';
+    const rama = $('rama')?.value || '';
+    const agrup = $('agrup')?.value || '';
+    const categoria = $('categoria')?.value || '';
     const jornada = getEffectiveJornada();
 
     let fe = $('lf_egreso')?.value || '';
@@ -1891,9 +1924,9 @@ function switchTab(tab){
     if(!inp) return;
     if(inp.dataset.manual && !force) return;
 
-    const rama = $('lf_rama')?.value || $('rama')?.value || '';
-    const agrup = $('lf_agrup')?.value || $('agrup')?.value || '';
-    const categoria = $('lf_categoria')?.value || $('categoria')?.value || '';
+    const rama = $('rama')?.value || '';
+    const agrup = $('agrup')?.value || '';
+    const categoria = $('categoria')?.value || '';
     const jornada = getEffectiveJornada();
     const fe = $('lf_egreso')?.value || '';
     const mes_baja = fe ? fe.slice(0,7) : '';
@@ -1951,9 +1984,9 @@ function switchTab(tab){
 
   window.calcularFinal = async function(){
     try{
-      const rama = $('lf_rama')?.value || $('rama')?.value || '';
-      const agrup = $('lf_agrup')?.value || $('agrup')?.value || '';
-      const categoria = $('lf_categoria')?.value || $('categoria')?.value || '';
+      const rama = $('rama')?.value || '';
+      const agrup = $('agrup')?.value || '';
+      const categoria = $('categoria')?.value || '';
       if(!rama || !agrup || !categoria){
         alert('Elegí Rama/Agrup/Categoría.');
         return;
@@ -1973,6 +2006,8 @@ function switchTab(tab){
       }
 
       const tipo = _mapTipoFinal($('lf_tipo')?.value || 'RENUNCIA');
+
+      const jornada = getEffectiveJornada();
 
       const mejor_total = parseMoneyInput($('lf_mrmnh')?.value || '0');
 
@@ -1995,7 +2030,11 @@ function switchTab(tab){
       const mejor_nr = mejor_total * shareNr;
       const dias_mes = (()=>{
         try{
-          const d = parseYMDLocal(fe);
+          const feStr = (fe || '').toString();
+          if(feStr.length >= 10 && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(feStr.slice(0,10))){
+            return parseInt(feStr.slice(8,10), 10) || 0;
+          }
+          const d = parseYMDLocal(feStr);
           if(!Number.isNaN(d.getTime())) return d.getDate();
         }catch(_){ }
         return parseInt(($('lf_dias_mes')?.value || '0'), 10) || 0;
@@ -2014,8 +2053,43 @@ function switchTab(tab){
       const sind_fijo = afiliado ? parseSindFijo() : 0;
       const embargo = Math.max(0, parseMoneyText($('coEmbargo')?.value || ''));
 
+      // === Extras del mes de baja (mismos controles que Mensual) ===
+      const zona_pct = num($('zona')?.value || 0) || 0;
+      const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
+
+      const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
+      const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
+        const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
+      const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
+      const susp_dias   = Math.max(0, parseInt($("coLicSG")?.value || "0", 10) || 0);
+
+      const hex50   = num($("hex50")?.value || 0) || 0;
+      const hex100  = num($("hex100")?.value || 0) || 0;
+      const hs_noct = num($("hsNoct")?.value || 0) || 0;
+
+      const km_tipo = String($("kmTipo")?.value || "").trim();
+      const km_menos100 = Math.max(0, parseInt($("kmMenos100")?.value || "0", 10) || 0);
+      const km_mas100   = Math.max(0, parseInt($("kmMas100")?.value || "0", 10) || 0);
+
+      const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
+      const viaticos_nr  = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
+
+      const manejo_caja = !!($("manejoCaja")?.checked);
+      const cajero_tipo = ($("cajero_tipo")?.value || "").toString();
+      const faltante_caja = Math.max(0, parseMoneyText($("faltanteCajaInput")?.value || ""));
+
+      const armado_vidriera = !!($("armadoAuto")?.checked);
+      const adelanto_sueldo = Math.max(0, num($("adelantoSueldo")?.value || 0) || 0);
+
+      const fun_adics = (isFunebresRama(rama))
+        ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
+            .map(el => (el && el.value != null) ? String(el.value) : "")
+            .filter(v => v)
+        : [];
+
       const qs = new URLSearchParams({
         rama, agrup, categoria,
+        jornada: String(jornada || 48),
         fecha_ingreso: fi,
         fecha_egreso: fe,
         tipo,
@@ -2033,9 +2107,43 @@ function switchTab(tab){
         afiliado: afiliado ? 'true' : 'false',
         sind_pct: String(sind_pct || 0),
         sind_fijo: String(sind_fijo || 0),
+        titulo_pct: String(titulo_pct || 0),
+        zona_pct: String(zona_pct || 0),
+        fer_no_trab: String(fer_no_trab),
+        fer_trab: String(fer_trab),
+          vac_goz: String(vac_goz),
+        aus_inj: String(aus_inj),
+        susp_dias: String(susp_dias),
+        hex50: String(hex50),
+        hex100: String(hex100),
+        hs_noct: String(hs_noct),
+        a_cuenta_rem: String(a_cuenta_rem),
+        viaticos_nr: String(viaticos_nr),
+        manejo_caja: manejo_caja ? 'true' : 'false',
+        cajero_tipo: cajero_tipo,
+        faltante_caja: String(faltante_caja),
+        armado_vidriera: armado_vidriera ? 'true' : 'false',
+        adelanto_sueldo: String(adelanto_sueldo),
+        km_tipo: km_tipo,
+        km_menos100: String(km_menos100),
+        km_mas100: String(km_mas100),
         jubilado: jubilado ? 'true' : 'false',
         embargo: String(embargo || 0),
       });
+
+      // Fúnebres: múltiples adicionales
+      try{
+        for(const id of fun_adics){
+          if(id) qs.append('fun_adic', id);
+        }
+      }catch(_){ }
+
+      // Fúnebres: múltiples ids
+      try{
+        for(const id of fun_adics){
+          if(id) qs.append('fun_adic', id);
+        }
+      }catch(_){ }
 
       setText('diagFinal', 'Calculando...');
       const url = new URL('/calcular-final', API_BASE);
@@ -2077,6 +2185,8 @@ function switchTab(tab){
       setText('lf_outRama', data.rama || rama);
       setText('lf_outAgrup', data.agrup || agrup);
       setText('lf_outCat', data.categoria || categoria);
+      setText('lf_outIngreso', fmtDateISO(fi));
+      setText('lf_outEgreso', fmtDateISO(fe));
 
       // Guardar para re-render si se necesita
       window.__lastFinalCalc = data;
