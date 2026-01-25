@@ -309,7 +309,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div id="printArea" style="display:none"></div>
 <style id="printIsolation">
-@page{size:A4;margin:10mm}
+@page{size:A4;margin:8mm}
 @media print{
   body > *:not(#printArea){ display:none !important }
   #printArea{ display:block !important }
@@ -318,6 +318,15 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 #printArea{display:none}
 /* Hoja simple */
 #printArea .sheet{position:relative;width:190mm;min-height:260mm;margin:0 auto;color:#0f172a;font:11px/1.28 ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial}
+#printArea tr{break-inside:avoid;page-break-inside:avoid}
+#printArea thead{display:table-header-group}
+#printArea tfoot{display:table-footer-group}
+#printArea .sheet.compact{font:10px/1.18 ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial}
+#printArea .sheet.compact .title{font-size:15px;margin-bottom:4.5mm}
+#printArea .sheet.compact thead th{padding:1.8mm 1.6mm 1.8mm}
+#printArea .sheet.compact th,#printArea .sheet.compact td{padding:1.55mm 1.6mm}
+#printArea .sheet.compact .neto{font-size:12.4px}
+
 /* Título */
 #printArea .title{text-align:center;font-weight:900;font-size:16px;margin-bottom:6mm}
 /* Tabla con columnas fijas y números tabulares */
@@ -1522,23 +1531,99 @@ const p = await fetchJSON(url.toString());
       const area = $('printArea');
       if(area) void area.offsetHeight;
 
-      // Si la liquidación tiene muchas filas, usar una hoja más alta para que no quede cortado.
-      // (Chrome/Edge respetan @page con tamaño personalizado en "Guardar como PDF").
-      try{
-        const iso = document.getElementById('printIsolation');
-        if(iso && !window.__coPrintStyleOriginal) window.__coPrintStyleOriginal = iso.textContent || '';
-        const sheet = document.querySelector('#printArea .sheet');
-        if(iso && sheet){
-          const pxH = Math.ceil(sheet.scrollHeight || sheet.getBoundingClientRect().height || 0);
-          const contentMm = Math.ceil(pxH * 25.4 / 96);
-          const pageMm = Math.max(297, contentMm + 20); // + márgenes
-          const baseCss = window.__coPrintStyleOriginal || (iso.textContent || '');
-          const rest = baseCss.replace(/@page\{[^}]*\}\s*/,'');
-          iso.textContent = `@page{size:210mm ${pageMm}mm;margin:10mm}\n` + rest;
-        }
-      }catch(_){ }
+      
+// Ajuste automático de impresión:
+// - Si entra en A4 con márgenes: A4 normal
+// - Si sobra poquito: A4 + zoom (reduce apenas)
+// - Si no entra: Oficio/Legal
+// - Si aun así no entra: Legal + zoom
+try{
+  const iso = document.getElementById('printIsolation');
+  const area = $('printArea');
+  if(iso && !window.__coPrintStyleOriginal) window.__coPrintStyleOriginal = iso.textContent || '';
 
-      // Nombre sugerido al “Guardar como PDF” (Chrome usa document.title)
+  if(iso && area){
+    // Mostrar fuera de pantalla para poder medir (display:none => altura 0)
+    const prev = {display: area.style.display, position: area.style.position, left: area.style.left, top: area.style.top, visibility: area.style.visibility};
+    area.style.display = 'block';
+    area.style.position = 'fixed';
+    area.style.left = '-10000px';
+    area.style.top = '0';
+    area.style.visibility = 'hidden';
+
+    // Forzar layout
+    void area.offsetHeight;
+
+    const sheet = document.querySelector('#printArea .sheet');
+    if(sheet){
+      // px por mm (respeta zoom del navegador)
+      const probe = document.createElement('div');
+      probe.style.width = '100mm';
+      probe.style.height = '0';
+      probe.style.position = 'absolute';
+      probe.style.visibility = 'hidden';
+      area.appendChild(probe);
+      const pxPerMm = (probe.getBoundingClientRect().width || 377.95) / 100;
+      probe.remove();
+
+      const pxH = Math.ceil(sheet.scrollHeight || sheet.getBoundingClientRect().height || 0);
+      const contentMm = pxH / pxPerMm;
+
+      const marginMm = 8;
+      const A4 = { w: 210.0, h: 297.0 };
+      const LEGAL = { w: 215.9, h: 355.6 }; // Oficio / Legal
+
+      const availA4 = A4.h - marginMm*2;
+      const availLegal = LEGAL.h - marginMm*2;
+
+      let page = A4;
+      let scale = 1;
+
+      // Compacta si hay muchas filas (reduce padding/fuente)
+      const needsCompact = contentMm > availA4;
+      sheet.classList.toggle('compact', needsCompact);
+
+      // Re-medir con modo compact (puede bajar altura)
+      void sheet.offsetHeight;
+      const pxH2 = Math.ceil(sheet.scrollHeight || sheet.getBoundingClientRect().height || 0);
+      const contentMm2 = pxH2 / pxPerMm;
+
+      if(contentMm2 <= availA4){
+        page = A4;
+        scale = 1;
+      }else if(contentMm2 <= availA4 * 1.06){
+        // sobra poquito: A4 + zoom
+        page = A4;
+        scale = Math.min(1, availA4 / contentMm2);
+      }else if(contentMm2 <= availLegal){
+        page = LEGAL;
+        scale = 1;
+      }else{
+        page = LEGAL;
+        scale = Math.min(1, availLegal / contentMm2);
+      }
+
+      // Evitar que quede ilegible
+      if(scale < 0.78) scale = 0.78;
+
+      const baseCss = window.__coPrintStyleOriginal || (iso.textContent || '');
+      // quitar cualquier @page previo (solo el primero)
+      const rest = baseCss.replace(/@page\{[^}]*\}\s*/,'');
+      iso.textContent =
+        `@page{size:${page.w}mm ${page.h}mm;margin:${marginMm}mm}\n` +
+        `@media print{#printArea .sheet{zoom:${scale};}}\n` +
+        rest;
+    }
+
+    // Restaurar visibilidad en pantalla (se imprime igual por @media print)
+    area.style.display = prev.display;
+    area.style.position = prev.position;
+    area.style.left = prev.left;
+    area.style.top = prev.top;
+    area.style.visibility = prev.visibility;
+  }
+}catch(_){ }
+// Nombre sugerido al “Guardar como PDF” (Chrome usa document.title)
       __coTitleBeforePrint = document.title;
       document.title = buildPrintFilename(t);
 
