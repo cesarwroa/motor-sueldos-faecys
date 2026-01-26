@@ -24,6 +24,25 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:12px}
 .tabs{display:flex;gap:6px;margin:12px 0} .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
+.tab-disabled{opacity:.65; cursor:not-allowed; pointer-events:none; position:relative; overflow:hidden;}
+.co-stamp{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%) rotate(-10deg);
+  padding:4px 10px;
+  border:3px solid #dc2626;
+  color:#dc2626;
+  font-weight:900;
+  letter-spacing:1px;
+  border-radius:4px;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.85);
+  box-shadow:0 1px 0 rgba(0,0,0,.05);
+  font-size:12px;
+  line-height:1;
+}
+
 .right{text-align:right}
 @media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
 
@@ -113,7 +132,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <h1>Calculadora de Comercio</h1>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
-<div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
+<div class="tab tab-disabled" id="tabFinal" role="button" aria-disabled="true" title="Próximamente">
+  Liquidación Final
+  <span class="co-stamp" aria-hidden="true">PRÓXIMAMENTE</span>
+</div>
 </div>
 <div class="card">
 <div class="grid cols-4">
@@ -1832,6 +1854,7 @@ function mountExtrasForTab(tab){
 }
 
 function switchTab(tab){
+    if(tab === 'final') tab = 'mensual';
     window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
