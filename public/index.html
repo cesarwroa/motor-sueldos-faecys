@@ -1162,7 +1162,8 @@ const p = await fetchJSON(url.toString());
     const agrup = $("agrup")?.value || "";
     const categoria = $("categoria")?.value || "";
     const jornada = getEffectiveJornada();
-    const anios_antig = num($("anios")?.value || 0) || 0;
+          try{ _mAutoAntigFromAlta(); }catch(_){ }
+      const anios_antig = num($("anios")?.value || 0) || 0;
 
     const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
     const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
@@ -1240,6 +1241,28 @@ const p = await fetchJSON(url.toString());
     return url;
   }
 
+  // Mensual: autocalcular años de antigüedad desde "Fecha de alta" (editable)
+  function _mAutoAntigFromAlta(opts){
+    try{
+      opts = opts || {};
+      const alta = $('alta')?.value || '';
+      const mes = $('mes')?.value || '';
+      const anEl = $('anios');
+      if(!anEl) return 0;
+      if(!alta || !/^\d{4}-\d{2}-\d{2}$/.test(alta) || !/^\d{4}-\d{2}$/.test(mes)){
+        return num(anEl.value || 0) || 0;
+      }
+      const fe = _lastDayOfYYYYMM(mes);
+      if(!fe) return num(anEl.value || 0) || 0;
+      const y = _lfYearsComplete(alta, fe);
+      if(opts.force || !anEl.dataset.manual){
+        anEl.value = String(y);
+      }
+      return y;
+    }catch(_){
+      return 0;
+    }
+  }
   async function calcularMensual(){
     try{
       const rama = $("rama")?.value || "";
@@ -1249,6 +1272,7 @@ const p = await fetchJSON(url.toString());
       if([rama,mes,agrup,categoria].some(v => !v)){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
 
       const jornada = getEffectiveJornada();
+      try{ _mAutoAntigFromAlta(); }catch(_){ }
       const anios_antig = num($("anios")?.value || 0) || 0;
 
       // Feriados / Ausencias
@@ -1672,10 +1696,29 @@ function wire(){
       await refreshPayload();
     });
 
-    $("mes")?.addEventListener("change", refreshPayload);
+    $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } refreshPayload(); });
     $("hs")?.addEventListener("change", refreshPayload);
 
-    // Agua: conexiones (sincroniza Mensual ↔ Final)
+    
+
+    // Antigüedad (Mensual): auto por Fecha de alta, pero editable
+    const __anEl = $("anios");
+    $("alta")?.addEventListener("change", () => {
+      try{ if(__anEl) delete __anEl.dataset.manual; }catch(_){ }
+      try{ _mAutoAntigFromAlta({force:true}); }catch(_){ }
+    });
+    __anEl?.addEventListener("input", () => {
+      try{
+        const v = (__anEl.value || '').toString().trim();
+        if(v !== ''){
+          __anEl.dataset.manual = '1';
+        }else{
+          delete __anEl.dataset.manual;
+          _mAutoAntigFromAlta({force:true});
+        }
+      }catch(_){ }
+    });
+// Agua: conexiones (sincroniza Mensual ↔ Final)
     const _syncAguaConex = (fromId, toId) => {
       try{
         const a = $(fromId);
