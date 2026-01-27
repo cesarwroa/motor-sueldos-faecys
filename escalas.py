@@ -55,6 +55,18 @@ def round2(x: float) -> float:
         return 0.0
 
 
+def _fmt_pct(x: float) -> str:
+    """Formatea un porcentaje para etiqueta (1.0 -> '1', 1.5 -> '1.5')."""
+    try:
+        xf = float(x)
+    except Exception:
+        return str(x)
+    if abs(xf - round(xf)) < 1e-9:
+        return str(int(round(xf)))
+    s = f"{xf:.2f}".rstrip('0').rstrip('.')
+    return s
+
+
 # ---------------------------
 # Utils
 # ---------------------------
@@ -1307,9 +1319,9 @@ def calcular_payload(
     if bool(jubilado):
         items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
         items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        items.append(item("Art 100", d=sind_solid, base_num=base_fs))
+        items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
         if sind:
-            items.append(item("Sindicato Afiliación", d=sind, base_num=base_fs))
+            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
             items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
     else:
@@ -1324,10 +1336,10 @@ def calcular_payload(
 
         # Obligatorios (no dependen de afiliación)
         items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        items.append(item("Art 100", d=sind_solid, base_num=base_fs))
+        items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
 
         if sind:
-            items.append(item("Sindicato Afiliación", d=sind, base_num=(rem_aportes + nr_aportable_real)))
+            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
         if sind_fijo_monto:
             items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
 
@@ -2106,9 +2118,9 @@ def calcular_final_payload(
         if faecys:
             items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
         if sind_solid:
-            items.append(item("Art 100", d=sind_solid, base_num=base_fs))
+            items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
         if sind:
-            items.append(item("Sindicato Afiliación", d=sind, base_num=base_fs))
+            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
             items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
     else:
@@ -2124,10 +2136,10 @@ def calcular_final_payload(
         if faecys:
             items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
         if sind_solid:
-            items.append(item("Art 100", d=sind_solid, base_num=base_fs))
+            items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
 
         if sind:
-            items.append(item("Sindicato Afiliación", d=sind, base_num=base_fs))
+            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
             items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
 
