@@ -23,7 +23,13 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .km-pair{display:flex;align-items:center;gap:6px;white-space:nowrap}
 
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:12px}
-.tabs{display:flex;gap:6px;margin:12px 0} .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
+.tabs{display:flex;gap:6px;margin:12px 0} 
+/* Volver a la web principal */
+.co-home-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;border:1px solid rgba(37,99,235,.35)}
+.co-home-btn:hover{background:#1d4ed8}
+.co-home-btn:active{transform:translateY(1px)}
+.co-home-ic{width:18px;height:18px;display:inline-block}
+.tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
 .tab-disabled{opacity:.65; cursor:not-allowed; pointer-events:none; position:relative; overflow:hidden;}
 .co-stamp{
   position:absolute;
@@ -131,7 +137,13 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </head>
 <body>
 <div class="container">
-<h1>Calculadora de Comercio</h1>
+<div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <h1 style="margin:0">Calculadora de Comercio</h1>
+  <a class="co-home-btn" href="https://www.calculadoradecomercio.com/" title="Volver a la web principal">
+    <svg class="co-home-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <span>Volver a la web</span>
+  </a>
+</div>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
 <div class="tab tab-disabled" id="tabFinal" role="button" aria-disabled="true" title="Próximamente">
@@ -460,6 +472,19 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     return n.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
   };
 
+
+  function normalizeFAECYSConcept(concepto){
+    const c0 = String(concepto ?? '').trim();
+    if(!c0) return c0;
+    if(/^FAECYS\b/i.test(c0) && /0\s*[,\.]\s*5/.test(c0)){
+      return 'FAECYS 0,5% Art. 100';
+    }
+    // por si llega como "FAECYS 0,5% Art 100" o variantes
+    if(/^FAECYS\b/i.test(c0) && /Art\.?\s*100/i.test(c0)){
+      return 'FAECYS 0,5% Art. 100';
+    }
+    return c0;
+  }
   // Parseo tolerante para importes ingresados con formato argentino: $ 1.234,56
   const parseMoneyText = (s) => {
     try{
@@ -1166,6 +1191,7 @@ const p = await fetchJSON(url.toString());
   }
 
   function addRowMensual(concepto, base, r, n, d){
+    concepto = normalizeFAECYSConcept(concepto);
     const tb = $("tbodyMensual");
     if(!tb) return;
     const tr = document.createElement("tr");
@@ -2477,6 +2503,7 @@ function switchTab(tab){
 
       // 4) Render (columna unificada: NR/Indemnizatorio)
       const addRowFinal = (c, base, r, ni, d) => {
+        c = normalizeFAECYSConcept(c);
         const tr = document.createElement('tr');
 
         const tdC = document.createElement('td');
