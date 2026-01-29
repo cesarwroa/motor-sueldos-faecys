@@ -172,6 +172,11 @@ def _build_index() -> Dict[str, Any]:
             return
 
         payload[(rama_u, agrup_u, cat_u, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
+        # Alias de categoría (Fúnebres): permitir lookup sin la letra final "(A/B/C/D)"
+        if rama_u in ("FUNEBRES", "FÚNEBRES"):
+            cat_base = re.sub(r"\s*\([A-D]\)\s*$", "", cat_u).strip()
+            if cat_base and cat_base != cat_u:
+                payload[(rama_u, agrup_u, cat_base, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
         ramas_set.add(rama_u)
         meses_set.add(mes_k)
         agrup_by_rama.setdefault(rama_u, set()).add(agrup_u)

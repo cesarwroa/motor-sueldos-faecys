@@ -699,6 +699,70 @@ function toggleManejoCajaUI(){
     return rr === 'FUNEBRES' || rr === 'FÚNEBRES' || rr === 'FUNEBRES '; // tolerante
   }
 
+
+  // Fúnebres: letras A/B/C/D por categoría (según escala)
+  const FUNEBRES_CAT_LETRAS = {
+    "MAESTRANZA – PEÓN": "A",
+    "AUXILIAR – PERSONAL SALAS VELATORIAS": "A",
+    "AUXILIAR – CAPILLERO – SOLDADOR – LUSTRADOR – SASTRE": "B",
+    "AUXILIAR – CHOFER – FURGONERO – AMBULANCIERO": "B",
+    "MAESTRANZA – AYUDANTE – CAMILLERO – SERENO": "B",
+    "MAESTRANZA – PORTERO": "C",
+    "ADMINISTRATIVO": "D"
+  };
+
+  function funebresSplitCat(cat){
+    const s = (cat || "").toString().trim();
+    const m = s.match(/^(.*)\s*\(([A-D])\)\s*$/);
+    if(m){
+      const base = (m[1]||"").trim();
+      const letra = (m[2]||"").trim();
+      return { base, letra, label: base ? `${base} (${letra})` : s };
+    }
+    const base = s;
+    const letra = FUNEBRES_CAT_LETRAS[base] || "";
+    return { base, letra, label: letra ? `${base} (${letra})` : base };
+  }
+
+  function getSelText(id){
+    const el = document.getElementById(id);
+    if(!el) return "";
+    const opt = el.selectedOptions && el.selectedOptions[0];
+    return (opt && (opt.textContent || opt.innerText)) ? (opt.textContent || opt.innerText) : (el.value || "");
+  }
+
+  function fillFunebresCategoriaSelect(sel, cats, placeholder){
+    if(!sel) return;
+    const cur = sel.value || "";
+    sel.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholder || "Categoría";
+    ph.disabled = true;
+    ph.selected = true;
+    sel.appendChild(ph);
+
+    const seen = new Set();
+    (cats||[]).forEach(c => {
+      const { base, label } = funebresSplitCat(c);
+      if(!base || seen.has(base)) return;
+      const opt = document.createElement("option");
+      opt.value = base;
+      opt.textContent = label;
+      sel.appendChild(opt);
+      seen.add(base);
+    });
+
+    // restaurar selección si existe, si no usar primero
+    if(cur && seen.has(cur)){
+      sel.value = cur;
+    }else{
+      const first = Array.from(sel.options).find(o => o.value);
+      if(first) sel.value = first.value;
+    }
+  }
+
+
   function clearFunebresAdics(){
     const box = document.getElementById('funList');
     if(box) box.innerHTML = '';
@@ -912,7 +976,7 @@ function applyBranchUI(){
     if(agrupWrap) agrupWrap.style.display = showFun ? "none" : "";
     if(agrupSel){
       agrupSel.disabled = !!showFun;
-      if(showFun) agrupSel.value = "";
+      if(showFun) agrupSel.value = "—";
     }
 
     const aguaBlock = $('aguaBlock');
@@ -1073,9 +1137,10 @@ function applyBranchUI(){
 
     const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
-    fillSelect($("categoria"), cats, "Categoría");
+    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
+      else fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
-    if(cats.length) $("categoria").value = cats[0];
+    if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
 
     updateCallCenterUI();
@@ -1095,8 +1160,9 @@ function applyBranchUI(){
     }
     if(!agrup){ return; }
     const cats = getCatsFor(rama, agrup);
-    fillSelect($("categoria"), cats, "Categoría");
-    if(cats.length) $("categoria").value = cats[0];
+    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
+      else fillSelect($("categoria"), cats, "Categoría");
+    if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
     updateCallCenterUI();
 
@@ -1184,7 +1250,7 @@ const p = await fetchJSON(url.toString());
       // Encabezado de recibo
       setText("outRama", rama);
       setText("outAgrup", agrup);
-      setText("outCat", categoria);
+      setText("outCat", getSelText("categoria") || categoria);
       setText("outEscala", `Escala ${mes}`);
 
       // Fúnebres: refrescar lista de adicionales al cambiar mes/categoría
@@ -1507,7 +1573,7 @@ const p = await fetchJSON(url.toString());
       // Encabezado + labels desde API
       setText("outRama", data.rama || rama);
       setText("outAgrup", data.agrup || agrup);
-      setText("outCat", data.categoria || categoria);
+      setText("outCat", getSelText("categoria") || data.categoria || categoria);
       setText("outEscala", `Escala ${data.mes || mes}`);
       if(data.labels){
         if(data.labels.no_rem) setText("lblNrVar", data.labels.no_rem);
