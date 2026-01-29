@@ -55,18 +55,6 @@ def round2(x: float) -> float:
         return 0.0
 
 
-def _fmt_pct(x: float) -> str:
-    """Formatea un porcentaje para etiqueta (1.0 -> '1', 1.5 -> '1.5')."""
-    try:
-        xf = float(x)
-    except Exception:
-        return str(x)
-    if abs(xf - round(xf)) < 1e-9:
-        return str(int(round(xf)))
-    s = f"{xf:.2f}".rstrip('0').rstrip('.')
-    return s
-
-
 # ---------------------------
 # Utils
 # ---------------------------
@@ -172,11 +160,6 @@ def _build_index() -> Dict[str, Any]:
             return
 
         payload[(rama_u, agrup_u, cat_u, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
-        # Alias de categoría (Fúnebres): permitir lookup sin la letra final "(A/B/C/D)"
-        if rama_u in ("FUNEBRES", "FÚNEBRES"):
-            cat_base = re.sub(r"\s*\([A-D]\)\s*$", "", cat_u).strip()
-            if cat_base and cat_base != cat_u:
-                payload[(rama_u, agrup_u, cat_base, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
         ramas_set.add(rama_u)
         meses_set.add(mes_k)
         agrup_by_rama.setdefault(rama_u, set()).add(agrup_u)
@@ -314,20 +297,15 @@ def _build_index() -> Dict[str, Any]:
             tipo = "pct" if ("por" in tipo_raw or "%" in tipo_raw) else "monto"
 
             # Etiquetas amigables (como en el HTML offline)
-            # IMPORTANTÍSIMO (Fúnebres):
-            # - "Adicional General (todo el personal, incluidos choferes)" corresponde a
-            #   **Manipulación de cadáveres** (Inciso 1).
-            # - "Personal no incluido en inciso 1" corresponde a **Resto del personal** (Inciso 2).
-            # El texto del inciso 2 menciona "inciso 1", por eso se evalúa primero "no incluido".
             cl = concepto_raw.lower()
             label = concepto_raw
             if "indument" in cl:
                 label = "Indumentaria"
-            elif "no incluido" in cl:
-                label = "Resto del personal"
-            elif ("general" in cl) or ("todo el personal" in cl) or ("cadaver" in cl) or ("cadáver" in cl) or re.search(r"\binciso\s*1\b", cl):
+            elif "general" in cl:
                 # Ojo: este concepto suele venir como "... incluidos choferes", por eso
                 # se evalúa ANTES que el de chofer/furgonero.
+                label = "Resto del personal"
+            elif "cadaver" in cl or "cadáver" in cl or "no incluido" in cl or "inciso" in cl:
                 label = "Manipulación de cadáveres"
             elif "furgon" in cl or "chofer/furgon" in cl:
                 label = "Chofer/Furgonero"
@@ -1056,20 +1034,16 @@ def calcular_payload(
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0)))
 
-    # Aportes sindicales/FAECYS: base = REM aportable + NR aportable (excluye viáticos).
-    # Regla del sistema: Sindicato 2% y FAECYS 0,5% son obligatorios (no dependen de afiliación).
-    # Base = REM aportable + NR aportable (sin viáticos NR sin aportes).
+    # Aportes FAECYS 0,5% + Sindicato 2% (solidario): obligatorios (no dependen de "afiliado").
+    # Base = REM aportable + NR aportable (excluye viáticos NR sin aportes).
     base_fs = round2(rem_aportes + nr_aportable_real)
     faecys = round2(base_fs * 0.005) if base_fs else 0.0
     sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
-    sind_af = 0.0
 
+    # Afiliación sindical (opcional): % y/o monto fijo (solo si está tildado "afiliado").
+    sind_af = 0.0
     sind = 0.0
     sind_fijo_monto = 0.0
-
-    if bool(jubilado):
-        # En JUBILADO, la afiliación respeta el selector (% 1–4) y/o monto fijo.
-        sind_af = 0.0
 
     if bool(afiliado):
         try:
@@ -1077,7 +1051,6 @@ def calcular_payload(
         except Exception:
             sp = 0.0
         if sp > 0:
-            # Afiliación (%): adicional al solidario.
             sind = round2(base_fs * (sp / 100.0))
 
         # Monto fijo de sindicato (se aplica SOLO si está afiliado).
@@ -1329,11 +1302,11 @@ def calcular_payload(
     if bool(jubilado):
         items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
         items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
+        items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
         if sind:
-            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
+            items.append(item(f"Afiliación {float(sind_pct):g}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
-            items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
+            items.append(item("Afiliación (fijo)", d=sind_fijo_monto))
     else:
         items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
         items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
@@ -1344,14 +1317,13 @@ def calcular_payload(
         else:
             items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
 
-        # Obligatorios (no dependen de afiliación)
         items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
+        items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
 
         if sind:
-            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
+            items.append(item(f"Afiliación {float(sind_pct):g}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
-            items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
+            items.append(item("Afiliación (fijo)", d=sind_fijo_monto))
 
     return {
         "ok": True,
@@ -2005,7 +1977,7 @@ def calcular_final_payload(
             claves = [
                 "básico", "basico", "antigüedad", "antiguedad", "presentismo",
                 "incr.", "recomp.",
-                "jubil", "pami", "obra social", "osecac", "faecys", "sindicato", "art 100",
+                "jubil", "pami", "obra social", "osecac", "faecys", "sindicato",
                 "embargo", "total", "neto",
             ]
             return any((c == k) or c.startswith(k) or (k in c and k not in ("incr.", "recomp.")) for k in claves)
@@ -2036,6 +2008,9 @@ def calcular_final_payload(
     nr_total = round2(sum(x.get('n', 0.0) for x in items))
     ind_total = round2(sum(x.get('i', 0.0) for x in items))
 
+    # NR aportable para aportes solidarios (excluye viáticos NR sin aportes)
+    nr_aportable_real = max(0.0, round2(nr_total - (float(viaticos_nr or 0.0))))
+
     # -----------------
     # Deducciones (misma lógica que mensual)
     # -----------------
@@ -2050,27 +2025,18 @@ def calcular_final_payload(
     sind = 0.0
     sind_fijo_monto = 0.0
 
-    # Aportes obligatorios (no dependen de afiliación):
-    # - FAECYS 0,5%
-    # - Sindicato 2%
-    # Base = REM aportable + NR aportable (excluye viáticos NR sin aportes).
-    viaticos_nr = 0.0
-    for x in items:
-        con = str(x.get("concepto", "")).lower()
-        if ("viat" in con) or ("viát" in con):
-            try:
-                viaticos_nr += float(x.get("n", 0.0) or 0.0)
-            except Exception:
-                pass
-    viaticos_nr = round2(viaticos_nr)
-    nr_aportable = max(0.0, round2(nr_total - viaticos_nr))
-    base_fs = round2(rem_aportes + nr_aportable)
+
+    base_fs = round2(rem_aportes + nr_aportable_real)
     faecys = round2(base_fs * 0.005) if base_fs else 0.0
     sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
+
 
     if bool(jubilado):
         # Jubilado: según criterio del sistema vigente
         jub = round2(rem_aportes * 0.11)
+        base_fs = round2(rem_aportes + nr_aportable_real)
+        faecys = round2(base_fs * 0.005)
+        sind_solid = round2(base_fs * 0.02)
         if bool(afiliado):
             if float(sind_pct or 0) > 0:
                 sind = round2(base_fs * (float(sind_pct) / 100.0))
@@ -2097,7 +2063,7 @@ def calcular_final_payload(
 
         if bool(afiliado):
             if float(sind_pct or 0) > 0:
-                sind = round2(base_fs * (float(sind_pct) / 100.0))
+                sind = round2((rem_aportes + nr_total) * (float(sind_pct) / 100.0))
             if float(sind_fijo or 0) > 0:
                 sind_fijo_monto = round2(float(sind_fijo))
 
@@ -2123,16 +2089,19 @@ def calcular_final_payload(
 
     # Agregar filas de descuentos al final
     if bool(jubilado):
+        base_fs = round2(rem_aportes + nr_aportable_real)
+        faecys = round2(base_fs * 0.005)
+        sind_solid = round2(base_fs * 0.02)
         if jub:
             items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
         if faecys:
             items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
         if sind_solid:
-            items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
+            items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
         if sind:
-            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
+            items.append(item(f"Afiliación {float(sind_pct):g}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
-            items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
+            items.append(item("Afiliación (fijo)", d=sind_fijo_monto))
     else:
         if jub:
             items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
@@ -2141,17 +2110,12 @@ def calcular_final_payload(
         items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
         if osecac_100:
             items.append(item("OSECAC $100", d=osecac_100))
-
-        # Obligatorios (no dependen de afiliación)
-        if faecys:
-            items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        if sind_solid:
-            items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
-
+        items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
+        items.append(item("Sindicato 2%", d=sind_solid, base_num=base_fs))
         if sind:
-            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
+            items.append(item(f"Afiliación {float(sind_pct):g}%", d=sind, base_num=base_fs))
         if sind_fijo_monto:
-            items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
+            items.append(item("Afiliación (fijo)", d=sind_fijo_monto))
 
     if embargo_monto:
         items.append(item("Embargo (desc.)", d=embargo_monto, base_num=neto_pre))

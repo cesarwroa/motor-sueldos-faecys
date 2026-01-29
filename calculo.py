@@ -34,18 +34,6 @@ def _r2(x: float) -> float:
     return float(f"{x:.2f}")
 
 
-def _fmt_pct(x: float) -> str:
-    """Formatea un porcentaje para etiqueta (1.0 -> '1', 1.5 -> '1.5')."""
-    try:
-        xf = float(x)
-    except Exception:
-        return str(x)
-    if abs(xf - round(xf)) < 1e-9:
-        return str(int(round(xf)))
-    s = f"{xf:.2f}".rstrip('0').rstrip('.')
-    return s
-
-
 def _u(s: Any) -> str:
     return (str(s or "").strip().upper())
 
@@ -480,9 +468,9 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     if os_3: _add(items, "Obra Social (3%)", ded=os_3, base=base_ap)
     if os_100: _add(items, "Aporte fijo OSECAC", ded=os_100, base=os_100)
     if faecys: _add(items, "FAECYS (0,5%)", ded=faecys, base=base_ap)
-    if sind_solid: _add(items, "Sindicato 2% Art 100", ded=sind_solid, base=base_ap)
-    if afil_pct: _add(items, f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", ded=afil_pct, base=base_ap)
-    if afil_fijo: _add(items, "Sindicato Afiliación", ded=afil_fijo, base=base_ap)
+    if sind_solid: _add(items, "Sindicato (2%)", ded=sind_solid, base=base_ap)
+    if afil_pct: _add(items, f"Afiliación ({_r2(sind_pct)}%)", ded=afil_pct, base=base_ap)
+    if afil_fijo: _add(items, "Afiliación (fijo)", ded=afil_fijo, base=base_ap)
     if faltante: _add(items, "Faltante de caja", ded=faltante, base=faltante)
     if embargo: _add(items, "Embargo", ded=embargo, base=embargo)
 
@@ -642,11 +630,11 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     if faecys:
         _add(items, 'FAECYS (0,5%)', ded=faecys, base=base_ap)
     if sind_solid:
-        _add(items, 'Sindicato 2% Art 100', ded=sind_solid, base=base_ap)
+        _add(items, 'Sindicato (2%)', ded=sind_solid, base=base_ap)
     if afil_pct:
-        _add(items, f'Sindicato Afiliación {_fmt_pct(sind_pct)}%', ded=afil_pct, base=base_ap)
+        _add(items, f'Afiliación ({_r2(sind_pct)}%)', ded=afil_pct, base=base_ap)
     if afil_fijo:
-        _add(items, 'Sindicato Afiliación', ded=afil_fijo, base=base_ap)
+        _add(items, 'Afiliación (fijo)', ded=afil_fijo, base=base_ap)
 
     total_ded = jub + pami + os_3 + os_100 + faecys + sind_solid + afil_pct + afil_fijo
     neto = (total_rem + total_nr + total_ind) - total_ded
