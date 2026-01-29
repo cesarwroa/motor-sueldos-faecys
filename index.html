@@ -811,7 +811,26 @@ function toggleManejoCajaUI(){
         const txt = document.createElement('div');
         const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
         const prettyLabel = prettifyFunLabel(label);
-        txt.innerHTML = `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs)}</div>` : '');
+
+        // Evitar repetir el nombre del adicional en la segunda línea (p.ej. Inciso 1/2)
+        let obsShort = (obs || "").toString().trim();
+        if(obsShort){
+          // Si la observación trae "Inciso X", mostramos solo eso
+          const m = obsShort.match(/inciso\s*\d+[^)]*/i);
+          if(m) obsShort = m[0].trim();
+
+          // Quitar duplicación del label (si viene "Manipulación de cadáveres ...")
+          const escRe = (s) => (s || "").toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp('^' + escRe(prettyLabel) + '\\s*', 'i');
+          obsShort = obsShort.replace(re, '').trim();
+
+          // Limpiar separadores y paréntesis
+          obsShort = obsShort.replace(/^[\(\-:\s–—]+/, '').replace(/[\)\s]+$/, '').trim();
+        }
+
+        txt.innerHTML =
+          `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` +
+          (obsShort ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obsShort)}</div>` : '');
 
         wrap.appendChild(cb);
         wrap.appendChild(txt);
