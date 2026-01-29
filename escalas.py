@@ -314,15 +314,20 @@ def _build_index() -> Dict[str, Any]:
             tipo = "pct" if ("por" in tipo_raw or "%" in tipo_raw) else "monto"
 
             # Etiquetas amigables (como en el HTML offline)
+            # IMPORTANTÍSIMO (Fúnebres):
+            # - "Adicional General (todo el personal, incluidos choferes)" corresponde a
+            #   **Manipulación de cadáveres** (Inciso 1).
+            # - "Personal no incluido en inciso 1" corresponde a **Resto del personal** (Inciso 2).
+            # El texto del inciso 2 menciona "inciso 1", por eso se evalúa primero "no incluido".
             cl = concepto_raw.lower()
             label = concepto_raw
             if "indument" in cl:
                 label = "Indumentaria"
-            elif "general" in cl:
+            elif "no incluido" in cl:
+                label = "Resto del personal"
+            elif ("general" in cl) or ("todo el personal" in cl) or ("cadaver" in cl) or ("cadáver" in cl) or re.search(r"\binciso\s*1\b", cl):
                 # Ojo: este concepto suele venir como "... incluidos choferes", por eso
                 # se evalúa ANTES que el de chofer/furgonero.
-                label = "Resto del personal"
-            elif "cadaver" in cl or "cadáver" in cl or "no incluido" in cl or "inciso" in cl:
                 label = "Manipulación de cadáveres"
             elif "furgon" in cl or "chofer/furgon" in cl:
                 label = "Chofer/Furgonero"

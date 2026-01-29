@@ -644,9 +644,10 @@ function toggleManejoCajaUI(){
     if(!s) return "";
 
     const up = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    // Mapeo a los nombres que usás en el modelo de referencia
-    if(up.includes("GENERAL") && up.includes("TODO EL PERSONAL")) return "Manipulación de cadáveres";
-    if(up.includes("PERSONAL NO INCLUIDO") || up.includes("INCISO 1")) return "Resto del personal";
+    // Mapeo a los nombres cortos usados en el modelo
+    // IMPORTANTE: en el PDF, el Inciso 2 dice "no incluido en inciso 1", por eso se evalúa primero "NO INCLUIDO".
+    if(up.includes("NO INCLUIDO")) return "Resto del personal";
+    if(up.includes("TODO EL PERSONAL") || up.includes("ADICIONAL GENERAL") || (up.includes("INCISO 1") && !up.includes("NO INCLUIDO"))) return "Manipulación de cadáveres";
     if(up.includes("CHOFER") || up.includes("FURGONERO")) return "Chofer/Furgonero";
     if(up.includes("INDUMENTARIA")) return "Indumentaria";
 
