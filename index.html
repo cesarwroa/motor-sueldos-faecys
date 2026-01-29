@@ -45,6 +45,27 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .co-home-btn:active{transform:translateY(1px)}
 .co-home-ic{width:18px;height:18px;display:inline-block}
 .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
+.tab-disabled{opacity:.65; cursor:not-allowed; pointer-events:none; position:relative; overflow:hidden;}
+.co-stamp{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%) rotate(-10deg);
+  padding:4px 10px;
+  /* Más traslúcido para que se lea el texto de atrás */
+  border:3px solid rgba(220,38,38,.45);
+  color:rgba(220,38,38,.60);
+  font-weight:900;
+  letter-spacing:1px;
+  border-radius:4px;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.05);
+  opacity:.38;
+  box-shadow:0 1px 0 rgba(0,0,0,.05);
+  font-size:12px;
+  line-height:1;
+}
+
 .right{text-align:right}
 @media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
 
@@ -140,7 +161,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
-<div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
+<div class="tab tab-disabled" id="tabFinal" role="button" aria-disabled="true" title="Próximamente">
+  Liquidación Final
+  <span class="co-stamp" aria-hidden="true">PRÓXIMAMENTE</span>
+</div>
 </div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
@@ -493,60 +517,6 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   // Compat: algunos bloques viejos usan parseMoneyInput
   const parseMoneyInput = (s) => parseMoneyText(s);
 
-
-  // =====================
-  // Etiquetas Sindicato (evitar colisiones cuando Afiliación = 2%)
-  // =====================
-  const _coParseSindicatoPct = (c) => {
-    try{
-      const m = String(c ?? '').trim().match(/^Sindicato\s*(\d+(?:\.\d+)?)\s*%$/i);
-      return m ? Number(m[1]) : null;
-    }catch{ return null; }
-  };
-  const _coIsSindicatoAfil = (c) => /^Sindicato\s*Afiliaci[oó]n\b/i.test(String(c ?? '').trim());
-  const _coIsSindicatoArt100 = (c) => /^Sindicato\s*2\s*%\s*Art\s*100$/i.test(String(c ?? '').trim());
-  const _coLabelSindArt100 = () => "Sindicato 2% Art 100";
-  const _coLabelSindAfil = (sind_pct, sind_fijo) => {
-    const fijo = Number(sind_fijo || 0) || 0;
-    const pct = Number(sind_pct || 0) || 0;
-    if(fijo > 0) return "Sindicato Afiliación";
-    if(pct > 0) return `Sindicato Afiliación ${pct}%`;
-    return "Sindicato Afiliación";
-  };
-
-  function normalizeSindicatoConcept(concepto, opts){
-    const c = String(concepto ?? '').trim();
-    if(!c) return c;
-    if(_coIsSindicatoAfil(c)) return c;
-    if(_coIsSindicatoArt100(c)) return _coLabelSindArt100();
-
-    const pct = _coParseSindicatoPct(c);
-    if(pct == null) return c;
-
-    const afiliado = !!(opts && opts.afiliado);
-    const sind_pct = Number(opts && opts.sind_pct || 0) || 0;
-    const sind_fijo = Number(opts && opts.sind_fijo || 0) || 0;
-
-    // 2% siempre existe como obligatorio (Art 100)
-    if(pct === 2){
-      // Si además hay Afiliación = 2% (y no es suma fija), pueden venir 2 filas idénticas "Sindicato 2%".
-      // Para que no se pisen ni se dedupliquen, renombramos la 2da como Afiliación.
-      if(afiliado && sind_fijo <= 0 && Math.abs(sind_pct - 2) < 1e-9 && opts && opts.seenRef){
-        const k = Number(opts.seenRef.sind2 || 0) || 0;
-        opts.seenRef.sind2 = k + 1;
-        if(k >= 1) return _coLabelSindAfil(2, 0);
-        return _coLabelSindArt100();
-      }
-      return _coLabelSindArt100();
-    }
-
-    // Otros %: corresponde a Afiliación (si está afiliado)
-    if(afiliado){
-      return _coLabelSindAfil(sind_pct || pct, sind_fijo);
-    }
-    return c;
-  }
-
   // Parseo de fecha YYYY-MM-DD como fecha local (evita corrimiento por timezone al usar new Date('YYYY-MM-DD'))
   function parseYMDLocal(s){
     try{
@@ -730,6 +700,70 @@ function toggleManejoCajaUI(){
     return rr === 'FUNEBRES' || rr === 'FÚNEBRES' || rr === 'FUNEBRES '; // tolerante
   }
 
+
+  // Fúnebres: letras A/B/C/D por categoría (según escala)
+  const FUNEBRES_CAT_LETRAS = {
+    "MAESTRANZA – PEÓN": "A",
+    "AUXILIAR – PERSONAL SALAS VELATORIAS": "A",
+    "AUXILIAR – CAPILLERO – SOLDADOR – LUSTRADOR – SASTRE": "B",
+    "AUXILIAR – CHOFER – FURGONERO – AMBULANCIERO": "B",
+    "MAESTRANZA – AYUDANTE – CAMILLERO – SERENO": "B",
+    "MAESTRANZA – PORTERO": "C",
+    "ADMINISTRATIVO": "D"
+  };
+
+  function funebresSplitCat(cat){
+    const s = (cat || "").toString().trim();
+    const m = s.match(/^(.*)\s*\(([A-D])\)\s*$/);
+    if(m){
+      const base = (m[1]||"").trim();
+      const letra = (m[2]||"").trim();
+      return { base, letra, label: base ? `${base} (${letra})` : s };
+    }
+    const base = s;
+    const letra = FUNEBRES_CAT_LETRAS[base] || "";
+    return { base, letra, label: letra ? `${base} (${letra})` : base };
+  }
+
+  function getSelText(id){
+    const el = document.getElementById(id);
+    if(!el) return "";
+    const opt = el.selectedOptions && el.selectedOptions[0];
+    return (opt && (opt.textContent || opt.innerText)) ? (opt.textContent || opt.innerText) : (el.value || "");
+  }
+
+  function fillFunebresCategoriaSelect(sel, cats, placeholder){
+    if(!sel) return;
+    const cur = sel.value || "";
+    sel.innerHTML = "";
+    const ph = document.createElement("option");
+    ph.value = "";
+    ph.textContent = placeholder || "Categoría";
+    ph.disabled = true;
+    ph.selected = true;
+    sel.appendChild(ph);
+
+    const seen = new Set();
+    (cats||[]).forEach(c => {
+      const { base, label } = funebresSplitCat(c);
+      if(!base || seen.has(base)) return;
+      const opt = document.createElement("option");
+      opt.value = base;
+      opt.textContent = label;
+      sel.appendChild(opt);
+      seen.add(base);
+    });
+
+    // restaurar selección si existe, si no usar primero
+    if(cur && seen.has(cur)){
+      sel.value = cur;
+    }else{
+      const first = Array.from(sel.options).find(o => o.value);
+      if(first) sel.value = first.value;
+    }
+  }
+
+
   function clearFunebresAdics(){
     const box = document.getElementById('funList');
     if(box) box.innerHTML = '';
@@ -777,26 +811,26 @@ function toggleManejoCajaUI(){
         const txt = document.createElement('div');
         const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
         const prettyLabel = prettifyFunLabel(label);
-let obs2 = obs ? String(obs) : "";
-if(obs2){
-  // Si el "obs" repite el label (caso Inciso 1/2), dejar solo el Inciso.
-  try{
-    const upObs = obs2.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    const mInc = upObs.match(/INCISO\s*\d+/);
-    if(mInc){
-      obs2 = mInc[0].replace(/\s+/g,' ').replace(/^INCISO/i,'Inciso');
-    }else{
-      // Si empieza con el label, lo recorto
-      const upPl = prettyLabel.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      if(prettyLabel && upObs.startsWith(upPl)){
-        obs2 = obs2.substring(prettyLabel.length).trim();
-      }
-      obs2 = obs2.replace(/^[-–:()\s]+/,'').replace(/[()\s]+$/,'').trim();
-    }
-  }catch(_){}
-}
 
-txt.innerHTML = `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs2 ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs2)}</div>` : '');
+        // Evitar repetir el nombre del adicional en la segunda línea (p.ej. Inciso 1/2)
+        let obsShort = (obs || "").toString().trim();
+        if(obsShort){
+          // Si la observación trae "Inciso X", mostramos solo eso
+          const m = obsShort.match(/inciso\s*\d+[^)]*/i);
+          if(m) obsShort = m[0].trim();
+
+          // Quitar duplicación del label (si viene "Manipulación de cadáveres ...")
+          const escRe = (s) => (s || "").toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp('^' + escRe(prettyLabel) + '\\s*', 'i');
+          obsShort = obsShort.replace(re, '').trim();
+
+          // Limpiar separadores y paréntesis
+          obsShort = obsShort.replace(/^[\(\-:\s–—]+/, '').replace(/[\)\s]+$/, '').trim();
+        }
+
+        txt.innerHTML =
+          `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` +
+          (obsShort ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obsShort)}</div>` : '');
 
         wrap.appendChild(cb);
         wrap.appendChild(txt);
@@ -1123,9 +1157,10 @@ function applyBranchUI(){
 
     const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
-    fillSelect($("categoria"), cats, "Categoría");
+    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
+      else fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
-    if(cats.length) $("categoria").value = cats[0];
+    if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
 
     updateCallCenterUI();
@@ -1145,8 +1180,9 @@ function applyBranchUI(){
     }
     if(!agrup){ return; }
     const cats = getCatsFor(rama, agrup);
-    fillSelect($("categoria"), cats, "Categoría");
-    if(cats.length) $("categoria").value = cats[0];
+    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
+      else fillSelect($("categoria"), cats, "Categoría");
+    if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
     updateCallCenterUI();
 
@@ -1234,7 +1270,7 @@ const p = await fetchJSON(url.toString());
       // Encabezado de recibo
       setText("outRama", rama);
       setText("outAgrup", agrup);
-      setText("outCat", categoria);
+      setText("outCat", getSelText("categoria") || categoria);
       setText("outEscala", `Escala ${mes}`);
 
       // Fúnebres: refrescar lista de adicionales al cambiar mes/categoría
@@ -1515,16 +1551,7 @@ const p = await fetchJSON(url.toString());
       clearTbody("tbodyMensual");
 
       // Etapa 9: dedupe visual (evita filas duplicadas por render/bugs)
-      const rawItems0 = Array.isArray(data.items) ? data.items : [];
-      const __coSindSeen = { sind2: 0 };
-      const rawItems = rawItems0.map(it => {
-        try{
-          const o = Object.assign({}, it);
-          const c0 = (it && it.concepto != null) ? String(it.concepto).trim() : "";
-          o.concepto = normalizeSindicatoConcept(c0, { afiliado, sind_pct, sind_fijo, seenRef: __coSindSeen });
-          return o;
-        }catch(_){ return it; }
-      });
+      const rawItems = Array.isArray(data.items) ? data.items : [];
       const seen = new Set();
       const items = [];
       for(const it of rawItems){
@@ -1566,7 +1593,7 @@ const p = await fetchJSON(url.toString());
       // Encabezado + labels desde API
       setText("outRama", data.rama || rama);
       setText("outAgrup", data.agrup || agrup);
-      setText("outCat", data.categoria || categoria);
+      setText("outCat", getSelText("categoria") || data.categoria || categoria);
       setText("outEscala", `Escala ${data.mes || mes}`);
       if(data.labels){
         if(data.labels.no_rem) setText("lblNrVar", data.labels.no_rem);
@@ -2003,6 +2030,7 @@ function mountExtrasForTab(tab){
 }
 
 function switchTab(tab){
+    if(tab === 'final') tab = 'mensual';
     window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
@@ -2488,10 +2516,8 @@ function switchTab(tab){
         return Number.isFinite(n) ? n.toFixed(2) : '';
       };
 
-      const __coSindSeenLF = { sind2: 0 };
-
       const raw = (data.items || []).map((it, idx) => ({
-        concepto: (function(){ const c0 = String(it?.concepto || '').trim() || '—'; return normalizeSindicatoConcept(c0, { afiliado, sind_pct, sind_fijo, seenRef: __coSindSeenLF }); })(),
+        concepto: String(it?.concepto || '').trim() || '—',
         base: (it?.base!=null && it.base!=='') ? String(it.base) : '',
         r: Number(it?.r || 0) || 0,
         n: Number(it?.n || 0) || 0,
