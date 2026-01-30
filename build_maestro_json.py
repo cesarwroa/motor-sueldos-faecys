@@ -50,6 +50,18 @@ def main():
 
     wb = openpyxl.load_workbook(SRC, data_only=True)
 
+    # META (versioning)
+    meta = {}
+    if "META" in wb.sheetnames:
+        ws_meta = wb["META"]
+        # expects columns: key | value (row 1 is header)
+        for r in range(2, ws_meta.max_row + 1):
+            k = ws_meta.cell(r, 1).value
+            v = ws_meta.cell(r, 2).value
+            if k in (None, ""):
+                continue
+            meta[str(k)] = v
+
     escala = []
     for name in wb.sheetnames:
         if name.startswith("Categorias_"):
@@ -70,7 +82,7 @@ def main():
         )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"escala": escala, "adicionales": adicionales, "reglas_adicionales": reglas}, ensure_ascii=False), encoding="utf-8")
+    OUT.write_text(json.dumps({"escala": escala, "adicionales": adicionales, "reglas_adicionales": reglas, "meta": meta}, ensure_ascii=False), encoding="utf-8")
     print(f"OK -> {OUT} (escala={len(escala)})")
 
 
