@@ -284,18 +284,18 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-04",
-      "Basico": 642787.96,
+      "Basico": 642788,
       "No Remunerativo": 82262,
-      "SUMA_FIJA": 25520.96
+      "SUMA_FIJA": 25521
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-04",
-      "Basico": 661153.33,
+      "Basico": 661153,
       "No Remunerativo": 84613,
-      "SUMA_FIJA": 26250.13
+      "SUMA_FIJA": 26250
     },
     {
       "Rama": "CALL CENTER",
@@ -581,16 +581,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-05",
-      "Basico": 677329.33,
+      "Basico": 677329,
       "No Remunerativo": 60528,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-05",
-      "Basico": 696681.6,
+      "Basico": 696682,
       "No Remunerativo": 62258,
       "SUMA_FIJA": 30000
     },
@@ -878,16 +878,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-06",
-      "Basico": 715488.67,
+      "Basico": 715489,
       "No Remunerativo": 34465,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-06",
-      "Basico": 735931.2,
+      "Basico": 735931,
       "No Remunerativo": 35450,
       "SUMA_FIJA": 30000
     },
@@ -1175,16 +1175,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-07",
-      "Basico": 757453.49,
+      "Basico": 757453,
       "No Remunerativo": 0,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-07",
-      "Basico": 779095.02,
+      "Basico": 779095,
       "No Remunerativo": 0,
       "SUMA_FIJA": 30000
     },
@@ -1472,16 +1472,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-08",
-      "Basico": 764952.83,
+      "Basico": 764953,
       "No Remunerativo": 0,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-08",
-      "Basico": 786808.62,
+      "Basico": 786809,
       "No Remunerativo": 0,
       "SUMA_FIJA": 30000
     },
@@ -1769,16 +1769,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-09",
-      "Basico": 772452.33,
+      "Basico": 772452,
       "No Remunerativo": 0,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-09",
-      "Basico": 794522.4,
+      "Basico": 794522,
       "No Remunerativo": 0,
       "SUMA_FIJA": 30000
     },
@@ -2066,16 +2066,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-10",
-      "Basico": 779951.93,
+      "Basico": 779952,
       "No Remunerativo": 0,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-10",
-      "Basico": 802236.27,
+      "Basico": 802236,
       "No Remunerativo": 0,
       "SUMA_FIJA": 30000
     },
@@ -2363,16 +2363,16 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-11",
-      "Basico": 787451.35,
+      "Basico": 787451,
       "No Remunerativo": 0,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-11",
-      "Basico": 809949.96,
+      "Basico": 809950,
       "No Remunerativo": 0,
       "SUMA_FIJA": 30000
     },
@@ -2401,7 +2401,7 @@
       "Mes": "2025-12",
       "Basico": 446608,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -2410,7 +2410,7 @@
       "Mes": "2025-12",
       "Basico": 491269,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -2419,7 +2419,7 @@
       "Mes": "2025-12",
       "Basico": 513599,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -2437,7 +2437,7 @@
       "Mes": "2025-12",
       "Basico": 558260,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -2446,7 +2446,7 @@
       "Mes": "2025-12",
       "Basico": 580591,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -2464,7 +2464,7 @@
       "Mes": "2025-12",
       "Basico": 625251,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -2473,7 +2473,7 @@
       "Mes": "2025-12",
       "Basico": 647582,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -2491,7 +2491,7 @@
       "Mes": "2025-12",
       "Basico": 692242,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -2500,7 +2500,7 @@
       "Mes": "2025-12",
       "Basico": 714573,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -2518,7 +2518,7 @@
       "Mes": "2025-12",
       "Basico": 781564,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
@@ -2536,7 +2536,7 @@
       "Mes": "2025-12",
       "Basico": 454258,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -2554,7 +2554,7 @@
       "Mes": "2025-12",
       "Basico": 499683,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -2563,7 +2563,7 @@
       "Mes": "2025-12",
       "Basico": 522397,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -2581,7 +2581,7 @@
       "Mes": "2025-12",
       "Basico": 567822,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -2590,7 +2590,7 @@
       "Mes": "2025-12",
       "Basico": 590535,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -2608,7 +2608,7 @@
       "Mes": "2025-12",
       "Basico": 635961,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -2617,7 +2617,7 @@
       "Mes": "2025-12",
       "Basico": 658674,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -2635,7 +2635,7 @@
       "Mes": "2025-12",
       "Basico": 704099,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -2644,7 +2644,7 @@
       "Mes": "2025-12",
       "Basico": 726813,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -2662,23 +2662,23 @@
       "Mes": "2025-12",
       "Basico": 772238,
       "No Remunerativo": 42500,
-      "SUMA_FIJA": 28333.33
+      "SUMA_FIJA": 28333
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2025-12",
-      "Basico": 794951.02,
+      "Basico": 794951,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2025-12",
-      "Basico": 817663.91,
+      "Basico": 817664,
       "No Remunerativo": 45000,
       "SUMA_FIJA": 30000
     },
@@ -2707,7 +2707,7 @@
       "Mes": "2026-01",
       "Basico": 446608,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -2716,7 +2716,7 @@
       "Mes": "2026-01",
       "Basico": 491269,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -2725,7 +2725,7 @@
       "Mes": "2026-01",
       "Basico": 513599,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -2743,7 +2743,7 @@
       "Mes": "2026-01",
       "Basico": 558260,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -2752,7 +2752,7 @@
       "Mes": "2026-01",
       "Basico": 580591,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -2770,7 +2770,7 @@
       "Mes": "2026-01",
       "Basico": 625251,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -2779,7 +2779,7 @@
       "Mes": "2026-01",
       "Basico": 647582,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -2797,7 +2797,7 @@
       "Mes": "2026-01",
       "Basico": 692242,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -2806,7 +2806,7 @@
       "Mes": "2026-01",
       "Basico": 714573,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -2824,7 +2824,7 @@
       "Mes": "2026-01",
       "Basico": 781564,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
@@ -2842,7 +2842,7 @@
       "Mes": "2026-01",
       "Basico": 454258,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -2860,7 +2860,7 @@
       "Mes": "2026-01",
       "Basico": 499683,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -2869,7 +2869,7 @@
       "Mes": "2026-01",
       "Basico": 522397,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -2887,7 +2887,7 @@
       "Mes": "2026-01",
       "Basico": 567822,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -2896,7 +2896,7 @@
       "Mes": "2026-01",
       "Basico": 590535,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -2914,7 +2914,7 @@
       "Mes": "2026-01",
       "Basico": 635961,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -2923,7 +2923,7 @@
       "Mes": "2026-01",
       "Basico": 658674,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -2941,7 +2941,7 @@
       "Mes": "2026-01",
       "Basico": 704099,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -2950,7 +2950,7 @@
       "Mes": "2026-01",
       "Basico": 726813,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -2968,23 +2968,23 @@
       "Mes": "2026-01",
       "Basico": 772238,
       "No Remunerativo": 42500,
-      "SUMA_FIJA": 28333.33
+      "SUMA_FIJA": 28333
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2026-01",
-      "Basico": 794951.02,
+      "Basico": 794951,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2026-01",
-      "Basico": 817663.91,
+      "Basico": 817664,
       "No Remunerativo": 45000,
       "SUMA_FIJA": 30000
     },
@@ -3013,7 +3013,7 @@
       "Mes": "2026-02",
       "Basico": 446608,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -3022,7 +3022,7 @@
       "Mes": "2026-02",
       "Basico": 491269,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -3031,7 +3031,7 @@
       "Mes": "2026-02",
       "Basico": 513599,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -3049,7 +3049,7 @@
       "Mes": "2026-02",
       "Basico": 558260,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -3058,7 +3058,7 @@
       "Mes": "2026-02",
       "Basico": 580591,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -3076,7 +3076,7 @@
       "Mes": "2026-02",
       "Basico": 625251,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -3085,7 +3085,7 @@
       "Mes": "2026-02",
       "Basico": 647582,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -3103,7 +3103,7 @@
       "Mes": "2026-02",
       "Basico": 692242,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -3112,7 +3112,7 @@
       "Mes": "2026-02",
       "Basico": 714573,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -3130,7 +3130,7 @@
       "Mes": "2026-02",
       "Basico": 781564,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
@@ -3148,7 +3148,7 @@
       "Mes": "2026-02",
       "Basico": 454258,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -3166,7 +3166,7 @@
       "Mes": "2026-02",
       "Basico": 499683,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -3175,7 +3175,7 @@
       "Mes": "2026-02",
       "Basico": 522397,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -3193,7 +3193,7 @@
       "Mes": "2026-02",
       "Basico": 567822,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -3202,7 +3202,7 @@
       "Mes": "2026-02",
       "Basico": 590535,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -3220,7 +3220,7 @@
       "Mes": "2026-02",
       "Basico": 635961,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -3229,7 +3229,7 @@
       "Mes": "2026-02",
       "Basico": 658674,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -3247,7 +3247,7 @@
       "Mes": "2026-02",
       "Basico": 704099,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -3256,7 +3256,7 @@
       "Mes": "2026-02",
       "Basico": 726813,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -3274,23 +3274,23 @@
       "Mes": "2026-02",
       "Basico": 772238,
       "No Remunerativo": 42500,
-      "SUMA_FIJA": 28333.33
+      "SUMA_FIJA": 28333
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2026-02",
-      "Basico": 794951.02,
+      "Basico": 794951,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2026-02",
-      "Basico": 817663.91,
+      "Basico": 817664,
       "No Remunerativo": 45000,
       "SUMA_FIJA": 30000
     },
@@ -3319,7 +3319,7 @@
       "Mes": "2026-03",
       "Basico": 446608,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -3328,7 +3328,7 @@
       "Mes": "2026-03",
       "Basico": 491269,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -3337,7 +3337,7 @@
       "Mes": "2026-03",
       "Basico": 513599,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -3355,7 +3355,7 @@
       "Mes": "2026-03",
       "Basico": 558260,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -3364,7 +3364,7 @@
       "Mes": "2026-03",
       "Basico": 580591,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -3382,7 +3382,7 @@
       "Mes": "2026-03",
       "Basico": 625251,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -3391,7 +3391,7 @@
       "Mes": "2026-03",
       "Basico": 647582,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -3409,7 +3409,7 @@
       "Mes": "2026-03",
       "Basico": 692242,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -3418,7 +3418,7 @@
       "Mes": "2026-03",
       "Basico": 714573,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -3436,7 +3436,7 @@
       "Mes": "2026-03",
       "Basico": 781564,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
@@ -3454,7 +3454,7 @@
       "Mes": "2026-03",
       "Basico": 454258,
       "No Remunerativo": 25000,
-      "SUMA_FIJA": 16666.67
+      "SUMA_FIJA": 16667
     },
     {
       "Rama": "CALL CENTER",
@@ -3472,7 +3472,7 @@
       "Mes": "2026-03",
       "Basico": 499683,
       "No Remunerativo": 27500,
-      "SUMA_FIJA": 18333.33
+      "SUMA_FIJA": 18333
     },
     {
       "Rama": "CALL CENTER",
@@ -3481,7 +3481,7 @@
       "Mes": "2026-03",
       "Basico": 522397,
       "No Remunerativo": 28750,
-      "SUMA_FIJA": 19166.67
+      "SUMA_FIJA": 19167
     },
     {
       "Rama": "CALL CENTER",
@@ -3499,7 +3499,7 @@
       "Mes": "2026-03",
       "Basico": 567822,
       "No Remunerativo": 31250,
-      "SUMA_FIJA": 20833.33
+      "SUMA_FIJA": 20833
     },
     {
       "Rama": "CALL CENTER",
@@ -3508,7 +3508,7 @@
       "Mes": "2026-03",
       "Basico": 590535,
       "No Remunerativo": 32500,
-      "SUMA_FIJA": 21666.67
+      "SUMA_FIJA": 21667
     },
     {
       "Rama": "CALL CENTER",
@@ -3526,7 +3526,7 @@
       "Mes": "2026-03",
       "Basico": 635961,
       "No Remunerativo": 35000,
-      "SUMA_FIJA": 23333.33
+      "SUMA_FIJA": 23333
     },
     {
       "Rama": "CALL CENTER",
@@ -3535,7 +3535,7 @@
       "Mes": "2026-03",
       "Basico": 658674,
       "No Remunerativo": 36250,
-      "SUMA_FIJA": 24166.67
+      "SUMA_FIJA": 24167
     },
     {
       "Rama": "CALL CENTER",
@@ -3553,7 +3553,7 @@
       "Mes": "2026-03",
       "Basico": 704099,
       "No Remunerativo": 38750,
-      "SUMA_FIJA": 25833.33
+      "SUMA_FIJA": 25833
     },
     {
       "Rama": "CALL CENTER",
@@ -3562,7 +3562,7 @@
       "Mes": "2026-03",
       "Basico": 726813,
       "No Remunerativo": 40000,
-      "SUMA_FIJA": 26666.67
+      "SUMA_FIJA": 26667
     },
     {
       "Rama": "CALL CENTER",
@@ -3580,23 +3580,23 @@
       "Mes": "2026-03",
       "Basico": 772238,
       "No Remunerativo": 42500,
-      "SUMA_FIJA": 28333.33
+      "SUMA_FIJA": 28333
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2026-03",
-      "Basico": 794951.02,
+      "Basico": 794951,
       "No Remunerativo": 43750,
-      "SUMA_FIJA": 29166.67
+      "SUMA_FIJA": 29167
     },
     {
       "Rama": "CALL CENTER",
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2026-03",
-      "Basico": 817663.91,
+      "Basico": 817664,
       "No Remunerativo": 45000,
       "SUMA_FIJA": 30000
     },
@@ -3623,7 +3623,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 20hs",
       "Mes": "2026-04",
-      "Basico": 488274.67,
+      "Basico": 488275,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3632,7 +3632,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 22hs",
       "Mes": "2026-04",
-      "Basico": 537102.33,
+      "Basico": 537102,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3641,7 +3641,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 23hs",
       "Mes": "2026-04",
-      "Basico": 561515.67,
+      "Basico": 561516,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3659,7 +3659,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 25hs",
       "Mes": "2026-04",
-      "Basico": 610343.33,
+      "Basico": 610343,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3668,7 +3668,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 26hs",
       "Mes": "2026-04",
-      "Basico": 634757.67,
+      "Basico": 634758,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3686,7 +3686,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 28hs",
       "Mes": "2026-04",
-      "Basico": 683584.33,
+      "Basico": 683584,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3695,7 +3695,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 29hs",
       "Mes": "2026-04",
-      "Basico": 707998.67,
+      "Basico": 707999,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3713,7 +3713,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 31hs",
       "Mes": "2026-04",
-      "Basico": 756825.33,
+      "Basico": 756825,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3722,7 +3722,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 32hs",
       "Mes": "2026-04",
-      "Basico": 781239.67,
+      "Basico": 781240,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3740,7 +3740,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 3: OPERACION A 35hs",
       "Mes": "2026-04",
-      "Basico": 854480.67,
+      "Basico": 854481,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3758,7 +3758,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 20hs",
       "Mes": "2026-04",
-      "Basico": 495924.67,
+      "Basico": 495925,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3776,7 +3776,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 22hs",
       "Mes": "2026-04",
-      "Basico": 545516.33,
+      "Basico": 545516,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3785,7 +3785,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 23hs",
       "Mes": "2026-04",
-      "Basico": 570313.67,
+      "Basico": 570314,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3803,7 +3803,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 25hs",
       "Mes": "2026-04",
-      "Basico": 619905.33,
+      "Basico": 619905,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3812,7 +3812,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 26hs",
       "Mes": "2026-04",
-      "Basico": 644701.67,
+      "Basico": 644702,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3830,7 +3830,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 28hs",
       "Mes": "2026-04",
-      "Basico": 694294.33,
+      "Basico": 694294,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3839,7 +3839,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 29hs",
       "Mes": "2026-04",
-      "Basico": 719090.67,
+      "Basico": 719091,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3857,7 +3857,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 31hs",
       "Mes": "2026-04",
-      "Basico": 768682.33,
+      "Basico": 768682,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3866,7 +3866,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 32hs",
       "Mes": "2026-04",
-      "Basico": 793479.67,
+      "Basico": 793480,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3884,7 +3884,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 34hs",
       "Mes": "2026-04",
-      "Basico": 843071.33,
+      "Basico": 843071,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3893,7 +3893,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 35hs",
       "Mes": "2026-04",
-      "Basico": 867867.6900000001,
+      "Basico": 867868,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -3902,7 +3902,7 @@
       "Agrupamiento": "CALL CENTER",
       "Categoria": "CATEGORIA 4: OPERACION B 36hs",
       "Mes": "2026-04",
-      "Basico": 892663.91,
+      "Basico": 892664,
       "No Remunerativo": 0,
       "SUMA_FIJA": 0
     },
@@ -24113,11 +24113,11 @@
     }
   ],
   "meta": {
-    "version": 3,
-    "previous_version": 2,
-    "generated_at": "2026-01-30 14:05:00",
-    "based_on": "maestro_actualizado_callcenter_general_fix_v6.xlsx",
-    "notes": "Agrega Call Center CATEGORIA 3: OPERACION A 34hs según escala oficial (pág. 17).",
-    "changelog": "v2: agregar CATEGORIA 3 OPERACION A 24hs (2025-12..2026-04)\nv3: agregar CATEGORIA 3 OPERACION A 34hs (2025-12..2026-04)"
+    "version": 4,
+    "previous_version": 3,
+    "generated_at": "2026-01-30 15:12:42",
+    "based_on": "maestro_actualizado_callcenter_general_fix_v8.xlsx",
+    "notes": "Redondeo Call Center: básicos y SUMA_FIJA a enteros (0.67 arriba, 0.33 abajo).",
+    "changelog": "v2: agregar CATEGORIA 3 OPERACION A 24hs (2025-12..2026-04)\nv3: agregar CATEGORIA 3 OPERACION A 34hs (2025-12..2026-04)\nv4: redondeo Call Center (Basico + SUMA_FIJA) a enteros; detalle en Excel hoja ROUNDING_LOG_CALLCENTER."
   }
 }
