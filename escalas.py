@@ -159,8 +159,8 @@ def _build_index() -> Dict[str, Any]:
 
     def add_row(rama: str, agrup: str, cat: str, mes: str, bas: float, nr: float, sf: float):
         rama_u = _norm(rama).upper()
-        agrup_u = _norm(agrup) if _norm(agrup) else "—"
-        cat_u = _norm(cat) if _norm(cat) else "—"
+        agrup_u = _norm(agrup).upper() if _norm(agrup) else "—"
+        cat_u = _norm(cat).upper() if _norm(cat) else "—"
 
         # Fix maestro FUNEBRES: a veces las categorías quedaron en "Agrupamiento" y "Categoria" viene vacío.
         if rama_u in ("FUNEBRES", "FÚNEBRES") and (cat_u == "—" or cat_u == "") and agrup_u not in ("—", ""):
@@ -393,7 +393,7 @@ def get_payload(
       - /calcular (rama + mes + agrup + categoria) como base.
     """
     idx = _build_index()
-    key = (_norm(rama).upper(), _norm(agrup) or "—", _norm(categoria) or "—", _mes_to_key(mes))
+    key = (_norm(rama).upper(), (_norm(agrup).upper() if _norm(agrup) else "—"), (_norm(categoria).upper() if _norm(categoria) else "—"), _mes_to_key(mes))
     rec = idx["payload"].get(key)
 
     if not rec:
@@ -406,8 +406,8 @@ def get_payload(
             "ok": False,
             "error": "No se encontró esa combinación en el maestro",
             "rama": _norm(rama).upper(),
-            "agrup": _norm(agrup) or "—",
-            "categoria": _norm(categoria) or "—",
+            "agrup": (_norm(agrup).upper() if _norm(agrup) else "—"),
+            "categoria": (_norm(categoria).upper() if _norm(categoria) else "—"),
             "mes": _mes_to_key(mes),
         }
 
@@ -584,15 +584,23 @@ def calcular_payload(
         s = re.sub(r"\s+", " ", s).strip()
         return s
 
-    def _basico_ref(_rama: str, _mes: str, candidates: List[str]) -> float:
+    def _basico_ref(_rama: str, _mes: str, candidates: List[str], agrup_hint: Optional[str] = None) -> float:
+        """Devuelve el básico de referencia para adicionales (KM/Caja/Vidriera).
+
+        En CEREALES (y en cualquier rama con múltiples agrupamientos), debe respetarse el agrupamiento
+        seleccionado; si no se encuentra, se hace fallback a cualquier agrupamiento de la rama y luego a GENERAL.
+        """
         idx = _build_index()
         mes_k = _mes_to_key(_mes)
         cand_can = [_canon(c) for c in candidates]
+        agr_can = _canon(agrup_hint) if agrup_hint else None
 
-        def _search(rama_k: str) -> float:
-            # 1) match exacto
+        def _search(rama_k: str, agr_k: Optional[str]) -> float:
+            # 1) match exacto (prioriza mismo agrupamiento si agr_k está)
             for (r, _agr, cat, m), rec in idx.get("payload", {}).items():
                 if r != rama_k or m != mes_k:
+                    continue
+                if agr_k and _canon(_agr) != agr_k:
                     continue
                 cat_c = _canon(cat)
                 if "MENORES" in cat_c:
@@ -606,6 +614,8 @@ def calcular_payload(
             for (r, _agr, cat, m), rec in idx.get("payload", {}).items():
                 if r != rama_k or m != mes_k:
                     continue
+                if agr_k and _canon(_agr) != agr_k:
+                    continue
                 cat_c = _canon(cat)
                 if "MENORES" in cat_c:
                     continue
@@ -617,9 +627,19 @@ def calcular_payload(
             return 0.0
 
         r0 = _canon(_rama)
-        v = _search(r0)
+
+        # 1) Rama + mismo agrup
+        v = _search(r0, agr_can) if agr_can else 0.0
+        # 2) Rama (cualquier agrup)
+        if not v:
+            v = _search(r0, None)
+        # 3) GENERAL + mismo agrup (por si el maestro replica agrupamientos)
         if (not v) and r0 != "GENERAL":
-            v = _search("GENERAL")
+            v = _search("GENERAL", agr_can) if agr_can else 0.0
+        # 4) GENERAL (cualquier agrup)
+        if (not v) and r0 != "GENERAL":
+            v = _search("GENERAL", None)
+
         return float(v or 0.0)
 
     km_tipo_n = _norm(km_tipo).upper()
@@ -682,14 +702,14 @@ def calcular_payload(
 
     elif km_tipo_n in ("AY", "AYUDANTE", "CH", "CHOFER") and (km_le100 or km_gt100):
         if km_tipo_n in ("AY", "AYUDANTE"):
-            km_base_le = _basico_ref(rama, mes, ["AUXILIAR A", "AUXILIAR  A", "PERSONAL AUXILIAR A", "AUXILIAR LETRA A"])
-            km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO A", "AUXILIAR  ESPECIALIZADO A"])
+            km_base_le = _basico_ref(rama, mes, ["AUXILIAR A", "AUXILIAR  A", "PERSONAL AUXILIAR A", "AUXILIAR LETRA A"], agrup)
+            km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO A", "AUXILIAR  ESPECIALIZADO A"], agrup)
             # Art. 36: adicional por km recorrido (no se prorratea por jornada).
             km_rem_le = round2(km_base_le * 0.000082 * km_le100) if (km_base_le and km_le100) else 0.0
             km_rem_gt = round2(km_base_gt * 0.0001 * km_gt100) if (km_base_gt and km_gt100) else 0.0
         else:
-            km_base_le = _basico_ref(rama, mes, ["AUXILIAR B", "AUXILIAR  B", "PERSONAL AUXILIAR B", "AUXILIAR LETRA B"])
-            km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO B", "AUXILIAR  ESPECIALIZADO B"])
+            km_base_le = _basico_ref(rama, mes, ["AUXILIAR B", "AUXILIAR  B", "PERSONAL AUXILIAR B", "AUXILIAR LETRA B"], agrup)
+            km_base_gt = _basico_ref(rama, mes, ["AUXILIAR ESPECIALIZADO B", "AUXILIAR  ESPECIALIZADO B"], agrup)
             # Art. 36: adicional por km recorrido (no se prorratea por jornada).
             km_rem_le = round2(km_base_le * 0.0001 * km_le100) if (km_base_le and km_le100) else 0.0
             km_rem_gt = round2(km_base_gt * 0.000115 * km_gt100) if (km_base_gt and km_gt100) else 0.0
@@ -737,10 +757,10 @@ def calcular_payload(
     caja_pct = 0.0
     if manejo_caja_ok:
         if caj_tipo in ("A", "C"):
-            caja_base = _basico_ref(rama, mes, ["CAJERO A", "CAJEROS A", "CAJERO  A", "CAJERO A "])
+            caja_base = _basico_ref(rama, mes, ["CAJERO A", "CAJEROS A", "CAJERO  A", "CAJERO A "], agrup)
             caja_pct = 0.1225
         elif caj_tipo == "B":
-            caja_base = _basico_ref(rama, mes, ["CAJERO B", "CAJEROS B", "CAJERO  B", "CAJERO B "])
+            caja_base = _basico_ref(rama, mes, ["CAJERO B", "CAJEROS B", "CAJERO  B", "CAJERO B "], agrup)
             caja_pct = 0.48
 
     # ANUAL -> mensual (/12). Se prorratea por jornada usando factor (j/48).
@@ -750,7 +770,7 @@ def calcular_payload(
     caja_rem = 0.0
     caja_rem_os = 0.0
 
-    vid_base = _basico_ref(rama, mes, ["VENDEDOR B", "Vendedor B", "VENDEDOR  B"]) if bool(armado_vidriera) else 0.0
+    vid_base = _basico_ref(rama, mes, ["VENDEDOR B", "Vendedor B", "VENDEDOR  B"], agrup) if bool(armado_vidriera) else 0.0
     vid_pct = 0.0383
     vid_rem = round2(vid_base * vid_pct * factor) if (vid_base and bool(armado_vidriera)) else 0.0
     vid_rem_os = round2(vid_base * vid_pct) if (vid_base and bool(armado_vidriera)) else 0.0

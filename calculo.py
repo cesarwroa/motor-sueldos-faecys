@@ -168,18 +168,26 @@ def _ant_factor(rama: str, anios: int) -> float:
     return 0.01 * anios
 
 
-def _find_basico_ref(mes: str, rama_pref: str, cats: List[str]) -> float:
+def _find_basico_ref(mes: str, rama_pref: str, cats: List[str], agr_pref: str = "") -> float:
     """Básicos de referencia para adicionales históricos (CCT 130/75 - Acuerdo 26/09/1983).
 
-    Se intenta en la rama actual y luego en GENERAL. Para cada rama,
-    se prueba en agrups comunes (GENERAL y —) y con las variantes de categorías.
+    Se intenta en la rama actual y luego en GENERAL. Para cada rama, se prueba:
+      1) el agrupamiento actual (si se provee)
+      2) agrups comunes (GENERAL y —)
+    y con variantes de categorías.
     """
     rama_pref_u = _u(rama_pref)
     ramas_try = [rama_pref_u]
     if rama_pref_u != "GENERAL":
         ramas_try.append("GENERAL")
+
+    agrs_try: List[str] = []
+    if agr_pref and _u(agr_pref) not in ("—", "GENERAL"):
+        agrs_try.append(_u(agr_pref))
+    agrs_try.extend(["GENERAL", "—"])
+
     for rr in ramas_try:
-        for agr in ("GENERAL", "—"):
+        for agr in agrs_try:
             for cat in cats:
                 row = find_row(rr, agr, cat, mes)
                 if row:
@@ -187,9 +195,9 @@ def _find_basico_ref(mes: str, rama_pref: str, cats: List[str]) -> float:
     return 0.0
 
 
-def _base_aportes(rem: float, nr: float, viaticos_nr: float) -> float:
-    # Viáticos NR se excluyen de aportes
-    return max(0.0, (rem + nr) - viaticos_nr)
+def _base_aportes(rem: float, nr: float, viaticos_nr: float, nr_exento: float = 0.0) -> float:
+    # Viáticos NR y NR exentos se excluyen de aportes
+    return max(0.0, (rem + nr) - viaticos_nr - nr_exento)
 
 
 def _add(items: List[Dict[str, Any]], concepto: str, rem=0.0, nr=0.0, ind=0.0, ded=0.0, base=0.0):
@@ -271,16 +279,20 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
         armado_rem = base_vend_b * 0.0383 * factor_hs
 
     # Cajeros (Art. 30): A/C 12,25% sobre básico inicial Cajeros A; B 48% sobre básico inicial Cajeros B
+    # En todas las ramas se trata como compensación ANUAL (convenio), liquidada en forma mensual (anual / 12).
+    # En la práctica, si el ANUAL surge de básico*%*12, el mensual equivale a básico*%.
     manejo_caja = bool(payload.get("manejo_caja"))
     cajero_tipo = str(payload.get("cajero_tipo") or "").strip().upper()
-    manejo_caja_rem = 0.0
+    manejo_caja_nr_exento = 0.0
     if manejo_caja and cajero_tipo in ("A", "B", "C"):
         if cajero_tipo == "B":
-            base_caj = _find_basico_ref(mes, rama, ["Cajeros B", "CAJEROS B"])
-            manejo_caja_rem = base_caj * 0.48 * factor_hs
+            base_caj = _find_basico_ref(mes, rama, ["Cajeros B", "CAJEROS B"], agr_pref=agrup)
+            anual = base_caj * 0.48 * 12.0
+            manejo_caja_nr_exento = (anual / 12.0) * factor_hs
         else:
-            base_caj = _find_basico_ref(mes, rama, ["Cajeros A", "CAJEROS A"])
-            manejo_caja_rem = base_caj * 0.1225 * factor_hs
+            base_caj = _find_basico_ref(mes, rama, ["Cajeros A", "CAJEROS A"], agr_pref=agrup)
+            anual = base_caj * 0.1225 * 12.0
+            manejo_caja_nr_exento = (anual / 12.0) * factor_hs
 
     # Adicional por KM:
     # - Rama TURISMO (CCT 547/08): valores fijos por km, por categoría (C4 / C5) y mes.
@@ -304,13 +316,13 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
         else:
             if km_tipo in ("AY", "CH"):
                 if km_tipo == "AY":
-                    b1 = _find_basico_ref(mes, rama, ["Auxiliar A", "PERSONAL AUXILIAR A"])
-                    b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado A", "AUXILIAR ESPECIALIZADO A"])
+                    b1 = _find_basico_ref(mes, rama, ["Auxiliar A", "PERSONAL AUXILIAR A"], agr_pref=agrup)
+                    b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado A", "AUXILIAR ESPECIALIZADO A"], agr_pref=agrup)
                     km_rem = (b1 * (0.0082 / 100.0) * km_menos100) + (b2 * (0.01 / 100.0) * km_mas100)
                     km_label = "Adicional por KM (Ayudante de Chofer)"
                 else:
-                    b1 = _find_basico_ref(mes, rama, ["Auxiliar B", "PERSONAL AUXILIAR B"])
-                    b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado B", "AUXILIAR ESPECIALIZADO B"])
+                    b1 = _find_basico_ref(mes, rama, ["Auxiliar B", "PERSONAL AUXILIAR B"], agr_pref=agrup)
+                    b2 = _find_basico_ref(mes, rama, ["Auxiliar Especializado B", "AUXILIAR ESPECIALIZADO B"], agr_pref=agrup)
                     km_rem = (b1 * (0.01 / 100.0) * km_menos100) + (b2 * (0.0115 / 100.0) * km_mas100)
                     km_label = "Adicional por KM (Chofer)"
 
@@ -344,7 +356,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     # Horas extras + nocturnas (cálculo sobre “hora” de rem y de nr)
     # Divisor 200 (mensualizado 48hs)
-    base_pre = basico + ant_rem + zona_rem + a_cuenta + tit_rem + conex_rem + fun_rem + armado_rem + manejo_caja_rem + km_rem
+    base_pre = basico + ant_rem + zona_rem + a_cuenta + tit_rem + conex_rem + fun_rem + armado_rem + km_rem
     base_nr_pre = nr_base + ant_nr + tit_nr + conex_nr
 
     hora_rem = (base_pre / 200.0) if base_pre else 0.0
@@ -390,7 +402,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     pres_nr = (base_nr_pre / 12.0) if presentismo_ok else 0.0
 
     total_rem = base_pre + pres_rem + hex50_rem + hex100_rem + noct_rem + fer_no_rem + fer_si_rem + vac_add_rem
-    total_nr = base_nr_pre + pres_nr + hex50_nr + hex100_nr + noct_nr + fer_si_nr + vac_add_nr + viaticos_nr
+    total_nr = base_nr_pre + pres_nr + hex50_nr + hex100_nr + noct_nr + fer_si_nr + vac_add_nr + viaticos_nr + manejo_caja_nr_exento
 
     # Deducciones según reglas del sistema:
     # Jubilación 11% y PAMI 3% SOLO sobre Rem.
@@ -402,7 +414,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     sind_pct = _f(payload.get("sind_pct") or 0) or 0.0
     sind_fijo = _f(payload.get("sind_fijo") or 0) or 0.0
 
-    base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
+    base_ap = _base_aportes(total_rem, total_nr, viaticos_nr, manejo_caja_nr_exento)
 
     # Regla del sistema (admin): si es JUBILADO, no se descuenta PAMI ni Obra Social,
     # pero sí Jubilación 11% (y los aportes solidarios/afiliación que correspondan).
@@ -437,8 +449,8 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
         _add(items, "Adicionales Fúnebres", rem=fun_rem, base=fun_rem)
     if armado_rem:
         _add(items, "Armado de vidriera (3,83%)", rem=armado_rem, base=armado_rem)
-    if manejo_caja_rem:
-        _add(items, f"Manejo de Caja (Art. 30 - {cajero_tipo})", rem=manejo_caja_rem, base=manejo_caja_rem)
+    if manejo_caja_nr_exento:
+        _add(items, f"Manejo de Caja (Art. 30 - {cajero_tipo}) - NR exento", nr=manejo_caja_nr_exento, base=manejo_caja_nr_exento)
     if km_rem:
         _add(items, km_label or "Adicional por KM", rem=km_rem, base=km_rem)
 
@@ -620,7 +632,7 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     sind_fijo = _f(p.get('sind_fijo') or 0) or 0.0
 
     viaticos_nr = _f(p.get('viaticos_nr') or 0)
-    base_ap = _base_aportes(total_rem, total_nr, viaticos_nr)
+    base_ap = _base_aportes(total_rem, total_nr, viaticos_nr, manejo_caja_nr_exento)
 
     jub = total_rem * 0.11
     pami = 0.0 if jubilado else total_rem * 0.03
