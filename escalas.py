@@ -725,7 +725,7 @@ def calcular_payload(
     viaticos = _fpos(viaticos_nr)
 
     # Etapa 7: Manejo de Caja / Vidriera / Adelanto / Faltante
-    # - Manejo de Caja (REM): A/C 12,25% sobre básico inicial Cajero A; B 48% sobre básico inicial Cajero B.
+    # - Manejo de Caja (Art. 30) (NR exento): A/C 12,25% sobre básico inicial Cajero A; B 48% sobre básico inicial Cajero B.
     #   Regla del sistema: el adicional se considera ANUAL, por lo que se liquida mensualmente como (importe anual / 12).
     # - Armado de vidriera (REM): 3,83% sobre básico inicial Vendedor B.
     # - Adelanto de sueldo y Faltante de caja: descuentos (no afectan bases de aportes).
@@ -744,8 +744,11 @@ def calcular_payload(
             caja_pct = 0.48
 
     # ANUAL -> mensual (/12). Se prorratea por jornada usando factor (j/48).
-    caja_rem = round2((caja_base * caja_pct * factor) / 12.0) if (caja_base and caja_pct) else 0.0
-    caja_rem_os = round2((caja_base * caja_pct) / 12.0) if (caja_base and caja_pct) else 0.0
+    # Manejo de Caja (Art. 30) se trata como **No Remunerativo Exento**: se paga, pero
+    # NO integra bases de presentismo ni de aportes.
+    caja_exento = round2((caja_base * caja_pct * factor) / 12.0) if (caja_base and caja_pct) else 0.0
+    caja_rem = 0.0
+    caja_rem_os = 0.0
 
     vid_base = _basico_ref(rama, mes, ["VENDEDOR B", "Vendedor B", "VENDEDOR  B"]) if bool(armado_vidriera) else 0.0
     vid_pct = 0.0383
@@ -755,7 +758,7 @@ def calcular_payload(
     faltante = _fpos(faltante_caja)
     adelanto = _fpos(adelanto_sueldo)
     # El faltante se descuenta ÚNICAMENTE hasta el monto del adicional de Manejo de Caja.
-    faltante_desc = round2(min(faltante, caja_rem)) if (faltante and caja_rem) else 0.0
+    faltante_desc = round2(min(faltante, caja_exento)) if (faltante and caja_exento) else 0.0
 
     # Zona desfavorable (porcentaje sobre Básico prorrateado)
     try:
@@ -793,6 +796,8 @@ def calcular_payload(
     # ni el Presentismo sobre NR.
     if viaticos:
         nr_total = round2(nr_total + viaticos)
+    if caja_exento:
+        nr_total = round2(nr_total + caja_exento)
 
     # -------- FUNEBRES: Adicionales (según maestro) --------
     fun_rows: List[Dict[str, Any]] = []
@@ -1054,7 +1059,7 @@ def calcular_payload(
         osecac_100 = 100.0 if bool(osecac) else 0.0
 
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
-    nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0)))
+    nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
 
     # Aportes sindicales/FAECYS: base = REM aportable + NR aportable (excluye viáticos).
     # Regla del sistema: Sindicato 2% y FAECYS 0,5% son obligatorios (no dependen de afiliación).
@@ -1154,13 +1159,13 @@ def calcular_payload(
             tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
             items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
 
-    # Manejo de Caja (REM)
-    if caja_rem:
+    # Manejo de Caja (Art. 30) — NR exento (se paga pero NO integra bases de aportes/presentismo)
+    if caja_exento:
         lbl_tipo = "Cajero B" if caj_tipo == "B" else "Cajero A/C"
         lbl_pct = "48%" if caj_tipo == "B" else "12,25%"
         items.append(item(
-            f"Manejo de Caja ({lbl_tipo}) {lbl_pct}",
-            r=caja_rem,
+            f"Manejo de Caja ({lbl_tipo}) {lbl_pct} - NR exento",
+            n=caja_exento,
             base_num=caja_base,
         ))
 
@@ -1310,7 +1315,7 @@ def calcular_payload(
         items.append(item(
             "Faltante de caja (desc.)",
             d=faltante_desc,
-            base_num=caja_rem,
+            base_num=caja_exento,
         ))
 
     if adelanto:
