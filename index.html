@@ -233,7 +233,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <!--MENSUAL_EXTRAS_END-->
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label>
+<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label><span id="warnJornada23Mensual" style="margin-left:10px;font-size:12px;line-height:1.2;opacity:.9;display:none">⚠️ Al superar 2/3 de la jornada habitual, el cálculo se deberá realizar como jornada completa.</span>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Recibo Mensual</div>
@@ -341,7 +341,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
   <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
   <button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button>
-  <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label>
+  <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label><span id="warnJornada23Final" style="margin-left:10px;font-size:12px;line-height:1.2;opacity:.9;display:none">⚠️ Al superar 2/3 de la jornada habitual, el cálculo se deberá realizar como jornada completa.</span>
   <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
@@ -971,6 +971,23 @@ function toggleManejoCajaUI(){
       if(showCall){ try{ syncCallJornadaFromCategoria(); }catch{} }
     }catch(e){}
   }
+
+function updateWarnJornada23(){
+  try{
+    const rama = $('rama')?.value || '';
+    const isCall = isCallRama(rama);
+    const wM = document.getElementById('warnJornada23Mensual');
+    const wF = document.getElementById('warnJornada23Final');
+    if(isCall){
+      if(wM) wM.style.display = 'none';
+      if(wF) wF.style.display = 'none';
+    }else{
+      if(wM) wM.style.display = '';
+      if(wF) wF.style.display = '';
+    }
+  }catch(_){}
+}
+
 
 
 function applyBranchUI(){
@@ -1838,6 +1855,7 @@ function wire(){
     // Rama: refrescar agrups/cats y togglear UI condicional.
     $("rama")?.addEventListener("change", async () => {
       try{ applyBranchUI(); }catch(_){ }
+      try{ updateWarnJornada23(); }catch(_){ }
       await refreshAgrupCat();
     });
 
@@ -1847,12 +1865,13 @@ function wire(){
 
     $("categoria")?.addEventListener("change", async () => {
       updateCallCenterUI();
+      try{ updateWarnJornada23(); }catch(_){ }
       try{ updateKmUI(); }catch(_){ }
       await refreshPayload();
     });
 
     $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } refreshPayload(); });
-    $("hs")?.addEventListener("change", refreshPayload);
+    $("hs")?.addEventListener("change", () => { try{ updateWarnJornada23(); }catch(_){ } refreshPayload(); });
 
     
 
@@ -1926,6 +1945,7 @@ function wire(){
           }catch(_){ }
         }
         _lfUpdateDerived();
+        try{ updateWarnJornada23(); }catch(_){ }
         try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
       });
     });
@@ -1981,6 +2001,8 @@ function wire(){
         paneF?.classList.toggle('hide-base-final', !tBaseF.checked);
       });
     }
+
+    try{ updateWarnJornada23(); }catch(_){ }
 
     _lfUpdateDerived();
   }
