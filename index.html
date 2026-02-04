@@ -976,15 +976,16 @@ function updateWarnJornada23(){
   try{
     const rama = $('rama')?.value || '';
     const isCall = isCallRama(rama);
+
+    // Jornada (hs): mostrar la leyenda SOLO cuando supera 2/3 (33+) y hasta 43hs inclusive.
+    const hsVal = Number(String($('hs')?.value ?? '').replace(',', '.'));
+    const show = (!isCall) && (hsVal >= 33) && (hsVal <= 43);
+
     const wM = document.getElementById('warnJornada23Mensual');
     const wF = document.getElementById('warnJornada23Final');
-    if(isCall){
-      if(wM) wM.style.display = 'none';
-      if(wF) wF.style.display = 'none';
-    }else{
-      if(wM) wM.style.display = '';
-      if(wF) wF.style.display = '';
-    }
+
+    if(wM) wM.style.display = show ? '' : 'none';
+    if(wF) wF.style.display = show ? '' : 'none';
   }catch(_){}
 }
 
