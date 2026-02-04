@@ -288,7 +288,11 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
         if cajero_tipo == "B":
             base_caj = _find_basico_ref(mes, rama, ["Cajeros B", "CAJEROS B"], agr_pref=agrup)
             anual = base_caj * 0.48 * 12.0
-            manejo_caja_nr_exento = (anual / 12.0) * factor_hs
+            mensual = (anual / 12.0)
+            # Art. 18 Acuerdo 22/06/2011: suma fija mensual para Cajero B (excepto CEREALES)
+            if not _is_cereales(rama):
+                mensual += 1635.183
+            manejo_caja_nr_exento = mensual * factor_hs
         else:
             base_caj = _find_basico_ref(mes, rama, ["Cajeros A", "CAJEROS A"], agr_pref=agrup)
             anual = base_caj * 0.1225 * 12.0

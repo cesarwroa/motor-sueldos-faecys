@@ -763,10 +763,21 @@ def calcular_payload(
             caja_base = _basico_ref(rama, mes, ["CAJERO B", "CAJEROS B", "CAJERO  B", "CAJERO B "], agrup)
             caja_pct = 0.48
 
-    # ANUAL -> mensual (/12). Se prorratea por jornada usando factor (j/48).
-    # Manejo de Caja (Art. 30) se trata como **No Remunerativo Exento**: se paga, pero
-    # NO integra bases de presentismo ni de aportes.
-    caja_exento = round2((caja_base * caja_pct * factor) / 12.0) if (caja_base and caja_pct) else 0.0
+    # ANUAL -> mensual (/12). En la práctica, el "mensual" equivale a (básico ref * %).
+    # Art. 18 del Acuerdo 22/06/2011: para Cajero B se adiciona $ 1.635,183 mensuales
+    # (excepto en CEREALES, según criterio del sistema).
+    is_cereales = norm_rama(rama) in ("CEREALES", "CEREAL")
+    CAJERO_B_FIJO_MENSUAL = 1635.183
+
+    caja_mensual = (caja_base * caja_pct) if (caja_base and caja_pct) else 0.0
+    caja_fijo_b = 0.0
+    if caja_mensual and caj_tipo == "B" and not is_cereales:
+        caja_fijo_b = CAJERO_B_FIJO_MENSUAL
+        caja_mensual += caja_fijo_b
+
+    # Se prorratea por jornada usando factor (j/48). Manejo de Caja (Art. 30) se trata
+    # como **No Remunerativo Exento**: se paga, pero NO integra bases de presentismo ni de aportes.
+    caja_exento = round2(caja_mensual * factor) if caja_mensual else 0.0
     caja_rem = 0.0
     caja_rem_os = 0.0
 
@@ -1182,7 +1193,10 @@ def calcular_payload(
     # Manejo de Caja (Art. 30) — NR exento (se paga pero NO integra bases de aportes/presentismo)
     if caja_exento:
         lbl_tipo = "Cajero B" if caj_tipo == "B" else "Cajero A/C"
-        lbl_pct = "48%" if caj_tipo == "B" else "12,25%"
+        if caj_tipo == "B" and caja_fijo_b:
+            lbl_pct = "48% + $1.635,183"
+        else:
+            lbl_pct = "48%" if caj_tipo == "B" else "12,25%"
         items.append(item(
             f"Manejo de Caja ({lbl_tipo}) {lbl_pct} - NR exento",
             n=caja_exento,
