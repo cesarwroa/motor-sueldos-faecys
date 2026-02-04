@@ -763,13 +763,13 @@ def calcular_payload(
             caja_base = _basico_ref(rama, mes, ["CAJERO B", "CAJEROS B", "CAJERO  B", "CAJERO B "], agrup)
             caja_pct = 0.48
 
-    # ANUAL -> mensual (/12). En la práctica, el "mensual" equivale a (básico ref * %).
+    # ANUAL -> mensual (/12).
     # Art. 18 del Acuerdo 22/06/2011: para Cajero B se adiciona $ 1.635,183 mensuales
     # (excepto en CEREALES, según criterio del sistema).
     is_cereales = norm_rama(rama) in ("CEREALES", "CEREAL")
     CAJERO_B_FIJO_MENSUAL = 1635.183
 
-    caja_mensual = (caja_base * caja_pct) if (caja_base and caja_pct) else 0.0
+    caja_mensual = ((caja_base * caja_pct) / 12.0) if (caja_base and caja_pct) else 0.0
     caja_fijo_b = 0.0
     if caja_mensual and caj_tipo == "B" and not is_cereales:
         caja_fijo_b = CAJERO_B_FIJO_MENSUAL

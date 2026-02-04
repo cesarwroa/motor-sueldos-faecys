@@ -280,14 +280,14 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     # Cajeros (Art. 30): A/C 12,25% sobre básico inicial Cajeros A; B 48% sobre básico inicial Cajeros B
     # En todas las ramas se trata como compensación ANUAL (convenio), liquidada en forma mensual (anual / 12).
-    # En la práctica, si el ANUAL surge de básico*%*12, el mensual equivale a básico*%.
+    # Se prorratea a mensual: (importe anual / 12).
     manejo_caja = bool(payload.get("manejo_caja"))
     cajero_tipo = str(payload.get("cajero_tipo") or "").strip().upper()
     manejo_caja_nr_exento = 0.0
     if manejo_caja and cajero_tipo in ("A", "B", "C"):
         if cajero_tipo == "B":
             base_caj = _find_basico_ref(mes, rama, ["Cajeros B", "CAJEROS B"], agr_pref=agrup)
-            anual = base_caj * 0.48 * 12.0
+            anual = base_caj * 0.48
             mensual = (anual / 12.0)
             # Art. 18 Acuerdo 22/06/2011: suma fija mensual para Cajero B (excepto CEREALES)
             if not _is_cereales(rama):
@@ -295,7 +295,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
             manejo_caja_nr_exento = mensual * factor_hs
         else:
             base_caj = _find_basico_ref(mes, rama, ["Cajeros A", "CAJEROS A"], agr_pref=agrup)
-            anual = base_caj * 0.1225 * 12.0
+            anual = base_caj * 0.1225
             manejo_caja_nr_exento = (anual / 12.0) * factor_hs
 
     # Adicional por KM:
