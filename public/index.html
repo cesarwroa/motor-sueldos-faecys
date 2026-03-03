@@ -723,26 +723,26 @@ function toggleManejoCajaUI(){
         const txt = document.createElement('div');
         const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
         const prettyLabel = prettifyFunLabel(label);
+let obs2 = obs ? String(obs) : "";
+if(obs2){
+  // Si el "obs" repite el label (caso Inciso 1/2), dejar solo el Inciso.
+  try{
+    const upObs = obs2.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const mInc = upObs.match(/INCISO\s*\d+/);
+    if(mInc){
+      obs2 = mInc[0].replace(/\s+/g,' ').replace(/^INCISO/i,'Inciso');
+    }else{
+      // Si empieza con el label, lo recorto
+      const upPl = prettyLabel.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      if(prettyLabel && upObs.startsWith(upPl)){
+        obs2 = obs2.substring(prettyLabel.length).trim();
+      }
+      obs2 = obs2.replace(/^[-–:()\s]+/,'').replace(/[()\s]+$/,'').trim();
+    }
+  }catch(_){}
+}
 
-        // Evitar repetir el nombre del adicional en la segunda línea (p.ej. Inciso 1/2)
-        let obsShort = (obs || "").toString().trim();
-        if(obsShort){
-          // Si la observación trae "Inciso X", mostramos solo eso
-          const m = obsShort.match(/inciso\s*\d+[^)]*/i);
-          if(m) obsShort = m[0].trim();
-
-          // Quitar duplicación del label (si viene "Manipulación de cadáveres ...")
-          const escRe = (s) => (s || "").toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const re = new RegExp('^' + escRe(prettyLabel) + '\\s*', 'i');
-          obsShort = obsShort.replace(re, '').trim();
-
-          // Limpiar separadores y paréntesis
-          obsShort = obsShort.replace(/^[\(\-:\s–—]+/, '').replace(/[\)\s]+$/, '').trim();
-        }
-
-        txt.innerHTML =
-          `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` +
-          (obsShort ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obsShort)}</div>` : '');
+txt.innerHTML = `<div>${escapeHtml(prettyLabel)} <span style="color:#64748b">${escapeHtml(meta)}</span></div>` + (obs2 ? `<div style="color:#64748b; font-size:12px">${escapeHtml(obs2)}</div>` : '');
 
         wrap.appendChild(cb);
         wrap.appendChild(txt);
@@ -908,7 +908,7 @@ function applyBranchUI(){
     if(agrupWrap) agrupWrap.style.display = showFun ? "none" : "";
     if(agrupSel){
       agrupSel.disabled = !!showFun;
-      if(showFun) agrupSel.value = "";
+      if(showFun) agrupSel.value = "—";
     }
 
     const aguaBlock = $('aguaBlock');
