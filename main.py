@@ -33,19 +33,14 @@ BASE_DIR = Path(__file__).resolve().parent
 @app.get("/", include_in_schema=False)
 def home():
     p = BASE_DIR / "index.html"
-    if not p.exists():
-        p = BASE_DIR / "static" / "index.html"
+    if p.exists():
+        return FileResponse(p)
 
-    if not p.exists():
-        return {"ok": True, "error": "index.html no encontrado"}
+    p2 = BASE_DIR / "static" / "index.html"
+    if p2.exists():
+        return FileResponse(p2)
 
-    resp = FileResponse(p)
-
-    # Evitar caché del HTML (para que los cambios se vean inmediatamente al deployar)
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
+    return {"ok": True, "error": "index.html no encontrado"}
 
 # ========= HEALTH =========
 @app.get("/health")
