@@ -144,14 +144,20 @@ def _extract_hs_from_categoria(cat: Any) -> Optional[float]:
         return None
     return v
 
-def _nr_labels(rama: str) -> dict:
+def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
     r = _norm(rama).upper()
+    mes_k = _mes_to_key(mes)
     if r in ("TURISMO", "CEREALES"):
         # En el maestro de Turismo/Cereales, suele venir 60k en no_rem y 40k en suma_fija.
         return {
             "no_rem": "Recomp. NR. Acu. 26",
             "suma_fija": "Incr. NR. Acu. Ene 26",
+        }
+    if r == "GENERAL" and mes_k in ("2026-04", "2026-05", "2026-06"):
+        return {
+            "no_rem": "Incr. NR. Acu. Abr 26",
+            "suma_fija": "Recomp. Acu. Abr 26",
         }
     return {
         "no_rem": "Incr. NR. Acu. Dic 25",
@@ -432,7 +438,7 @@ def get_payload(
             "mes": _mes_to_key(mes),
         }
 
-    labels = _nr_labels(key[0])
+    labels = _nr_labels(key[0], key[3])
 
     out = {"ok": True, "rama": key[0], "agrup": key[1], "categoria": key[2], "mes": key[3], **rec, "labels": labels}
 
@@ -1304,7 +1310,7 @@ def calcular_payload(
             base_num=base_fer_rem,
         ))
 
-    labels = _nr_labels(base["rama"])
+    labels = _nr_labels(base["rama"], base.get("mes") or mes)
 
     if nr:
         items.append(item(labels.get("no_rem", "No Remunerativo"), n=nr))
