@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 import datetime as _dt
+import unicodedata
 from functools import lru_cache
 from typing import Dict, Tuple, List, Any, Optional
 
@@ -102,6 +103,26 @@ def _norm(s: Any) -> str:
 def norm_rama(rama: Any) -> str:
     """Normaliza el nombre de rama para comparaciones."""
     return _norm(rama).upper().replace("  ", " ").strip()
+
+
+def _norm_fold(s: Any) -> str:
+    raw = unicodedata.normalize("NFKD", _norm(s))
+    folded = raw.encode("ascii", "ignore").decode("ascii")
+    return folded.upper().replace("  ", " ").strip()
+
+
+def aplica_osecac_fijo(rama: Any, mes: Any) -> bool:
+    """Define si corresponde el aporte fijo OSECAC $100."""
+    mes_k = _mes_to_key(mes)
+    if not mes_k or mes_k < "2026-04":
+        return True
+    rama_norm = norm_rama(rama)
+    rama_fold = _norm_fold(rama)
+    sin_fijo = (
+        rama_norm in {"GENERAL", "AGUA POTABLE", "FUNEBRES", "FÚNEBRES", "FÃšNEBRES"}
+        or rama_fold in {"GENERAL", "FUNEBRES", "AGUA POTABLE"}
+    )
+    return not sin_fijo
 
 
 
@@ -1087,7 +1108,7 @@ def calcular_payload(
     else:
         os_base = round2((rem_aportes_os + nr_total_os) if bool(osecac) else rem_aportes_os)
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
-        osecac_100 = 100.0 if bool(osecac) else 0.0
+        osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
 
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
@@ -1379,7 +1400,8 @@ def calcular_payload(
 
         if bool(osecac):
             items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
-            items.append(item("OSECAC $100", d=osecac_100))
+            if osecac_100:
+                items.append(item("OSECAC $100", d=osecac_100))
         else:
             items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
 
@@ -2132,7 +2154,7 @@ def calcular_final_payload(
         nr_os = round2(nr_total * factor_os)
         os_base = round2((rem_aportes_os + nr_os) if bool(osecac) else rem_aportes_os)
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
-        osecac_100 = 100.0 if bool(osecac) else 0.0
+        osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(rama, mes_baja)) else 0.0
 
         if bool(afiliado):
             if float(sind_pct or 0) > 0:

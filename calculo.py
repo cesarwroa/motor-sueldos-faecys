@@ -414,6 +414,7 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     jubilado = bool(payload.get("jubilado"))
     afiliado = bool(payload.get("afiliado"))
     osecac = bool(payload.get("osecac", True))
+    osecac_fijo_habilitado = escalas.aplica_osecac_fijo(rama, mes)
 
     sind_pct = _f(payload.get("sind_pct") or 0) or 0.0
     sind_fijo = _f(payload.get("sind_fijo") or 0) or 0.0
@@ -429,7 +430,8 @@ def calcular_recibo(payload: Dict[str, Any]) -> Dict[str, Any]:
     os_100 = 0.0
     if osecac and (not jubilado):
         os_3 = base_ap * 0.03
-        os_100 = 100.0
+        if osecac_fijo_habilitado:
+            os_100 = 100.0
 
     faecys = base_ap * 0.005
     sind_solid = base_ap * 0.02
@@ -631,6 +633,7 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     jubilado = bool(p.get('jubilado'))
     afiliado = bool(p.get('afiliado'))
     osecac = bool(p.get('osecac', True))
+    osecac_fijo_habilitado = escalas.aplica_osecac_fijo(rama, mes_baja)
 
     sind_pct = _f(p.get('sind_pct') or 0) or 0.0
     sind_fijo = _f(p.get('sind_fijo') or 0) or 0.0
@@ -641,7 +644,7 @@ def _calcular_final(p: Dict[str, Any]) -> Dict[str, Any]:
     jub = total_rem * 0.11
     pami = 0.0 if jubilado else total_rem * 0.03
     os_3 = (base_ap * 0.03) if (osecac and not jubilado) else 0.0
-    os_100 = 100.0 if (osecac and not jubilado) else 0.0
+    os_100 = 100.0 if (osecac and not jubilado and osecac_fijo_habilitado) else 0.0
     faecys = base_ap * 0.005
     sind_solid = base_ap * 0.02
     afil_pct = base_ap * (sind_pct / 100.0) if (afiliado and sind_pct > 0) else 0.0

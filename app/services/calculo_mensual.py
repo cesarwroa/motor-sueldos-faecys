@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Any
+import unicodedata
 
 from .repo import find_escala, ym
 
@@ -28,6 +29,20 @@ def antig_pct(rama: str, anios: float) -> float:
     if r == "AGUA POTABLE":
         return 0.02 * anios
     return 0.01 * anios
+
+
+def aplica_osecac_fijo(rama: str, mes_yyyy_mm: str) -> bool:
+    m = ym(mes_yyyy_mm)
+    if not m or m < "2026-04":
+        return True
+    rama_raw = " ".join(str(rama or "").strip().upper().split())
+    raw = unicodedata.normalize("NFKD", str(rama or ""))
+    rama_fold = " ".join(raw.encode("ascii", "ignore").decode("ascii").upper().split())
+    sin_fijo = (
+        rama_raw in {"GENERAL", "AGUA POTABLE", "FUNEBRES", "FÚNEBRES", "FÃšNEBRES"}
+        or rama_fold in {"GENERAL", "FUNEBRES", "AGUA POTABLE"}
+    )
+    return not sin_fijo
 
 
 def calcular_mensual(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -79,7 +94,7 @@ def calcular_mensual(payload: Dict[str, Any]) -> Dict[str, Any]:
     faecys = base_os_faecys_sind * 0.005
     sindicato = base_os_faecys_sind * (sind_pct / 100.0) if afiliado and sind_pct > 0 else 0.0
     os = base_os_faecys_sind * 0.03 if osecac else 0.0
-    osecac_100 = 100.0 if osecac else 0.0
+    osecac_100 = 100.0 if (osecac and aplica_osecac_fijo(rama, mes)) else 0.0
 
     descuentos = jub + pami + faecys + sindicato + os + osecac_100 + adelanto
 
