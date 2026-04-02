@@ -45,27 +45,6 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .co-home-btn:active{transform:translateY(1px)}
 .co-home-ic{width:18px;height:18px;display:inline-block}
 .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
-.tab-disabled{opacity:.65; cursor:not-allowed; pointer-events:none; position:relative; overflow:hidden;}
-.co-stamp{
-  position:absolute;
-  right:10px;
-  top:50%;
-  transform:translateY(-50%) rotate(-10deg);
-  padding:4px 10px;
-  /* Más traslúcido para que se lea el texto de atrás */
-  border:3px solid rgba(220,38,38,.45);
-  color:rgba(220,38,38,.60);
-  font-weight:900;
-  letter-spacing:1px;
-  border-radius:4px;
-  text-transform:uppercase;
-  background:rgba(255,255,255,.05);
-  opacity:.38;
-  box-shadow:0 1px 0 rgba(0,0,0,.05);
-  font-size:12px;
-  line-height:1;
-}
-
 .right{text-align:right}
 @media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
 
@@ -161,10 +140,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
-<div class="tab tab-disabled" id="tabFinal" role="button" aria-disabled="true" title="Próximamente">
-  Liquidación Final
-  <span class="co-stamp" aria-hidden="true">PRÓXIMAMENTE</span>
-</div>
+<div class="tab" id="tabFinal" onclick="switchTab('final')">Liquidación Final</div>
 </div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
@@ -200,7 +176,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="grid cols-4" style="margin-top:8px"><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
 <option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
 </select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
-<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B (anual, /12) · NR exento.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B (anual, /12).</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
 <div><label>Adelanto de sueldo (desc.)</label><input id="adelantoSueldo" min="0" step="0.01" type="number" value="0"/></div>
@@ -233,7 +209,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <!--MENSUAL_EXTRAS_END-->
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label><span id="warnJornada23Mensual" style="margin-left:10px;font-size:12px;line-height:1.2;opacity:.9;display:none">⚠️ Al superar 2/3 de la jornada habitual, el cálculo se deberá realizar como jornada completa.</span>
+<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Recibo Mensual</div>
@@ -341,7 +317,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
   <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
   <button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button>
-  <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label><span id="warnJornada23Final" style="margin-left:10px;font-size:12px;line-height:1.2;opacity:.9;display:none">⚠️ Al superar 2/3 de la jornada habitual, el cálculo se deberá realizar como jornada completa.</span>
+  <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label>
   <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
@@ -726,70 +702,6 @@ function toggleManejoCajaUI(){
     return rr === 'FUNEBRES' || rr === 'FÚNEBRES' || rr === 'FUNEBRES '; // tolerante
   }
 
-
-  // Fúnebres: letras A/B/C/D por categoría (según escala)
-  const FUNEBRES_CAT_LETRAS = {
-    "MAESTRANZA – PEÓN": "A",
-    "AUXILIAR – PERSONAL SALAS VELATORIAS": "A",
-    "AUXILIAR – CAPILLERO – SOLDADOR – LUSTRADOR – SASTRE": "B",
-    "AUXILIAR – CHOFER – FURGONERO – AMBULANCIERO": "B",
-    "MAESTRANZA – AYUDANTE – CAMILLERO – SERENO": "B",
-    "MAESTRANZA – PORTERO": "C",
-    "ADMINISTRATIVO": "D"
-  };
-
-  function funebresSplitCat(cat){
-    const s = (cat || "").toString().trim();
-    const m = s.match(/^(.*)\s*\(([A-D])\)\s*$/);
-    if(m){
-      const base = (m[1]||"").trim();
-      const letra = (m[2]||"").trim();
-      return { base, letra, label: base ? `${base} (${letra})` : s };
-    }
-    const base = s;
-    const letra = FUNEBRES_CAT_LETRAS[base] || "";
-    return { base, letra, label: letra ? `${base} (${letra})` : base };
-  }
-
-  function getSelText(id){
-    const el = document.getElementById(id);
-    if(!el) return "";
-    const opt = el.selectedOptions && el.selectedOptions[0];
-    return (opt && (opt.textContent || opt.innerText)) ? (opt.textContent || opt.innerText) : (el.value || "");
-  }
-
-  function fillFunebresCategoriaSelect(sel, cats, placeholder){
-    if(!sel) return;
-    const cur = sel.value || "";
-    sel.innerHTML = "";
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = placeholder || "Categoría";
-    ph.disabled = true;
-    ph.selected = true;
-    sel.appendChild(ph);
-
-    const seen = new Set();
-    (cats||[]).forEach(c => {
-      const { base, label } = funebresSplitCat(c);
-      if(!base || seen.has(base)) return;
-      const opt = document.createElement("option");
-      opt.value = base;
-      opt.textContent = label;
-      sel.appendChild(opt);
-      seen.add(base);
-    });
-
-    // restaurar selección si existe, si no usar primero
-    if(cur && seen.has(cur)){
-      sel.value = cur;
-    }else{
-      const first = Array.from(sel.options).find(o => o.value);
-      if(first) sel.value = first.value;
-    }
-  }
-
-
   function clearFunebresAdics(){
     const box = document.getElementById('funList');
     if(box) box.innerHTML = '';
@@ -998,24 +910,6 @@ function toggleManejoCajaUI(){
     }catch(e){}
   }
 
-function updateWarnJornada23(){
-  try{
-    const rama = $('rama')?.value || '';
-    const isCall = isCallRama(rama);
-
-    // Jornada (hs): mostrar la leyenda SOLO cuando supera 2/3 (33+) y hasta 43hs inclusive.
-    const hsVal = Number(String($('hs')?.value ?? '').replace(',', '.'));
-    const show = (!isCall) && (hsVal >= 33) && (hsVal <= 43);
-
-    const wM = document.getElementById('warnJornada23Mensual');
-    const wF = document.getElementById('warnJornada23Final');
-
-    if(wM) wM.style.display = show ? '' : 'none';
-    if(wF) wF.style.display = show ? '' : 'none';
-  }catch(_){}
-}
-
-
 
 function applyBranchUI(){
     const rama = $('rama')?.value || '';
@@ -1040,7 +934,7 @@ function applyBranchUI(){
     if(agrupWrap) agrupWrap.style.display = showFun ? "none" : "";
     if(agrupSel){
       agrupSel.disabled = !!showFun;
-      if(showFun) agrupSel.value = "—";
+      if(showFun) agrupSel.value = "";
     }
 
     const aguaBlock = $('aguaBlock');
@@ -1201,10 +1095,9 @@ function applyBranchUI(){
 
     const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
-    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
-      else fillSelect($("categoria"), cats, "Categoría");
+    fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
-    if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
+    if(cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
 
     updateCallCenterUI();
@@ -1224,9 +1117,8 @@ function applyBranchUI(){
     }
     if(!agrup){ return; }
     const cats = getCatsFor(rama, agrup);
-    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
-      else fillSelect($("categoria"), cats, "Categoría");
-    if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
+    fillSelect($("categoria"), cats, "Categoría");
+    if(cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
     updateCallCenterUI();
 
@@ -1315,7 +1207,7 @@ const p = await fetchJSON(url.toString());
       // Encabezado de recibo
       setText("outRama", rama);
       setText("outAgrup", agrup);
-      setText("outCat", getSelText("categoria") || categoria);
+      setText("outCat", categoria);
       setText("outEscala", `Escala ${mes}`);
 
       // Fúnebres: refrescar lista de adicionales al cambiar mes/categoría
@@ -1638,7 +1530,7 @@ const p = await fetchJSON(url.toString());
       // Encabezado + labels desde API
       setText("outRama", data.rama || rama);
       setText("outAgrup", data.agrup || agrup);
-      setText("outCat", getSelText("categoria") || data.categoria || categoria);
+      setText("outCat", data.categoria || categoria);
       setText("outEscala", `Escala ${data.mes || mes}`);
       if(data.labels){
         if(data.labels.no_rem) setText("lblNrVar", data.labels.no_rem);
@@ -1883,7 +1775,6 @@ function wire(){
     // Rama: refrescar agrups/cats y togglear UI condicional.
     $("rama")?.addEventListener("change", async () => {
       try{ applyBranchUI(); }catch(_){ }
-      try{ updateWarnJornada23(); }catch(_){ }
       await refreshAgrupCat();
     });
 
@@ -1893,13 +1784,12 @@ function wire(){
 
     $("categoria")?.addEventListener("change", async () => {
       updateCallCenterUI();
-      try{ updateWarnJornada23(); }catch(_){ }
       try{ updateKmUI(); }catch(_){ }
       await refreshPayload();
     });
 
     $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } syncOsecacOptionText(); refreshPayload(); });
-    $("hs")?.addEventListener("change", () => { try{ updateWarnJornada23(); }catch(_){ } refreshPayload(); });
+    $("hs")?.addEventListener("change", refreshPayload);
 
     
 
@@ -1973,7 +1863,6 @@ function wire(){
           }catch(_){ }
         }
         _lfUpdateDerived();
-        try{ updateWarnJornada23(); }catch(_){ }
         try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
       });
     });
@@ -2030,8 +1919,6 @@ function wire(){
       });
     }
 
-    try{ updateWarnJornada23(); }catch(_){ }
-
     _lfUpdateDerived();
   }
 
@@ -2080,7 +1967,6 @@ function mountExtrasForTab(tab){
 }
 
 function switchTab(tab){
-    if(tab === 'final') tab = 'mensual';
     window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
