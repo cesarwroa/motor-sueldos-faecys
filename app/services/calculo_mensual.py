@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, Any
-import unicodedata
 
 from .repo import find_escala, ym
 
@@ -35,14 +33,7 @@ def aplica_osecac_fijo(rama: str, mes_yyyy_mm: str) -> bool:
     m = ym(mes_yyyy_mm)
     if not m or m < "2026-04":
         return True
-    rama_raw = " ".join(str(rama or "").strip().upper().split())
-    raw = unicodedata.normalize("NFKD", str(rama or ""))
-    rama_fold = " ".join(raw.encode("ascii", "ignore").decode("ascii").upper().split())
-    sin_fijo = (
-        rama_raw in {"GENERAL", "AGUA POTABLE", "FUNEBRES", "FÚNEBRES", "FÃšNEBRES"}
-        or rama_fold in {"GENERAL", "FUNEBRES", "AGUA POTABLE"}
-    )
-    return not sin_fijo
+    return False
 
 
 def calcular_mensual(payload: Dict[str, Any]) -> Dict[str, Any]:

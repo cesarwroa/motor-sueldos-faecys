@@ -116,13 +116,7 @@ def aplica_osecac_fijo(rama: Any, mes: Any) -> bool:
     mes_k = _mes_to_key(mes)
     if not mes_k or mes_k < "2026-04":
         return True
-    rama_norm = norm_rama(rama)
-    rama_fold = _norm_fold(rama)
-    sin_fijo = (
-        rama_norm in {"GENERAL", "AGUA POTABLE", "FUNEBRES", "FÚNEBRES", "FÃšNEBRES"}
-        or rama_fold in {"GENERAL", "FUNEBRES", "AGUA POTABLE"}
-    )
-    return not sin_fijo
+    return False
 
 
 
@@ -1482,9 +1476,9 @@ def match_regla_conexiones(conexiones_o_nivel) -> Dict[str, Any]:
     """
     Agua Potable: reglas por umbrales (según tu UI):
     A: hasta 500
-    B: 501-1000
-    C: 1001-1600
-    D: más de 1600
+    B: 501-1500
+    C: 1501-3500
+    D: desde 3501
     El % es 7% encadenado (A=0%, B=7%, C=14,49%, D=22,5043%).
     """
     # Soporta dos entradas:
@@ -1523,18 +1517,18 @@ def match_regla_conexiones(conexiones_o_nivel) -> Dict[str, Any]:
             level = 0
             cat = "A"
             label = "A (hasta 500)"
-        elif n <= 1000:
+        elif n <= 1500:
             level = 1
             cat = "B"
-            label = "B (501 a 1000)"
-        elif n <= 1600:
+            label = "B (501 a 1500)"
+        elif n <= 3500:
             level = 2
             cat = "C"
-            label = "C (1001 a 1600)"
+            label = "C (1501 a 3500)"
         else:
             level = 3
             cat = "D"
-            label = "D (más de 1600)"
+            label = "D (desde 3501)"
 
     factor = 1.07 ** level
     pct = factor - 1.0  # level 0 => 0
