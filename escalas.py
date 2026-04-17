@@ -148,7 +148,7 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
             "no_rem": "Recomp. NR. Acu. 26",
             "suma_fija": "Incr. NR. Acu. Ene 26",
         }
-    if r == "GENERAL" and mes_k in ("2026-04", "2026-05", "2026-06"):
+    if mes_k >= "2026-04" and r in ("GENERAL", "FUNEBRES", "FÚNEBRES", "AGUA POTABLE"):
         return {
             "no_rem": "Incr. NR. Acu. Abr 26",
             "suma_fija": "Recomp. Acu. Abr 26",
