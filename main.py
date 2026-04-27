@@ -1,9 +1,17 @@
-from fastapi import FastAPI, Query
+import base64
+import hashlib
+import hmac
+import json
+import os
+import time
+
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import Any, Dict, List, Optional
 from escalas import (
     get_meta,
     get_payload,
@@ -28,6 +36,86 @@ app.add_middleware(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
+ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "cesarwroa@gmail.com").strip().lower()
+ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "Dni27941408")
+ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-change-me")
+ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
+
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def _b64url_decode(raw: str) -> bytes:
+    padding = "=" * (-len(raw) % 4)
+    return base64.urlsafe_b64decode((raw + padding).encode("ascii"))
+
+
+def _sign_admin_token(payload: Dict[str, Any]) -> str:
+    payload_raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    payload_b64 = _b64url_encode(payload_raw)
+    signature = hmac.new(
+        ADMIN_ACCESS_SECRET.encode("utf-8"),
+        payload_b64.encode("ascii"),
+        hashlib.sha256,
+    ).digest()
+    return f"{payload_b64}.{_b64url_encode(signature)}"
+
+
+def _issue_admin_token(email: str) -> str:
+    now = int(time.time())
+    payload = {
+        "email": email,
+        "role": "admin",
+        "iat": now,
+        "exp": now + ADMIN_TOKEN_TTL_SECONDS,
+    }
+    return _sign_admin_token(payload)
+
+
+def _read_admin_token(token: str) -> Dict[str, Any]:
+    try:
+        payload_b64, signature_b64 = token.split(".", 1)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Token admin inválido.") from exc
+
+    expected_signature = hmac.new(
+        ADMIN_ACCESS_SECRET.encode("utf-8"),
+        payload_b64.encode("ascii"),
+        hashlib.sha256,
+    ).digest()
+    actual_signature = _b64url_decode(signature_b64)
+
+    if not hmac.compare_digest(expected_signature, actual_signature):
+        raise HTTPException(status_code=401, detail="Firma de sesión inválida.")
+
+    try:
+        payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=401, detail="No se pudo leer la sesión admin.") from exc
+
+    exp = int(payload.get("exp") or 0)
+    if exp <= int(time.time()):
+        raise HTTPException(status_code=401, detail="La sesión admin venció.")
+
+    if str(payload.get("role") or "").lower() != "admin":
+        raise HTTPException(status_code=401, detail="La sesión no tiene permisos de administrador.")
+
+    return payload
+
+
+def _extract_admin_token(authorization: Optional[str]) -> str:
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Falta el token admin.")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Formato de autorización inválido.")
+    return token.strip()
 
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
@@ -46,6 +134,38 @@ def home():
 @app.get("/health")
 def health():
     return {"ok": True, "servicio": "motor-sueldos-faecys"}
+
+
+@app.post("/admin/login")
+def admin_login(payload: AdminLoginRequest):
+    email = payload.email.strip().lower()
+    password = payload.password
+
+    valid_email = hmac.compare_digest(email, ADMIN_LOGIN_EMAIL)
+    valid_password = hmac.compare_digest(password, ADMIN_LOGIN_PASSWORD)
+
+    if not (valid_email and valid_password):
+        raise HTTPException(status_code=401, detail="Credenciales de administrador inválidas.")
+
+    return {
+        "ok": True,
+        "token": _issue_admin_token(email),
+        "email": ADMIN_LOGIN_EMAIL,
+        "role": "admin",
+        "expires_in": ADMIN_TOKEN_TTL_SECONDS,
+    }
+
+
+@app.get("/admin/session")
+def admin_session(authorization: Optional[str] = Header(default=None)):
+    payload = _read_admin_token(_extract_admin_token(authorization))
+    return {
+        "ok": True,
+        "authenticated": True,
+        "role": payload["role"],
+        "email": payload["email"],
+        "expires_at": payload["exp"],
+    }
 
 # ========= META =========
 @app.get("/meta")

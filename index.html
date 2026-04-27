@@ -45,6 +45,7 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .co-home-btn:active{transform:translateY(1px)}
 .co-home-ic{width:18px;height:18px;display:inline-block}
 .tab{padding:8px 12px;border:1px solid var(--grid);border-radius:10px;background:#fff;cursor:pointer} .active{border-color:#93c5fd;background:#eff6ff}
+.tab-admin-ready{border-color:#10b981;background:#ecfdf5;color:#065f46}
 .tab-disabled{opacity:.65; cursor:not-allowed; pointer-events:none; position:relative; overflow:hidden;}
 .co-stamp{
   position:absolute;
@@ -65,6 +66,38 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   font-size:12px;
   line-height:1;
 }
+
+#adminSessionBox{
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+  border-color:#bbf7d0;
+  background:#f0fdf4;
+}
+.co-admin-state{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.co-admin-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#dcfce7;
+  color:#166534;
+  font-weight:800;
+  font-size:12px;
+}
+.co-admin-email{font-weight:700;color:#065f46}
+.co-admin-help{color:#166534;font-size:13px}
+.co-admin-logout{
+  background:#ffffff;
+  color:#166534;
+  border:1px solid #86efac;
+  font-weight:700;
+}
+.co-admin-logout:hover{background:#f0fdf4}
 
 .right{text-align:right}
 @media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
@@ -161,10 +194,18 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
-<div class="tab tab-disabled" id="tabFinal" role="button" aria-disabled="true" title="Próximamente">
+<div class="tab tab-disabled" id="tabFinal" onclick="switchTab('final')" role="button" aria-disabled="true" title="Acceso exclusivo para administrador">
   Liquidación Final
   <span class="co-stamp" aria-hidden="true">PRÓXIMAMENTE</span>
 </div>
+</div>
+<div class="card no-print" id="adminSessionBox">
+  <div class="co-admin-state">
+    <span class="co-admin-pill">Modo administrador activo</span>
+    <span class="co-admin-email" id="adminSessionEmail"></span>
+    <span class="co-admin-help">Liquidación Final y funciones ampliadas habilitadas.</span>
+  </div>
+  <button class="co-admin-logout" id="adminLogoutBtn" type="button">Cerrar sesión admin</button>
 </div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
@@ -485,6 +526,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <script>
 (() => {
   const API_BASE = (window.API_BASE || "").trim() || window.location.origin;
+  const ADMIN_STORAGE_KEY = "co_admin_token";
+  const ADMIN_HASH_KEY = "admin_token";
 
   const $ = (id) => document.getElementById(id);
   const setText = (id, txt) => { const el=$(id); if(el) el.textContent = txt ?? ""; };
@@ -497,6 +540,100 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const n = num(v);
     return n.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
   };
+  window.__adminAccess = false;
+  window.__adminSession = null;
+
+  function getStoredAdminToken(){
+    try{
+      return (window.localStorage.getItem(ADMIN_STORAGE_KEY) || "").trim();
+    }catch(_){
+      return "";
+    }
+  }
+
+  function setStoredAdminToken(token){
+    try{
+      if(token) window.localStorage.setItem(ADMIN_STORAGE_KEY, token);
+      else window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+    }catch(_){ }
+  }
+
+  function consumeAdminTokenFromHash(){
+    try{
+      const rawHash = (window.location.hash || "").replace(/^#/, "");
+      if(!rawHash) return "";
+      const params = new URLSearchParams(rawHash.startsWith("?") ? rawHash.slice(1) : rawHash);
+      const token = (params.get(ADMIN_HASH_KEY) || "").trim();
+      if(!token) return "";
+      params.delete(ADMIN_HASH_KEY);
+      const nextHash = params.toString();
+      const nextUrl = `${window.location.pathname}${window.location.search}${nextHash ? "#" + nextHash : ""}`;
+      window.history.replaceState(null, "", nextUrl);
+      return token;
+    }catch(_){
+      return "";
+    }
+  }
+
+  function syncAdminUI(){
+    const isAdmin = !!window.__adminAccess;
+    const finalTab = $("tabFinal");
+    const stamp = finalTab?.querySelector(".co-stamp");
+    const sessionBox = $("adminSessionBox");
+
+    document.body.classList.toggle("co-admin-mode", isAdmin);
+
+    if(finalTab){
+      finalTab.classList.toggle("tab-disabled", !isAdmin);
+      finalTab.classList.toggle("tab-admin-ready", isAdmin);
+      finalTab.setAttribute("aria-disabled", isAdmin ? "false" : "true");
+      finalTab.setAttribute("title", isAdmin ? "Funciones de administrador habilitadas" : "Acceso exclusivo para administrador");
+    }
+
+    if(stamp){
+      stamp.textContent = isAdmin ? "ADMIN" : "PRÓXIMAMENTE";
+      stamp.style.display = isAdmin ? "none" : "";
+    }
+
+    if(sessionBox) sessionBox.style.display = isAdmin ? "flex" : "none";
+    setText("adminSessionEmail", isAdmin ? (window.__adminSession?.email || "Administrador") : "");
+  }
+
+  function clearAdminSession(){
+    window.__adminAccess = false;
+    window.__adminSession = null;
+    setStoredAdminToken("");
+    syncAdminUI();
+    if(window.__activeTab === "final") switchTab("mensual");
+  }
+
+  async function refreshAdminSession(){
+    const hashToken = consumeAdminTokenFromHash();
+    if(hashToken) setStoredAdminToken(hashToken);
+
+    const token = getStoredAdminToken();
+    if(!token){
+      clearAdminSession();
+      return null;
+    }
+
+    try{
+      const url = new URL("/admin/session", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      window.__adminAccess = !!data?.authenticated;
+      window.__adminSession = data || null;
+      syncAdminUI();
+      return data;
+    }catch(err){
+      console.warn("No se pudo validar la sesion admin.", err);
+      clearAdminSession();
+      return null;
+    }
+  }
 
 
   function normalizeFAECYSConcept(concepto){
@@ -585,8 +722,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
 
-  async function fetchJSON(url){
-    const res = await fetch(url, { credentials:"omit" });
+  async function fetchJSON(url, options = {}){
+    const res = await fetch(url, { credentials:"omit", ...options });
     const txt = await res.text();
     let data = null;
     try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
@@ -2084,7 +2221,7 @@ function mountExtrasForTab(tab){
 }
 
 function switchTab(tab){
-    if(tab === 'final') tab = 'mensual';
+    if(tab === 'final' && !window.__adminAccess) tab = 'mensual';
     window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
@@ -2720,7 +2857,12 @@ function switchTab(tab){
 
   document.addEventListener('DOMContentLoaded', async () => {
     try{
+      syncAdminUI();
+      $("adminLogoutBtn")?.addEventListener("click", () => {
+        clearAdminSession();
+      });
       wire();
+      await refreshAdminSession();
       await loadMeta();
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }catch(err){
