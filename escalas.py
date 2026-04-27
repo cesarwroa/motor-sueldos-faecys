@@ -941,6 +941,8 @@ def calcular_payload(
     sac_row_rem = 0.0
     sac_row_nr = 0.0
     sac_row_base = 0.0
+    sac_row_rem_os = 0.0
+    sac_row_nr_os = 0.0
     mes_num = 0
     try:
         mes_num = int(str(base.get("mes") or mes or "").split("-")[1])
@@ -1084,15 +1086,19 @@ def calcular_payload(
     if mes_num in (6, 12):
         base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
         base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
-        rem_total_os = round2(rem_total_os + round2(base_sac_rem_os * 0.5))
-        nr_total_os = round2(nr_total_os + round2(base_sac_nr_os * 0.5))
+        sac_row_rem_os = round2(base_sac_rem_os * 0.5)
+        sac_row_nr_os = round2(base_sac_nr_os * 0.5)
+        rem_total_os = round2(rem_total_os + sac_row_rem_os)
+        nr_total_os = round2(nr_total_os + sac_row_nr_os)
     elif bool(sac_prop_mes) and (1 <= mes_num <= 12):
         meses_sem = mes_num if mes_num <= 6 else (mes_num - 6)
         factor_sac = float(meses_sem) / 12.0
         base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
         base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
-        rem_total_os = round2(rem_total_os + round2(base_sac_rem_os * factor_sac))
-        nr_total_os = round2(nr_total_os + round2(base_sac_nr_os * factor_sac))
+        sac_row_rem_os = round2(base_sac_rem_os * factor_sac)
+        sac_row_nr_os = round2(base_sac_nr_os * factor_sac)
+        rem_total_os = round2(rem_total_os + sac_row_rem_os)
+        nr_total_os = round2(nr_total_os + sac_row_nr_os)
 
     # Ausencias (48hs)
     base_dia_aus_os = round2((bas_os + zona_os + antig_os) / 30.0) if (bas_os or zona_os or antig_os) else 0.0
@@ -1169,11 +1175,150 @@ def calcular_payload(
     ded_total = round2(ded_pre + embargo_monto)
     neto = round2(neto_pre - embargo_monto)
 
+    sac_habil = bool(sac_concepto and (sac_row_rem or sac_row_nr))
+
+    mensual_rem_total = round2(rem_total - sac_row_rem) if sac_habil else round2(rem_total)
+    mensual_nr_total = round2(nr_total - sac_row_nr) if sac_habil else round2(nr_total)
+    mensual_rem_aportes = max(0.0, round2(mensual_rem_total - aus_rem - susp_rem))
+    mensual_nr_aportable = max(0.0, round2(mensual_nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
+    mensual_base_fs = round2(mensual_rem_aportes + mensual_nr_aportable)
+
+    mensual_rem_total_os = round2(rem_total_os - sac_row_rem_os) if sac_habil else round2(rem_total_os)
+    mensual_nr_total_os = round2(nr_total_os - sac_row_nr_os) if sac_habil else round2(nr_total_os)
+    mensual_rem_aportes_os = max(0.0, round2(mensual_rem_total_os - aus_rem_os - susp_rem_os))
+
+    sac_rem_total = round2(sac_row_rem if sac_habil else 0.0)
+    sac_nr_total = round2(sac_row_nr if sac_habil else 0.0)
+    sac_rem_aportes = sac_rem_total
+    sac_nr_aportable = sac_nr_total
+    sac_base_fs = round2(sac_rem_aportes + sac_nr_aportable)
+
+    mensual_jub = round2(mensual_rem_aportes * 0.11)
+    sac_jub = round2(sac_rem_aportes * 0.11) if sac_habil else 0.0
+
+    if bool(jubilado):
+        mensual_pami = 0.0
+        sac_pami = 0.0
+        mensual_os_base = round2(mensual_rem_aportes_os + mensual_nr_total_os)
+        mensual_os_aporte = 0.0
+        mensual_osecac_100 = 0.0
+        sac_os_base = round2(sac_row_rem_os + sac_row_nr_os) if sac_habil else 0.0
+        sac_os_aporte = 0.0
+    else:
+        mensual_pami = round2(mensual_rem_aportes * 0.03)
+        sac_pami = round2(sac_rem_aportes * 0.03) if sac_habil else 0.0
+        mensual_os_base = round2((mensual_rem_aportes_os + mensual_nr_total_os) if bool(osecac) else mensual_rem_aportes_os)
+        mensual_os_aporte = round2(mensual_os_base * 0.03) if bool(osecac) else 0.0
+        mensual_osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
+        sac_os_base = round2((sac_row_rem_os + sac_row_nr_os) if bool(osecac) else sac_row_rem_os) if sac_habil else 0.0
+        sac_os_aporte = round2(sac_os_base * 0.03) if (bool(osecac) and sac_habil) else 0.0
+
+    mensual_faecys = round2(mensual_base_fs * 0.005) if mensual_base_fs else 0.0
+    mensual_sind_solid = round2(mensual_base_fs * 0.02) if mensual_base_fs else 0.0
+    sac_faecys = round2(sac_base_fs * 0.005) if (sac_habil and sac_base_fs) else 0.0
+    sac_sind_solid = round2(sac_base_fs * 0.02) if (sac_habil and sac_base_fs) else 0.0
+
+    mensual_sind = 0.0
+    sac_sind = 0.0
+    mensual_sind_fijo_monto = 0.0
+    sac_sind_fijo_monto = 0.0
+    if bool(afiliado):
+        try:
+            sp_sep = float(sind_pct or 0.0)
+        except Exception:
+            sp_sep = 0.0
+        if sp_sep > 0:
+            mensual_sind = round2(mensual_base_fs * (sp_sep / 100.0)) if mensual_base_fs else 0.0
+            sac_sind = round2(sac_base_fs * (sp_sep / 100.0)) if (sac_habil and sac_base_fs) else 0.0
+        try:
+            mensual_sind_fijo_monto = round2(max(0.0, float(sind_fijo or 0.0)))
+        except Exception:
+            mensual_sind_fijo_monto = 0.0
+
+    mensual_ded_pre = round2(
+        mensual_jub
+        + mensual_pami
+        + mensual_os_aporte
+        + mensual_osecac_100
+        + mensual_faecys
+        + mensual_sind_solid
+        + mensual_sind
+        + mensual_sind_fijo_monto
+        + aus_rem
+        + susp_rem
+        + faltante_desc
+        + adelanto
+    )
+    mensual_neto_pre = round2((mensual_rem_total + mensual_nr_total) - mensual_ded_pre)
+    mensual_embargo_monto = round2(min(emb_in, max(0.0, mensual_neto_pre))) if emb_in else 0.0
+
+    sac_ded_pre = round2(
+        sac_jub
+        + sac_pami
+        + sac_os_aporte
+        + sac_faecys
+        + sac_sind_solid
+        + sac_sind
+        + sac_sind_fijo_monto
+    )
+    sac_neto_pre = round2((sac_rem_total + sac_nr_total) - sac_ded_pre)
+    sac_embargo_monto = 0.0
+    if emb_in and embargo_monto > mensual_embargo_monto:
+        sac_embargo_monto = round2(min(round2(embargo_monto - mensual_embargo_monto), max(0.0, sac_neto_pre)))
+
+    mensual_ded_total = round2(mensual_ded_pre + mensual_embargo_monto)
+    mensual_neto = round2(mensual_neto_pre - mensual_embargo_monto)
+    sac_ded_total = round2(sac_ded_pre + sac_embargo_monto)
+    sac_neto = round2(sac_neto_pre - sac_embargo_monto)
+
     def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
         out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
         if base_num:
             out["base"] = float(base_num)
         return out
+
+    def append_aporte_items(
+        target: List[Dict[str, Any]],
+        *,
+        rem_base: float,
+        fs_base_val: float,
+        os_base_val: float,
+        jub_val: float,
+        pami_val: float,
+        os_val: float,
+        osecac_fijo_val: float,
+        faecys_val: float,
+        sind_solid_val: float,
+        sind_val: float,
+        sind_fijo_val: float,
+    ) -> None:
+        if bool(jubilado):
+            target.append(item("Jubilación 11% (Jubilado)", d=jub_val, base_num=rem_base))
+            target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val))
+            target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val))
+            if sind_val:
+                target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val))
+            if sind_fijo_val:
+                target.append(item("Sindicato Afiliación", d=sind_fijo_val))
+            return
+
+        target.append(item("Jubilación 11%", d=jub_val, base_num=rem_base))
+        target.append(item("Ley 19.032 (PAMI) 3%", d=pami_val, base_num=rem_base))
+
+        if bool(osecac):
+            target.append(item("Obra Social 3%", d=os_val, base_num=os_base_val))
+            if osecac_fijo_val:
+                target.append(item("OSECAC $100", d=osecac_fijo_val))
+        else:
+            target.append(item("Obra Social 3%", d=0.0, base_num=os_base_val))
+
+        target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val))
+        target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val))
+
+        if sind_val:
+            target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val))
+        if sind_fijo_val:
+            target.append(item("Sindicato Afiliación", d=sind_fijo_val))
 
     items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas)]
 
@@ -1245,15 +1390,6 @@ def calcular_payload(
             "Presentismo",
             r=presentismo,
             base_num=base_pres,
-        ))
-
-    # SAC (Jun/Dic) o SAC proporcional (mes)
-    if sac_concepto and (sac_row_rem or sac_row_nr):
-        items.append(item(
-            sac_concepto,
-            r=sac_row_rem,
-            n=sac_row_nr,
-            base_num=sac_row_base,
         ))
 
     # Fúnebres: adicionales seleccionados (según maestro)
@@ -1379,40 +1515,56 @@ def calcular_payload(
             d=adelanto,
         ))
 
-    if embargo_monto:
+    if mensual_embargo_monto:
         items.append(item(
             "Embargo (desc.)",
-            d=embargo_monto,
-            base_num=neto_pre,
+            d=mensual_embargo_monto,
+            base_num=mensual_neto_pre,
         ))
 
-    if bool(jubilado):
-        items.append(item("Jubilación 11% (Jubilado)", d=jub, base_num=rem_aportes))
-        items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
-        if sind:
-            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=base_fs))
-        if sind_fijo_monto:
-            items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
-    else:
-        items.append(item("Jubilación 11%", d=jub, base_num=rem_aportes))
-        items.append(item("Ley 19.032 (PAMI) 3%", d=pami, base_num=rem_aportes))
+    append_aporte_items(
+        items,
+        rem_base=mensual_rem_aportes,
+        fs_base_val=mensual_base_fs,
+        os_base_val=mensual_os_base,
+        jub_val=mensual_jub,
+        pami_val=mensual_pami,
+        os_val=mensual_os_aporte,
+        osecac_fijo_val=mensual_osecac_100,
+        faecys_val=mensual_faecys,
+        sind_solid_val=mensual_sind_solid,
+        sind_val=mensual_sind,
+        sind_fijo_val=mensual_sind_fijo_monto,
+    )
 
-        if bool(osecac):
-            items.append(item("Obra Social 3%", d=os_aporte, base_num=os_base))
-            if osecac_100:
-                items.append(item("OSECAC $100", d=osecac_100))
-        else:
-            items.append(item("Obra Social 3%", d=0.0, base_num=os_base))
-
-        # Obligatorios (no dependen de afiliación)
-        items.append(item("FAECYS 0,5%", d=faecys, base_num=base_fs))
-        items.append(item("Sindicato 2% Art 100", d=sind_solid, base_num=base_fs))
-
-        if sind:
-            items.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind, base_num=(rem_aportes + nr_aportable_real)))
-        if sind_fijo_monto:
-            items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
+    sac_items: List[Dict[str, Any]] = []
+    if sac_habil:
+        sac_items.append(item(
+            sac_concepto,
+            r=sac_rem_total,
+            n=sac_nr_total,
+            base_num=sac_row_base,
+        ))
+        if sac_embargo_monto:
+            sac_items.append(item(
+                "Embargo (desc.)",
+                d=sac_embargo_monto,
+                base_num=sac_neto_pre,
+            ))
+        append_aporte_items(
+            sac_items,
+            rem_base=sac_rem_aportes,
+            fs_base_val=sac_base_fs,
+            os_base_val=sac_os_base,
+            jub_val=sac_jub,
+            pami_val=sac_pami,
+            os_val=sac_os_aporte,
+            osecac_fijo_val=0.0,
+            faecys_val=sac_faecys,
+            sind_solid_val=sac_sind_solid,
+            sind_val=sac_sind,
+            sind_fijo_val=sac_sind_fijo_monto,
+        )
 
     return {
         "ok": True,
@@ -1442,11 +1594,25 @@ def calcular_payload(
 
         "items": items,
         "totales": {
-            "rem": float(rem_total),
-            "nr": float(nr_total),
-            "ded": float(ded_total),
-            "neto": float(neto),
+            "rem": float(mensual_rem_total),
+            "nr": float(mensual_nr_total),
+            "ded": float(mensual_ded_total),
+            "neto": float(mensual_neto),
         },
+        "recibo_sac": (
+            {
+                "concepto": sac_concepto,
+                "items": sac_items,
+                "totales": {
+                    "rem": float(sac_rem_total),
+                    "nr": float(sac_nr_total),
+                    "ded": float(sac_ded_total),
+                    "neto": float(sac_neto),
+                },
+            }
+            if sac_habil
+            else None
+        ),
     }
 
 

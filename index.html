@@ -285,7 +285,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <!--MENSUAL_EXTRAS_END-->
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="calcularMensual()" type="button">Calcular mensual</button>
-<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label><span id="warnJornada23Mensual" style="margin-left:10px;font-size:12px;line-height:1.2;opacity:.9;display:none">⚠️ Al superar 2/3 de la jornada habitual, el cálculo se deberá realizar como jornada completa.</span>
+<button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Recibo Mensual</div>
@@ -310,6 +310,32 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </tr>
 </tfoot>
 </table>
+</div>
+<div id="paneSac" style="display:none; margin-top:16px">
+<div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+<button onclick="imprimirPDF('sac')" type="button">Imprimir / PDF SAC</button>
+</div>
+<div class="badge" style="margin-top:8px">Recibo SAC</div>
+<div id="sacSubtitle" style="margin:6px 0;color:#64748b"></div>
+<div class="table-wrapper">
+<table class="table">
+<thead><tr><th>Concepto</th><th class="right col-base-num">Base</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
+<tbody id="tbodySac"></tbody>
+<tfoot>
+<tr>
+<td>Total</td>
+<td class="right col-base-num"></td>
+<td class="right" id="sacTotRem">$0,00</td>
+<td class="right" id="sacTotNR">$0,00</td>
+<td class="right" id="sacTotDed">$0,00</td>
+</tr>
+<tr>
+<td class="right" colspan="4"><strong>Neto a cobrar</strong></td>
+<td class="right" id="sacNeto">$0,00</td>
+</tr>
+</tfoot>
+</table>
+</div>
 </div>
 </div>
 
@@ -393,7 +419,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
   <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
   <button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button>
-  <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label><span id="warnJornada23Final" style="margin-left:10px;font-size:12px;line-height:1.2;opacity:.9;display:none">⚠️ Al superar 2/3 de la jornada habitual, el cálculo se deberá realizar como jornada completa.</span>
+  <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label>
   <span id="diagFinal" style="color:#64748b"></span>
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
@@ -716,6 +742,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       const fi = (fmtDateISO($('lf_ingreso')?.value || '') || '').toString().split('/').join('-');
       const fe = (fmtDateISO($('lf_egreso')?.value || '') || '').toString().split('/').join('-');
       return coSanitizeFilename(`Liquidacion Final ${app} ${rama} ${cat} ${hs}hs ${my} Ingreso ${fi} Egreso ${fe}`);
+    }
+
+    if(t === 'sac'){
+      const concepto = (($('sacSubtitle')?.textContent || 'SAC').toString().trim() || 'SAC').replace(/\s+/g, ' ');
+      return coSanitizeFilename(`SAC ${app} ${concepto} ${rama} ${cat} ${hs}hs ${my}`);
     }
 
     return coSanitizeFilename(`Mensual ${app} ${rama} ${cat} ${hs}hs ${my}`);
@@ -1139,22 +1170,7 @@ function toggleManejoCajaUI(){
     }catch(e){}
   }
 
-function updateWarnJornada23(){
-  try{
-    const rama = $('rama')?.value || '';
-    const isCall = isCallRama(rama);
-
-    // Jornada (hs): mostrar la leyenda SOLO cuando supera 2/3 (33+) y hasta 43hs inclusive.
-    const hsVal = Number(String($('hs')?.value ?? '').replace(',', '.'));
-    const show = (!isCall) && (hsVal >= 33) && (hsVal <= 43);
-
-    const wM = document.getElementById('warnJornada23Mensual');
-    const wF = document.getElementById('warnJornada23Final');
-
-    if(wM) wM.style.display = show ? '' : 'none';
-    if(wF) wF.style.display = show ? '' : 'none';
-  }catch(_){}
-}
+function updateWarnJornada23(){}
 
 
 
@@ -1481,9 +1497,9 @@ const p = await fetchJSON(url.toString());
     tb.innerHTML = "";
   }
 
-  function addRowMensual(concepto, base, r, n, d){
+  function addRowReceipt(tbodyId, concepto, base, r, n, d){
     concepto = normalizeFAECYSConcept(concepto);
-    const tb = $("tbodyMensual");
+    const tb = $(tbodyId);
     if(!tb) return;
     const tr = document.createElement("tr");
     const tdC = document.createElement("td"); tdC.textContent = concepto;
@@ -1493,6 +1509,71 @@ const p = await fetchJSON(url.toString());
     const tdD = document.createElement("td"); tdD.className='right'; tdD.textContent = money(d||0);
     tr.append(tdC, tdB, tdR, tdN, tdD);
     tb.appendChild(tr);
+  }
+
+  function addRowMensual(concepto, base, r, n, d){
+    addRowReceipt("tbodyMensual", concepto, base, r, n, d);
+  }
+
+  function addRowSac(concepto, base, r, n, d){
+    addRowReceipt("tbodySac", concepto, base, r, n, d);
+  }
+
+  function normalizeReceiptItems(rawItems){
+    const itemsRaw = Array.isArray(rawItems) ? rawItems : [];
+    const seen = new Set();
+    const items = [];
+    for(const it of itemsRaw){
+      const concepto = (it && it.concepto != null) ? String(it.concepto).trim() : "";
+      const sig = [
+        concepto,
+        num(it?.base).toFixed(2),
+        num(it?.r).toFixed(2),
+        num(it?.n).toFixed(2),
+        num(it?.d).toFixed(2)
+      ].join("|");
+      if(seen.has(sig)) continue;
+      seen.add(sig);
+      items.push(it);
+    }
+    return items;
+  }
+
+  function renderReceiptRows(tbodyId, rawItems){
+    clearTbody(tbodyId);
+    const items = normalizeReceiptItems(rawItems);
+    const remItems = [];
+    const nrItems = [];
+    const dedItems = [];
+    const otherItems = [];
+    for(const it of items){
+      const r = num(it?.r);
+      const n = num(it?.n);
+      const d = num(it?.d);
+      if(d > 0 && r <= 0 && n <= 0) dedItems.push(it);
+      else if(r > 0) remItems.push(it);
+      else if(n > 0) nrItems.push(it);
+      else otherItems.push(it);
+    }
+    const addRow = (tbodyId === "tbodySac") ? addRowSac : addRowMensual;
+    [...remItems, ...nrItems, ...dedItems, ...otherItems]
+      .forEach(it => addRow(it.concepto, it.base, it.r, it.n, it.d));
+  }
+
+  function setReceiptTotals(remId, nrId, dedId, netoId, totals){
+    const t = totals || {};
+    setText(remId, money(t.rem || 0));
+    setText(nrId, money(t.nr || 0));
+    setText(dedId, money(t.ded || 0));
+    setText(netoId, money(t.neto || 0));
+  }
+
+  function resetSacReceipt(){
+    clearTbody("tbodySac");
+    setText("sacSubtitle", "");
+    setReceiptTotals("sacTotRem", "sacTotNR", "sacTotDed", "sacNeto", {});
+    const pane = $("paneSac");
+    if(pane) pane.style.display = "none";
   }
 
   // Arma la URL del cálculo mensual con los valores actuales del formulario.
@@ -1734,47 +1815,19 @@ const p = await fetchJSON(url.toString());
           if($('lf_mrmnh')) $('lf_mrmnh').value = (rem+nr).toFixed(2);
         }
       }catch{ /* ignore */ }
-      clearTbody("tbodyMensual");
+      renderReceiptRows("tbodyMensual", data.items);
+      setReceiptTotals("totRem", "totNR", "totDed", "neto", data.totales || {});
 
-      // Etapa 9: dedupe visual (evita filas duplicadas por render/bugs)
-      const rawItems = Array.isArray(data.items) ? data.items : [];
-      const seen = new Set();
-      const items = [];
-      for(const it of rawItems){
-        const concepto = (it && it.concepto != null) ? String(it.concepto).trim() : "";
-        const sig = [
-          concepto,
-          num(it?.base).toFixed(2),
-          num(it?.r).toFixed(2),
-          num(it?.n).toFixed(2),
-          num(it?.d).toFixed(2)
-        ].join("|");
-        if(seen.has(sig)) continue;
-        seen.add(sig);
-        items.push(it);
+      const sac = data?.recibo_sac;
+      if(sac && Array.isArray(sac.items) && sac.items.length){
+        renderReceiptRows("tbodySac", sac.items);
+        setReceiptTotals("sacTotRem", "sacTotNR", "sacTotDed", "sacNeto", sac.totales || {});
+        setText("sacSubtitle", sac.concepto || "SAC");
+        const sacPane = $("paneSac");
+        if(sacPane) sacPane.style.display = "";
+      }else{
+        resetSacReceipt();
       }
-      // Orden: Remunerativos → No Remunerativos → Descuentos
-      const remItems = [];
-      const nrItems  = [];
-      const dedItems = [];
-      const otherItems = [];
-      for(const it of items){
-        const r = num(it?.r);
-        const n = num(it?.n);
-        const d = num(it?.d);
-        if(d > 0 && r <= 0 && n <= 0) dedItems.push(it);
-        else if(r > 0) remItems.push(it);
-        else if(n > 0) nrItems.push(it);
-        else otherItems.push(it);
-      }
-      [...remItems, ...nrItems, ...dedItems, ...otherItems]
-        .forEach(it => addRowMensual(it.concepto, it.base, it.r, it.n, it.d));
-
-      const t = data.totales || {};
-      setText("totRem", money(t.rem || 0));
-      setText("totNR", money(t.nr || 0));
-      setText("totDed", money(t.ded || 0));
-      setText("neto", money(t.neto || 0));
 
       // Encabezado + labels desde API
       setText("outRama", data.rama || rama);
@@ -1817,7 +1870,9 @@ const p = await fetchJSON(url.toString());
 
 
   function cloneTableForPrint(tab){
-    const sel = (tab === 'final') ? '#paneFinal table.table' : '#paneMensual table.table';
+    const sel = (tab === 'final')
+      ? '#paneFinal table.table'
+      : (tab === 'sac' ? '#paneSac table.table' : '#paneMensual table.table');
     const src = document.querySelector(sel);
     if(!src) return null;
     const tbl = src.cloneNode(true);
@@ -1850,7 +1905,8 @@ const p = await fetchJSON(url.toString());
     if(!area) return;
 
     const isFinal = (tab === 'final');
-    const titulo = isFinal ? 'Liquidación Final' : 'Recibo Mensual';
+    const isSac = (tab === 'sac');
+    const titulo = isFinal ? 'Liquidación Final' : (isSac ? 'Recibo SAC' : 'Recibo Mensual');
 
     // Header: usar los spans ya armados (fallback a selects)
     const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || '—';
@@ -1860,6 +1916,7 @@ const p = await fetchJSON(url.toString());
       ? ($('outEscala')?.textContent || '')
       : (`Escala ${(($('lf_egreso')?.value || '').slice(0,7)) || ($('mes')?.value || '')}`)
     ).trim();
+    const extra = isSac ? (($('sacSubtitle')?.textContent || '').toString().trim()) : '';
 
     const fiFmt = isFinal ? fmtDateISO($('lf_ingreso')?.value || '') : '';
     const feFmt = isFinal ? fmtDateISO($('lf_egreso')?.value || '') : '';
@@ -1872,6 +1929,7 @@ const p = await fetchJSON(url.toString());
         <div class="sheet">
           <div class="title">${escapeHtml(titulo)}</div>
           <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
+          ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
           <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
         </div>`;
       return;
@@ -1882,6 +1940,7 @@ const p = await fetchJSON(url.toString());
       <div class="sheet">
         <div class="title">${escapeHtml(titulo)}</div>
         <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
+        ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
         ${tbl.outerHTML}
       </div>`;
   }
