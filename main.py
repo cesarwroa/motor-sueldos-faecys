@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
@@ -40,11 +41,19 @@ ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "cesarwroa@gmail.com").strip(
 ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "Dni27941408")
 ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-change-me")
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
+ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
+DEFAULT_PUBLIC_FEATURES = {
+    "liquidacion_final_publica": False,
+}
 
 
 class AdminLoginRequest(BaseModel):
     email: str
     password: str
+
+
+class AdminFeaturesUpdate(BaseModel):
+    liquidacion_final_publica: Optional[bool] = None
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -117,6 +126,95 @@ def _extract_admin_token(authorization: Optional[str]) -> str:
         raise HTTPException(status_code=401, detail="Formato de autorización inválido.")
     return token.strip()
 
+
+def _default_feature_store() -> Dict[str, Any]:
+    return {
+        "public_features": dict(DEFAULT_PUBLIC_FEATURES),
+        "updated_at": None,
+        "updated_by": "",
+    }
+
+
+def _normalize_feature_store(raw: Any) -> Dict[str, Any]:
+    store = _default_feature_store()
+    if not isinstance(raw, dict):
+        return store
+
+    raw_public = raw.get("public_features")
+    if isinstance(raw_public, dict):
+        for key, default_value in DEFAULT_PUBLIC_FEATURES.items():
+            if key in raw_public:
+                store["public_features"][key] = bool(raw_public.get(key))
+            else:
+                store["public_features"][key] = default_value
+
+    updated_at = raw.get("updated_at")
+    if isinstance(updated_at, str) and updated_at.strip():
+        store["updated_at"] = updated_at.strip()
+
+    updated_by = raw.get("updated_by")
+    if isinstance(updated_by, str):
+        store["updated_by"] = updated_by.strip()
+
+    return store
+
+
+def _read_feature_store() -> Dict[str, Any]:
+    if not ADMIN_FEATURES_FILE.exists():
+        return _default_feature_store()
+
+    try:
+        raw = json.loads(ADMIN_FEATURES_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        raw = {}
+    return _normalize_feature_store(raw)
+
+
+def _write_feature_store(store: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = _normalize_feature_store(store)
+    ADMIN_FEATURES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ADMIN_FEATURES_FILE.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(normalized, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(ADMIN_FEATURES_FILE)
+    return normalized
+
+
+def _feature_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _public_feature_payload(store: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "ok": True,
+        "public_features": dict(store.get("public_features") or {}),
+        "updated_at": store.get("updated_at"),
+    }
+
+
+def _admin_feature_payload(store: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "ok": True,
+        "public_features": dict(store.get("public_features") or {}),
+        "updated_at": store.get("updated_at"),
+        "updated_by": store.get("updated_by") or "",
+    }
+
+
+def _require_admin_session(authorization: Optional[str]) -> Dict[str, Any]:
+    return _read_admin_token(_extract_admin_token(authorization))
+
+
+def _optional_admin_session(authorization: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not authorization:
+        return None
+    return _read_admin_token(_extract_admin_token(authorization))
+
+
+def _is_public_feature_enabled(feature_name: str) -> bool:
+    store = _read_feature_store()
+    public_features = store.get("public_features") or {}
+    return bool(public_features.get(feature_name))
+
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
@@ -158,7 +256,7 @@ def admin_login(payload: AdminLoginRequest):
 
 @app.get("/admin/session")
 def admin_session(authorization: Optional[str] = Header(default=None)):
-    payload = _read_admin_token(_extract_admin_token(authorization))
+    payload = _require_admin_session(authorization)
     return {
         "ok": True,
         "authenticated": True,
@@ -166,6 +264,39 @@ def admin_session(authorization: Optional[str] = Header(default=None)):
         "email": payload["email"],
         "expires_at": payload["exp"],
     }
+
+
+@app.get("/features")
+def public_features():
+    store = _read_feature_store()
+    return _public_feature_payload(store)
+
+
+@app.get("/admin/features")
+def admin_features(authorization: Optional[str] = Header(default=None)):
+    _require_admin_session(authorization)
+    store = _read_feature_store()
+    return _admin_feature_payload(store)
+
+
+@app.put("/admin/features")
+def update_admin_features(payload: AdminFeaturesUpdate, authorization: Optional[str] = Header(default=None)):
+    admin_payload = _require_admin_session(authorization)
+    store = _read_feature_store()
+    public_features = dict(store.get("public_features") or {})
+
+    if payload.liquidacion_final_publica is not None:
+        public_features["liquidacion_final_publica"] = bool(payload.liquidacion_final_publica)
+
+    store["public_features"] = public_features
+    store["updated_at"] = _feature_timestamp()
+    store["updated_by"] = str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower()
+
+    try:
+        saved = _write_feature_store(store)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar la configuraciÃ³n del panel.") from exc
+    return _admin_feature_payload(saved)
 
 # ========= META =========
 @app.get("/meta")
@@ -329,7 +460,13 @@ def calcular_final(
     fun_adic: Optional[List[str]] = Query(default=[]),
     jubilado: bool = False,
     embargo: float = 0,
+    authorization: Optional[str] = Header(default=None),
 ):
+    public_enabled = _is_public_feature_enabled("liquidacion_final_publica")
+    admin_session = _optional_admin_session(authorization)
+    if not public_enabled and not admin_session:
+        raise HTTPException(status_code=403, detail="LiquidaciÃ³n Final disponible solo para administrador.")
+
     return calcular_final_payload(
         rama=rama,
         agrup=agrup,

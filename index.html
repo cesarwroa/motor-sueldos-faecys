@@ -98,6 +98,104 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   font-weight:700;
 }
 .co-admin-logout:hover{background:#f0fdf4}
+.co-admin-panel{
+  display:none;
+  margin-bottom:12px;
+  border-color:#bfdbfe;
+  background:#f8fbff;
+}
+.co-admin-panel-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.co-admin-panel-title{
+  margin:8px 0 4px;
+  font-size:18px;
+}
+.co-admin-panel-copy{
+  margin:0;
+  color:#475569;
+  font-size:14px;
+}
+.co-feature-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-top:14px;
+  padding:14px;
+  border:1px solid #dbeafe;
+  border-radius:14px;
+  background:#ffffff;
+}
+.co-feature-copy{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  max-width:760px;
+}
+.co-feature-copy strong{font-size:15px}
+.co-feature-copy span{color:#475569;font-size:13px;line-height:1.45}
+.co-feature-controls{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.co-feature-status{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  background:#e2e8f0;
+  color:#334155;
+}
+.co-feature-status.is-public{
+  background:#dcfce7;
+  color:#166534;
+}
+.co-feature-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin:0;
+  padding:8px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  background:#f8fafc;
+}
+.co-feature-switch input{
+  margin:0;
+  width:16px;
+  height:16px;
+}
+.co-admin-panel-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+.co-admin-panel-actions button{
+  background:#2563eb;
+  color:#ffffff;
+  border-color:#2563eb;
+  font-weight:700;
+}
+.co-admin-panel-actions button[disabled]{
+  opacity:.7;
+  cursor:not-allowed;
+}
+.co-admin-inline-feedback{
+  font-size:13px;
+  color:#1e3a8a;
+}
 
 .right{text-align:right}
 @media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
@@ -203,9 +301,36 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <div class="co-admin-state">
     <span class="co-admin-pill">Modo administrador activo</span>
     <span class="co-admin-email" id="adminSessionEmail"></span>
-    <span class="co-admin-help">Liquidación Final y funciones ampliadas habilitadas.</span>
+    <span class="co-admin-help" id="adminSessionHelp">Liquidación Final y funciones ampliadas habilitadas.</span>
   </div>
   <button class="co-admin-logout" id="adminLogoutBtn" type="button">Cerrar sesión admin</button>
+</div>
+<div class="card no-print co-admin-panel" id="adminFeaturePanel">
+  <div class="co-admin-panel-head">
+    <div>
+      <div class="badge">Panel de administración</div>
+      <h2 class="co-admin-panel-title">Habilitación de funciones</h2>
+      <p class="co-admin-panel-copy">Desde acá podés ir liberando funciones para todo el público, mientras vos seguís teniendo acceso admin para probar lo nuevo.</p>
+    </div>
+  </div>
+  <div class="co-feature-row">
+    <div class="co-feature-copy">
+      <strong>Liquidación Final para todos</strong>
+      <span>Cuando está activa, cualquier usuario puede abrir la pestaña de Liquidación Final y usarla sin iniciar sesión como administrador.</span>
+    </div>
+    <div class="co-feature-controls">
+      <span class="co-feature-status" id="featureFinalStatus">Solo admin</span>
+      <label class="co-feature-switch">
+        <input id="featureFinalPublicToggle" type="checkbox"/>
+        <span>Habilitar</span>
+      </label>
+    </div>
+  </div>
+  <div class="co-admin-panel-actions">
+    <button id="adminSaveFeaturesBtn" type="button">Guardar configuración</button>
+    <span class="co-admin-inline-feedback" id="adminFeaturesFeedback"></span>
+  </div>
+  <div class="note">Última actualización: <span id="adminFeaturesMeta">Sin cambios guardados todavía.</span></div>
 </div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
@@ -568,6 +693,14 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   };
   window.__adminAccess = false;
   window.__adminSession = null;
+  const DEFAULT_PUBLIC_FEATURES = Object.freeze({
+    liquidacion_final_publica: false
+  });
+  window.__featureState = {
+    public_features: { ...DEFAULT_PUBLIC_FEATURES },
+    updated_at: null,
+    updated_by: ""
+  };
 
   function getStoredAdminToken(){
     try{
@@ -601,28 +734,161 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
   }
 
+  function getAdminAuthHeaders(){
+    const token = getStoredAdminToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  function canUseFinal(){
+    return !!window.__adminAccess || !!window.__featureState?.public_features?.liquidacion_final_publica;
+  }
+
+  function formatFeatureUpdatedAt(value){
+    if(!value) return "Sin cambios guardados todavía.";
+    const dt = new Date(value);
+    if(Number.isNaN(dt.getTime())) return String(value);
+    return dt.toLocaleString("es-AR");
+  }
+
+  function updateFeatureDraftStatus(){
+    const toggle = $("featureFinalPublicToggle");
+    const status = $("featureFinalStatus");
+    if(!status) return;
+    const isPublic = !!toggle?.checked;
+    status.textContent = isPublic ? "Pública" : "Solo admin";
+    status.classList.toggle("is-public", isPublic);
+  }
+
+  function renderAdminFeaturePanel(){
+    const isAdmin = !!window.__adminAccess;
+    const panel = $("adminFeaturePanel");
+    const toggle = $("featureFinalPublicToggle");
+    const saveBtn = $("adminSaveFeaturesBtn");
+    const feedback = $("adminFeaturesFeedback");
+    const updatedBy = (window.__featureState?.updated_by || "").trim();
+
+    if(panel) panel.style.display = isAdmin ? "" : "none";
+    if(toggle){
+      toggle.checked = !!window.__featureState?.public_features?.liquidacion_final_publica;
+      toggle.disabled = !isAdmin;
+    }
+    if(saveBtn) saveBtn.disabled = !isAdmin;
+    if(feedback && !isAdmin) feedback.textContent = "";
+    updateFeatureDraftStatus();
+
+    const meta = window.__featureState?.updated_at
+      ? `${formatFeatureUpdatedAt(window.__featureState.updated_at)}${updatedBy ? ` · ${updatedBy}` : ""}`
+      : "Sin cambios guardados todavía.";
+    setText("adminFeaturesMeta", meta);
+  }
+
+  function applyFeatureState(data){
+    const nextPublic = { ...DEFAULT_PUBLIC_FEATURES };
+    const rawPublic = data && typeof data === "object" ? data.public_features : null;
+    if(rawPublic && typeof rawPublic === "object"){
+      Object.keys(nextPublic).forEach((key) => {
+        if(Object.prototype.hasOwnProperty.call(rawPublic, key)){
+          nextPublic[key] = !!rawPublic[key];
+        }
+      });
+    }
+
+    window.__featureState = {
+      public_features: nextPublic,
+      updated_at: (data && data.updated_at) ? String(data.updated_at) : null,
+      updated_by: (data && data.updated_by) ? String(data.updated_by) : ""
+    };
+
+    syncAdminUI();
+    return window.__featureState;
+  }
+
+  async function refreshFeatureState({ adminView = false } = {}){
+    try{
+      const url = new URL(adminView ? "/admin/features" : "/features", API_BASE);
+      const headers = adminView ? getAdminAuthHeaders() : null;
+      const data = await fetchJSON(url.toString(), headers ? { headers } : {});
+      applyFeatureState(data || {});
+      return data;
+    }catch(err){
+      console.warn("No se pudo cargar la configuracion de funciones.", err);
+      if(!window.__featureState) applyFeatureState({});
+      return null;
+    }
+  }
+
+  async function saveAdminFeatures(){
+    if(!window.__adminAccess) return;
+    const toggle = $("featureFinalPublicToggle");
+    const saveBtn = $("adminSaveFeaturesBtn");
+    const feedback = $("adminFeaturesFeedback");
+
+    if(saveBtn) saveBtn.disabled = true;
+    if(feedback) feedback.textContent = "Guardando configuración...";
+
+    try{
+      const url = new URL("/admin/features", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAdminAuthHeaders()
+        },
+        body: JSON.stringify({
+          liquidacion_final_publica: !!toggle?.checked
+        })
+      });
+      applyFeatureState(data || {});
+      if(feedback) feedback.textContent = "Configuración guardada.";
+      if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
+    }catch(err){
+      console.error(err);
+      if(feedback){
+        const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo guardar la configuración.";
+        feedback.textContent = msg;
+      }
+      await refreshAdminSession();
+      await refreshFeatureState({ adminView: !!window.__adminAccess });
+    }finally{
+      if(saveBtn) saveBtn.disabled = !window.__adminAccess;
+    }
+  }
+
   function syncAdminUI(){
     const isAdmin = !!window.__adminAccess;
+    const finalEnabled = canUseFinal();
     const finalTab = $("tabFinal");
     const stamp = finalTab?.querySelector(".co-stamp");
     const sessionBox = $("adminSessionBox");
+    const help = $("adminSessionHelp");
+    const isPublicFinal = !!window.__featureState?.public_features?.liquidacion_final_publica;
 
     document.body.classList.toggle("co-admin-mode", isAdmin);
 
     if(finalTab){
-      finalTab.classList.toggle("tab-disabled", !isAdmin);
-      finalTab.classList.toggle("tab-admin-ready", isAdmin);
-      finalTab.setAttribute("aria-disabled", isAdmin ? "false" : "true");
-      finalTab.setAttribute("title", isAdmin ? "Funciones de administrador habilitadas" : "Acceso exclusivo para administrador");
+      finalTab.classList.toggle("tab-disabled", !finalEnabled);
+      finalTab.classList.toggle("tab-admin-ready", finalEnabled);
+      finalTab.setAttribute("aria-disabled", finalEnabled ? "false" : "true");
+      if(isAdmin){
+        finalTab.setAttribute("title", isPublicFinal ? "Liquidación Final pública habilitada" : "Funciones de administrador habilitadas");
+      }else{
+        finalTab.setAttribute("title", finalEnabled ? "Liquidación Final habilitada para todo público" : "Acceso exclusivo para administrador");
+      }
     }
 
     if(stamp){
-      stamp.textContent = isAdmin ? "ADMIN" : "PRÓXIMAMENTE";
-      stamp.style.display = isAdmin ? "none" : "";
+      stamp.textContent = "PRÓXIMAMENTE";
+      stamp.style.display = finalEnabled ? "none" : "";
     }
 
     if(sessionBox) sessionBox.style.display = isAdmin ? "flex" : "none";
     setText("adminSessionEmail", isAdmin ? (window.__adminSession?.email || "Administrador") : "");
+    if(help){
+      help.textContent = isPublicFinal
+        ? "Liquidación Final pública habilitada. El panel admin sigue disponible para más funciones."
+        : "Liquidación Final y funciones ampliadas habilitadas.";
+    }
+    renderAdminFeaturePanel();
   }
 
   function clearAdminSession(){
@@ -630,7 +896,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     window.__adminSession = null;
     setStoredAdminToken("");
     syncAdminUI();
-    if(window.__activeTab === "final") switchTab("mensual");
+    if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
   }
 
   async function refreshAdminSession(){
@@ -646,9 +912,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     try{
       const url = new URL("/admin/session", API_BASE);
       const data = await fetchJSON(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: getAdminAuthHeaders()
       });
       window.__adminAccess = !!data?.authenticated;
       window.__adminSession = data || null;
@@ -2230,6 +2494,14 @@ function wire(){
       });
     }
 
+    $("featureFinalPublicToggle")?.addEventListener("change", () => {
+      updateFeatureDraftStatus();
+      setText("adminFeaturesFeedback", "Tenés cambios sin guardar.");
+    });
+    $("adminSaveFeaturesBtn")?.addEventListener("click", () => {
+      saveAdminFeatures();
+    });
+
     try{ updateWarnJornada23(); }catch(_){ }
 
     _lfUpdateDerived();
@@ -2280,7 +2552,7 @@ function mountExtrasForTab(tab){
 }
 
 function switchTab(tab){
-    if(tab === 'final' && !window.__adminAccess) tab = 'mensual';
+    if(tab === 'final' && !canUseFinal()) tab = 'mensual';
     window.__activeTab = tab;
     const tMens = document.getElementById('tabMensual');
     const tFinal = document.getElementById('tabFinal');
@@ -2754,7 +3026,9 @@ function switchTab(tab){
       setText('diagFinal', 'Calculando...');
       const url = new URL('/calcular-final', API_BASE);
       url.search = qs.toString();
-      const data = await fetchJSON(url.toString());
+      const data = await fetchJSON(url.toString(), {
+        headers: getAdminAuthHeaders()
+      });
 
       
       // Render tabla (LF): ordenar por tipo y unificar columna NR/Indemnizatorio
@@ -2922,6 +3196,7 @@ function switchTab(tab){
       });
       wire();
       await refreshAdminSession();
+      await refreshFeatureState({ adminView: !!window.__adminAccess });
       await loadMeta();
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }catch(err){
