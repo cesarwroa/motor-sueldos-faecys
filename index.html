@@ -160,6 +160,14 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   background:#dcfce7;
   color:#166534;
 }
+.co-feature-status.is-admin{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+.co-feature-status.is-off{
+  background:#e2e8f0;
+  color:#475569;
+}
 .co-feature-switch{
   display:inline-flex;
   align-items:center;
@@ -174,6 +182,10 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   margin:0;
   width:16px;
   height:16px;
+}
+.co-feature-select{
+  min-width:150px;
+  font-weight:700;
 }
 .co-admin-panel-actions{
   display:flex;
@@ -195,6 +207,59 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .co-admin-inline-feedback{
   font-size:13px;
   color:#1e3a8a;
+}
+.co-admin-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.co-admin-grid textarea{
+  min-height:92px;
+  resize:vertical;
+}
+.co-admin-grid .co-admin-col-span{
+  grid-column:1 / -1;
+}
+.co-admin-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:14px;
+  border:1px solid var(--grid);
+  border-radius:12px;
+  overflow:hidden;
+}
+.co-admin-table th,
+.co-admin-table td{
+  padding:10px;
+  border-bottom:1px solid var(--grid);
+  text-align:left;
+  font-size:13px;
+  vertical-align:top;
+}
+.co-admin-table th{
+  background:#f8fafc;
+  font-weight:800;
+}
+.co-admin-empty{
+  margin-top:14px;
+  color:#475569;
+  font-size:13px;
+}
+.co-admin-kicker{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#4338ca;
+  font-size:12px;
+  font-weight:800;
+}
+@media (max-width: 860px){
+  .co-admin-grid{
+    grid-template-columns:1fr;
+  }
 }
 
 .right{text-align:right}
@@ -310,27 +375,77 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <div>
       <div class="badge">Panel de administración</div>
       <h2 class="co-admin-panel-title">Habilitación de funciones</h2>
-      <p class="co-admin-panel-copy">Desde acá podés ir liberando funciones para todo el público, mientras vos seguís teniendo acceso admin para probar lo nuevo.</p>
+      <p class="co-admin-panel-copy">Desde acá podés definir si cada módulo queda oculto, sólo para pruebas admin o público para todas las empresas y usuarios.</p>
     </div>
   </div>
-  <div class="co-feature-row">
-    <div class="co-feature-copy">
-      <strong>Liquidación Final para todos</strong>
-      <span>Cuando está activa, cualquier usuario puede abrir la pestaña de Liquidación Final y usarla sin iniciar sesión como administrador.</span>
-    </div>
-    <div class="co-feature-controls">
-      <span class="co-feature-status" id="featureFinalStatus">Solo admin</span>
-      <label class="co-feature-switch">
-        <input id="featureFinalPublicToggle" type="checkbox"/>
-        <span>Habilitar</span>
-      </label>
-    </div>
-  </div>
+  <div id="adminFeatureRows"></div>
   <div class="co-admin-panel-actions">
     <button id="adminSaveFeaturesBtn" type="button">Guardar configuración</button>
     <span class="co-admin-inline-feedback" id="adminFeaturesFeedback"></span>
   </div>
   <div class="note">Última actualización: <span id="adminFeaturesMeta">Sin cambios guardados todavía.</span></div>
+</div>
+<div class="card no-print co-admin-panel" id="adminCompaniesPanel">
+  <div class="co-admin-panel-head">
+    <div>
+      <div class="co-admin-kicker">Laboratorio admin</div>
+      <h2 class="co-admin-panel-title">Empresas de prueba</h2>
+      <p class="co-admin-panel-copy">Este módulo es para que vos cargues empresas de ensayo antes de abrir el registro real al público.</p>
+    </div>
+  </div>
+  <div class="co-admin-grid">
+    <div>
+      <label for="adminCompanyName">Razón social</label>
+      <input id="adminCompanyName" type="text" placeholder="Ej. Estudio Comercio SRL"/>
+    </div>
+    <div>
+      <label for="adminCompanyCuit">CUIT</label>
+      <input id="adminCompanyCuit" type="text" placeholder="30-12345678-9"/>
+    </div>
+    <div>
+      <label for="adminCompanyRama">Rama / Convenio</label>
+      <input id="adminCompanyRama" type="text" placeholder="Comercio general"/>
+    </div>
+    <div>
+      <label for="adminCompanyEstado">Estado</label>
+      <select id="adminCompanyEstado">
+        <option value="prueba">Prueba</option>
+        <option value="activa">Activa</option>
+        <option value="pausada">Pausada</option>
+      </select>
+    </div>
+    <div>
+      <label for="adminCompanyEmail">Email</label>
+      <input id="adminCompanyEmail" type="email" placeholder="empresa@dominio.com"/>
+    </div>
+    <div>
+      <label for="adminCompanyTelefono">Teléfono</label>
+      <input id="adminCompanyTelefono" type="text" placeholder="11 5555 5555"/>
+    </div>
+    <div class="co-admin-col-span">
+      <label for="adminCompanyNotes">Observaciones</label>
+      <textarea id="adminCompanyNotes" placeholder="Notas internas para la prueba, alcance del piloto, datos a completar, etc."></textarea>
+    </div>
+  </div>
+  <div class="co-admin-panel-actions">
+    <button id="adminSaveCompanyBtn" type="button">Guardar empresa de prueba</button>
+    <span class="co-admin-inline-feedback" id="adminCompaniesFeedback"></span>
+  </div>
+  <div class="note">Empresas cargadas: <span id="adminCompaniesCount">0</span></div>
+  <div id="adminCompaniesEmpty" class="co-admin-empty">Todavía no cargaste empresas de prueba.</div>
+  <table class="co-admin-table" id="adminCompaniesTable" style="display:none">
+    <thead>
+      <tr>
+        <th>Empresa</th>
+        <th>CUIT</th>
+        <th>Rama</th>
+        <th>Estado</th>
+        <th>Contacto</th>
+        <th>Actualizada</th>
+      </tr>
+    </thead>
+    <tbody id="adminCompaniesTbody"></tbody>
+  </table>
 </div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
@@ -693,10 +808,46 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   };
   window.__adminAccess = false;
   window.__adminSession = null;
+  window.__adminCompanies = [];
+  const DEFAULT_FEATURE_ACCESS = Object.freeze({
+    liquidacion_final: "admin_only",
+    registro_empresas: "admin_only",
+    portal_empresa: "admin_only",
+    firma_digital: "admin_only",
+    portal_empleado: "admin_only"
+  });
   const DEFAULT_PUBLIC_FEATURES = Object.freeze({
     liquidacion_final_publica: false
   });
+  const ADMIN_FEATURE_DEFS = Object.freeze([
+    {
+      key: "liquidacion_final",
+      label: "Liquidacion Final",
+      description: "Controla la pestana de Liquidacion Final. En solo admin la probas vos; en publico queda disponible para todos."
+    },
+    {
+      key: "registro_empresas",
+      label: "Registro de empresas",
+      description: "Habilita el laboratorio admin para cargar empresas de prueba antes del alta publica."
+    },
+    {
+      key: "portal_empresa",
+      label: "Portal empresa",
+      description: "Reserva la apertura del futuro espacio donde cada empresa gestionara su propia nomina."
+    },
+    {
+      key: "firma_digital",
+      label: "Firma digital",
+      description: "Marca el modulo de firma de recibos para tus pruebas internas antes de liberarlo."
+    },
+    {
+      key: "portal_empleado",
+      label: "Portal empleado",
+      description: "Prepara el acceso futuro del empleado para consultar y firmar recibos cuando lo abras."
+    }
+  ]);
   window.__featureState = {
+    feature_access: { ...DEFAULT_FEATURE_ACCESS },
     public_features: { ...DEFAULT_PUBLIC_FEATURES },
     updated_at: null,
     updated_by: ""
@@ -739,8 +890,22 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  function getFeatureAccess(featureKey){
+    const raw = window.__featureState?.feature_access?.[featureKey];
+    if(raw === "off" || raw === "admin_only" || raw === "public") return raw;
+    return DEFAULT_FEATURE_ACCESS[featureKey] || "off";
+  }
+
+  function isFeaturePublic(featureKey){
+    return getFeatureAccess(featureKey) === "public";
+  }
+
+  function isFeatureEnabledForAdmin(featureKey){
+    return !!window.__adminAccess && getFeatureAccess(featureKey) !== "off";
+  }
+
   function canUseFinal(){
-    return !!window.__adminAccess || !!window.__featureState?.public_features?.liquidacion_final_publica;
+    return isFeaturePublic("liquidacion_final") || isFeatureEnabledForAdmin("liquidacion_final");
   }
 
   function formatFeatureUpdatedAt(value){
@@ -925,6 +1090,374 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
   }
 
+
+  function featureAccessLabel(access){
+    if(access === "public") return "Publica";
+    if(access === "admin_only") return "Solo admin";
+    return "Oculta";
+  }
+
+  function featureAccessClass(access){
+    if(access === "public") return "is-public";
+    if(access === "admin_only") return "is-admin";
+    return "is-off";
+  }
+
+  function buildAdminFeatureRows(){
+    const host = $("adminFeatureRows");
+    if(!host || host.dataset.initialized === "1") return;
+    host.innerHTML = ADMIN_FEATURE_DEFS.map((feature) => `
+      <div class="co-feature-row">
+        <div class="co-feature-copy">
+          <strong>${feature.label}</strong>
+          <span>${feature.description}</span>
+        </div>
+        <div class="co-feature-controls">
+          <span class="co-feature-status" id="featureStatus__${feature.key}">Oculta</span>
+          <select class="co-feature-select" id="featureAccess__${feature.key}">
+            <option value="off">Oculta</option>
+            <option value="admin_only">Solo admin</option>
+            <option value="public">Publica</option>
+          </select>
+        </div>
+      </div>
+    `).join("");
+    host.dataset.initialized = "1";
+    ADMIN_FEATURE_DEFS.forEach((feature) => {
+      $(`featureAccess__${feature.key}`)?.addEventListener("change", () => {
+        updateFeatureDraftStatus(feature.key);
+        setText("adminFeaturesFeedback", "Tenes cambios sin guardar.");
+      });
+    });
+  }
+
+  function updateFeatureDraftStatus(featureKey){
+    const keys = featureKey ? [featureKey] : ADMIN_FEATURE_DEFS.map((feature) => feature.key);
+    keys.forEach((key) => {
+      const status = $(`featureStatus__${key}`);
+      if(!status) return;
+      const select = $(`featureAccess__${key}`);
+      const access = select ? String(select.value || getFeatureAccess(key)) : getFeatureAccess(key);
+      status.textContent = featureAccessLabel(access);
+      status.classList.remove("is-public", "is-admin", "is-off");
+      status.classList.add(featureAccessClass(access));
+    });
+  }
+
+  function renderAdminFeaturePanel(){
+    const isAdmin = !!window.__adminAccess;
+    const panel = $("adminFeaturePanel");
+    const saveBtn = $("adminSaveFeaturesBtn");
+    const feedback = $("adminFeaturesFeedback");
+    const updatedBy = (window.__featureState?.updated_by || "").trim();
+
+    buildAdminFeatureRows();
+    if(panel) panel.style.display = isAdmin ? "block" : "none";
+    ADMIN_FEATURE_DEFS.forEach((feature) => {
+      const select = $(`featureAccess__${feature.key}`);
+      if(select){
+        select.value = getFeatureAccess(feature.key);
+        select.disabled = !isAdmin;
+      }
+    });
+    if(saveBtn) saveBtn.disabled = !isAdmin;
+    if(feedback && !isAdmin) feedback.textContent = "";
+    updateFeatureDraftStatus();
+
+    const meta = window.__featureState?.updated_at
+      ? `${formatFeatureUpdatedAt(window.__featureState.updated_at)}${updatedBy ? ` · ${updatedBy}` : ""}`
+      : "Sin cambios guardados todavia.";
+    setText("adminFeaturesMeta", meta);
+  }
+
+  function applyFeatureState(data){
+    const nextAccess = { ...DEFAULT_FEATURE_ACCESS };
+    const nextPublic = { ...DEFAULT_PUBLIC_FEATURES };
+    const rawAccess = data && typeof data === "object" ? data.feature_access : null;
+    const rawPublic = data && typeof data === "object" ? data.public_features : null;
+    if(rawAccess && typeof rawAccess === "object"){
+      Object.keys(nextAccess).forEach((key) => {
+        const value = rawAccess[key];
+        if(value === "off" || value === "admin_only" || value === "public"){
+          nextAccess[key] = value;
+        }
+      });
+    }
+    if(rawPublic && typeof rawPublic === "object"){
+      Object.keys(nextPublic).forEach((key) => {
+        if(Object.prototype.hasOwnProperty.call(rawPublic, key)){
+          nextPublic[key] = !!rawPublic[key];
+        }
+      });
+    }
+    nextPublic.liquidacion_final_publica = nextAccess.liquidacion_final === "public";
+
+    window.__featureState = {
+      feature_access: nextAccess,
+      public_features: nextPublic,
+      updated_at: (data && data.updated_at) ? String(data.updated_at) : null,
+      updated_by: (data && data.updated_by) ? String(data.updated_by) : ""
+    };
+
+    syncAdminUI();
+    return window.__featureState;
+  }
+
+  async function refreshFeatureState({ adminView = false } = {}){
+    try{
+      const url = new URL(adminView ? "/admin/features" : "/features", API_BASE);
+      const headers = adminView ? getAdminAuthHeaders() : null;
+      const data = await fetchJSON(url.toString(), headers ? { headers } : {});
+      applyFeatureState(data || {});
+      return data;
+    }catch(err){
+      console.warn("No se pudo cargar la configuracion de funciones.", err);
+      if(!window.__featureState) applyFeatureState({});
+      return null;
+    }
+  }
+
+  async function saveAdminFeatures(){
+    if(!window.__adminAccess) return;
+    const saveBtn = $("adminSaveFeaturesBtn");
+    const feedback = $("adminFeaturesFeedback");
+    const payload = {};
+    ADMIN_FEATURE_DEFS.forEach((feature) => {
+      payload[feature.key] = $(`featureAccess__${feature.key}`)?.value || getFeatureAccess(feature.key);
+    });
+
+    if(saveBtn) saveBtn.disabled = true;
+    if(feedback) feedback.textContent = "Guardando configuracion...";
+
+    try{
+      const url = new URL("/admin/features", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAdminAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+      applyFeatureState(data || {});
+      if(feedback) feedback.textContent = "Configuracion guardada.";
+      await refreshAdminCompanies();
+      if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
+    }catch(err){
+      console.error(err);
+      if(feedback){
+        const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo guardar la configuracion.";
+        feedback.textContent = msg;
+      }
+      await refreshAdminSession();
+      await refreshFeatureState({ adminView: !!window.__adminAccess });
+    }finally{
+      if(saveBtn) saveBtn.disabled = !window.__adminAccess;
+    }
+  }
+
+  function renderAdminCompaniesPanel(){
+    const panel = $("adminCompaniesPanel");
+    const isVisible = isFeatureEnabledForAdmin("registro_empresas");
+    const empty = $("adminCompaniesEmpty");
+    const table = $("adminCompaniesTable");
+    const tbody = $("adminCompaniesTbody");
+
+    if(panel) panel.style.display = isVisible ? "block" : "none";
+    if(!isVisible){
+      window.__adminCompanies = [];
+      if(tbody) tbody.innerHTML = "";
+      if(table) table.style.display = "none";
+      if(empty) empty.style.display = "block";
+      setText("adminCompaniesCount", "0");
+      return;
+    }
+
+    const items = Array.isArray(window.__adminCompanies) ? window.__adminCompanies : [];
+    setText("adminCompaniesCount", String(items.length));
+    if(!tbody || !table || !empty) return;
+
+    tbody.innerHTML = "";
+    if(!items.length){
+      table.style.display = "none";
+      empty.style.display = "block";
+      return;
+    }
+
+    empty.style.display = "none";
+    table.style.display = "";
+    items.forEach((item) => {
+      const tr = document.createElement("tr");
+      const contact = [item?.email || "", item?.telefono || ""].filter(Boolean).join(" / ");
+      const values = [
+        item?.razon_social || "—",
+        item?.cuit || "—",
+        item?.rama || "—",
+        item?.estado || "prueba",
+        contact || "—",
+        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "—"
+      ];
+      values.forEach((value) => {
+        const td = document.createElement("td");
+        td.textContent = String(value ?? "");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function refreshAdminCompanies(){
+    if(!isFeatureEnabledForAdmin("registro_empresas")){
+      renderAdminCompaniesPanel();
+      return null;
+    }
+
+    try{
+      const url = new URL("/admin/companies", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        headers: getAdminAuthHeaders()
+      });
+      window.__adminCompanies = Array.isArray(data?.items) ? data.items : [];
+      renderAdminCompaniesPanel();
+      return data;
+    }catch(err){
+      console.warn("No se pudo cargar el laboratorio de empresas.", err);
+      renderAdminCompaniesPanel();
+      return null;
+    }
+  }
+
+  function resetAdminCompanyForm(){
+    setVal("adminCompanyName", "");
+    setVal("adminCompanyCuit", "");
+    setVal("adminCompanyRama", "");
+    setVal("adminCompanyEmail", "");
+    setVal("adminCompanyTelefono", "");
+    setVal("adminCompanyEstado", "prueba");
+    setVal("adminCompanyNotes", "");
+  }
+
+  async function saveAdminCompany(){
+    if(!isFeatureEnabledForAdmin("registro_empresas")) return;
+    const feedback = $("adminCompaniesFeedback");
+    const saveBtn = $("adminSaveCompanyBtn");
+    const payload = {
+      razon_social: ($("adminCompanyName")?.value || "").trim(),
+      cuit: ($("adminCompanyCuit")?.value || "").trim(),
+      rama: ($("adminCompanyRama")?.value || "").trim(),
+      email: ($("adminCompanyEmail")?.value || "").trim(),
+      telefono: ($("adminCompanyTelefono")?.value || "").trim(),
+      estado: ($("adminCompanyEstado")?.value || "prueba").trim(),
+      observaciones: ($("adminCompanyNotes")?.value || "").trim()
+    };
+
+    if(!payload.razon_social){
+      if(feedback) feedback.textContent = "Completa la razon social.";
+      $("adminCompanyName")?.focus();
+      return;
+    }
+
+    if(saveBtn) saveBtn.disabled = true;
+    if(feedback) feedback.textContent = "Guardando empresa...";
+
+    try{
+      const url = new URL("/admin/companies", API_BASE);
+      await fetchJSON(url.toString(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAdminAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+      resetAdminCompanyForm();
+      await refreshAdminCompanies();
+      if(feedback) feedback.textContent = "Empresa de prueba guardada.";
+    }catch(err){
+      console.error(err);
+      if(feedback){
+        const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo guardar la empresa.";
+        feedback.textContent = msg;
+      }
+    }finally{
+      if(saveBtn) saveBtn.disabled = false;
+    }
+  }
+
+  function syncAdminUI(){
+    const isAdmin = !!window.__adminAccess;
+    const finalEnabled = canUseFinal();
+    const finalTab = $("tabFinal");
+    const stamp = finalTab?.querySelector(".co-stamp");
+    const sessionBox = $("adminSessionBox");
+    const help = $("adminSessionHelp");
+    const finalAccess = getFeatureAccess("liquidacion_final");
+    const isPublicFinal = finalAccess === "public";
+
+    document.body.classList.toggle("co-admin-mode", isAdmin);
+
+    if(finalTab){
+      finalTab.classList.toggle("tab-disabled", !finalEnabled);
+      finalTab.classList.toggle("tab-admin-ready", finalEnabled);
+      finalTab.setAttribute("aria-disabled", finalEnabled ? "false" : "true");
+      if(isAdmin){
+        finalTab.setAttribute("title", isPublicFinal ? "Liquidacion Final publica habilitada" : (finalAccess === "admin_only" ? "Liquidacion Final en modo de prueba admin" : "Liquidacion Final oculta"));
+      }else{
+        finalTab.setAttribute("title", finalEnabled ? "Liquidacion Final habilitada para todo publico" : "Acceso exclusivo para administrador");
+      }
+    }
+
+    if(stamp){
+      stamp.textContent = "PROXIMAMENTE";
+      stamp.style.display = finalEnabled ? "none" : "";
+    }
+
+    if(sessionBox) sessionBox.style.display = isAdmin ? "flex" : "none";
+    setText("adminSessionEmail", isAdmin ? (window.__adminSession?.email || "Administrador") : "");
+    if(help){
+      help.textContent = isPublicFinal
+        ? "Liquidacion Final publica habilitada. El panel admin sigue disponible para mas funciones."
+        : "Estas en modo de prueba admin para habilitar y pulir nuevos modulos.";
+    }
+    renderAdminFeaturePanel();
+    renderAdminCompaniesPanel();
+  }
+
+  function clearAdminSession(){
+    window.__adminAccess = false;
+    window.__adminSession = null;
+    window.__adminCompanies = [];
+    setStoredAdminToken("");
+    syncAdminUI();
+    if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
+  }
+
+  async function refreshAdminSession(){
+    const hashToken = consumeAdminTokenFromHash();
+    if(hashToken) setStoredAdminToken(hashToken);
+
+    const token = getStoredAdminToken();
+    if(!token){
+      clearAdminSession();
+      return null;
+    }
+
+    try{
+      const url = new URL("/admin/session", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        headers: getAdminAuthHeaders()
+      });
+      window.__adminAccess = !!data?.authenticated;
+      window.__adminSession = data || null;
+      syncAdminUI();
+      await refreshAdminCompanies();
+      return data;
+    }catch(err){
+      console.warn("No se pudo validar la sesion admin.", err);
+      clearAdminSession();
+      return null;
+    }
+  }
 
   function normalizeFAECYSConcept(concepto){
     const c0 = String(concepto ?? '').trim();
@@ -2500,6 +3033,9 @@ function wire(){
     });
     $("adminSaveFeaturesBtn")?.addEventListener("click", () => {
       saveAdminFeatures();
+    });
+    $("adminSaveCompanyBtn")?.addEventListener("click", () => {
+      saveAdminCompany();
     });
 
     try{ updateWarnJornada23(); }catch(_){ }

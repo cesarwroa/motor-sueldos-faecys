@@ -1,4 +1,11 @@
 {
+  "feature_access": {
+    "liquidacion_final": "admin_only",
+    "registro_empresas": "admin_only",
+    "portal_empresa": "admin_only",
+    "firma_digital": "admin_only",
+    "portal_empleado": "admin_only"
+  },
   "public_features": {
     "liquidacion_final_publica": false
   },

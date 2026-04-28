@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import time
+import uuid
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -42,6 +43,18 @@ ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "Dni27941408")
 ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-change-me")
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
+ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
+FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
+FEATURE_PUBLIC_MAP = {
+    "liquidacion_final": "liquidacion_final_publica",
+}
+DEFAULT_FEATURE_ACCESS = {
+    "liquidacion_final": "admin_only",
+    "registro_empresas": "admin_only",
+    "portal_empresa": "admin_only",
+    "firma_digital": "admin_only",
+    "portal_empleado": "admin_only",
+}
 DEFAULT_PUBLIC_FEATURES = {
     "liquidacion_final_publica": False,
 }
@@ -53,7 +66,22 @@ class AdminLoginRequest(BaseModel):
 
 
 class AdminFeaturesUpdate(BaseModel):
+    liquidacion_final: Optional[str] = None
+    registro_empresas: Optional[str] = None
+    portal_empresa: Optional[str] = None
+    firma_digital: Optional[str] = None
+    portal_empleado: Optional[str] = None
     liquidacion_final_publica: Optional[bool] = None
+
+
+class AdminCompanyCreate(BaseModel):
+    razon_social: str
+    cuit: str = ""
+    rama: str = ""
+    email: str = ""
+    telefono: str = ""
+    estado: str = "prueba"
+    observaciones: str = ""
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -128,11 +156,27 @@ def _extract_admin_token(authorization: Optional[str]) -> str:
 
 
 def _default_feature_store() -> Dict[str, Any]:
+    feature_access = dict(DEFAULT_FEATURE_ACCESS)
     return {
-        "public_features": dict(DEFAULT_PUBLIC_FEATURES),
+        "feature_access": feature_access,
+        "public_features": _feature_access_to_public_features(feature_access),
         "updated_at": None,
         "updated_by": "",
     }
+
+
+def _normalize_feature_access_value(value: Any, default: str) -> str:
+    raw = str(value or "").strip().lower()
+    if raw in FEATURE_ACCESS_ALLOWED:
+        return raw
+    return default
+
+
+def _feature_access_to_public_features(feature_access: Dict[str, str]) -> Dict[str, bool]:
+    public_features = dict(DEFAULT_PUBLIC_FEATURES)
+    for feature_name, public_key in FEATURE_PUBLIC_MAP.items():
+        public_features[public_key] = str(feature_access.get(feature_name) or "").strip().lower() == "public"
+    return public_features
 
 
 def _normalize_feature_store(raw: Any) -> Dict[str, Any]:
@@ -140,13 +184,18 @@ def _normalize_feature_store(raw: Any) -> Dict[str, Any]:
     if not isinstance(raw, dict):
         return store
 
+    raw_access = raw.get("feature_access")
+    if isinstance(raw_access, dict):
+        for key, default_value in DEFAULT_FEATURE_ACCESS.items():
+            if key in raw_access:
+                store["feature_access"][key] = _normalize_feature_access_value(raw_access.get(key), default_value)
+
     raw_public = raw.get("public_features")
-    if isinstance(raw_public, dict):
-        for key, default_value in DEFAULT_PUBLIC_FEATURES.items():
-            if key in raw_public:
-                store["public_features"][key] = bool(raw_public.get(key))
-            else:
-                store["public_features"][key] = default_value
+    if isinstance(raw_public, dict) and "liquidacion_final" not in (raw_access or {}):
+        if "liquidacion_final_publica" in raw_public and bool(raw_public.get("liquidacion_final_publica")):
+            store["feature_access"]["liquidacion_final"] = "public"
+
+    store["public_features"] = _feature_access_to_public_features(store["feature_access"])
 
     updated_at = raw.get("updated_at")
     if isinstance(updated_at, str) and updated_at.strip():
@@ -194,6 +243,7 @@ def _public_feature_payload(store: Dict[str, Any]) -> Dict[str, Any]:
 def _admin_feature_payload(store: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": True,
+        "feature_access": dict(store.get("feature_access") or {}),
         "public_features": dict(store.get("public_features") or {}),
         "updated_at": store.get("updated_at"),
         "updated_by": store.get("updated_by") or "",
@@ -214,6 +264,65 @@ def _is_public_feature_enabled(feature_name: str) -> bool:
     store = _read_feature_store()
     public_features = store.get("public_features") or {}
     return bool(public_features.get(feature_name))
+
+
+def _get_feature_access(feature_name: str) -> str:
+    store = _read_feature_store()
+    feature_access = store.get("feature_access") or {}
+    default_value = DEFAULT_FEATURE_ACCESS.get(feature_name, "off")
+    return _normalize_feature_access_value(feature_access.get(feature_name), default_value)
+
+
+def _require_admin_feature_access(authorization: Optional[str], feature_name: str) -> Dict[str, Any]:
+    admin_payload = _require_admin_session(authorization)
+    access = _get_feature_access(feature_name)
+    if access not in {"admin_only", "public"}:
+        raise HTTPException(status_code=403, detail="La función todavía no está habilitada en el panel.")
+    return admin_payload
+
+
+def _read_admin_companies() -> List[Dict[str, Any]]:
+    if not ADMIN_COMPANIES_FILE.exists():
+        return []
+
+    try:
+        raw = json.loads(ADMIN_COMPANIES_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        raw = []
+
+    if not isinstance(raw, list):
+        return []
+
+    companies: List[Dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        razon_social = str(item.get("razon_social") or "").strip()
+        if not razon_social:
+            continue
+        companies.append(
+            {
+                "id": str(item.get("id") or "").strip() or uuid.uuid4().hex[:12],
+                "razon_social": razon_social,
+                "cuit": str(item.get("cuit") or "").strip(),
+                "rama": str(item.get("rama") or "").strip(),
+                "email": str(item.get("email") or "").strip(),
+                "telefono": str(item.get("telefono") or "").strip(),
+                "estado": str(item.get("estado") or "prueba").strip() or "prueba",
+                "observaciones": str(item.get("observaciones") or "").strip(),
+                "created_at": str(item.get("created_at") or "").strip(),
+                "updated_at": str(item.get("updated_at") or item.get("created_at") or "").strip(),
+                "created_by": str(item.get("created_by") or "").strip(),
+            }
+        )
+    return companies
+
+
+def _write_admin_companies(companies: List[Dict[str, Any]]) -> None:
+    ADMIN_COMPANIES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ADMIN_COMPANIES_FILE.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(companies, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(ADMIN_COMPANIES_FILE)
 
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
@@ -283,11 +392,19 @@ def admin_features(authorization: Optional[str] = Header(default=None)):
 def update_admin_features(payload: AdminFeaturesUpdate, authorization: Optional[str] = Header(default=None)):
     admin_payload = _require_admin_session(authorization)
     store = _read_feature_store()
+    feature_access = dict(store.get("feature_access") or {})
     public_features = dict(store.get("public_features") or {})
 
-    if payload.liquidacion_final_publica is not None:
-        public_features["liquidacion_final_publica"] = bool(payload.liquidacion_final_publica)
+    for feature_name in DEFAULT_FEATURE_ACCESS:
+        next_value = getattr(payload, feature_name, None)
+        if next_value is not None:
+            feature_access[feature_name] = _normalize_feature_access_value(next_value, DEFAULT_FEATURE_ACCESS[feature_name])
 
+    if payload.liquidacion_final_publica is not None and payload.liquidacion_final is None:
+        feature_access["liquidacion_final"] = "public" if bool(payload.liquidacion_final_publica) else "admin_only"
+
+    public_features = _feature_access_to_public_features(feature_access)
+    store["feature_access"] = feature_access
     store["public_features"] = public_features
     store["updated_at"] = _feature_timestamp()
     store["updated_by"] = str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower()
@@ -297,6 +414,53 @@ def update_admin_features(payload: AdminFeaturesUpdate, authorization: Optional[
     except OSError as exc:
         raise HTTPException(status_code=500, detail="No se pudo guardar la configuraciÃ³n del panel.") from exc
     return _admin_feature_payload(saved)
+
+
+@app.get("/admin/companies")
+def admin_companies(authorization: Optional[str] = Header(default=None)):
+    _require_admin_feature_access(authorization, "registro_empresas")
+    items = sorted(_read_admin_companies(), key=lambda item: (item.get("razon_social") or "").lower())
+    return {
+        "ok": True,
+        "items": items,
+        "count": len(items),
+    }
+
+
+@app.post("/admin/companies")
+def create_admin_company(payload: AdminCompanyCreate, authorization: Optional[str] = Header(default=None)):
+    admin_payload = _require_admin_feature_access(authorization, "registro_empresas")
+    razon_social = payload.razon_social.strip()
+    if not razon_social:
+        raise HTTPException(status_code=400, detail="La razón social es obligatoria.")
+
+    companies = _read_admin_companies()
+    now = _feature_timestamp()
+    company = {
+        "id": uuid.uuid4().hex[:12],
+        "razon_social": razon_social,
+        "cuit": payload.cuit.strip(),
+        "rama": payload.rama.strip(),
+        "email": payload.email.strip(),
+        "telefono": payload.telefono.strip(),
+        "estado": payload.estado.strip() or "prueba",
+        "observaciones": payload.observaciones.strip(),
+        "created_at": now,
+        "updated_at": now,
+        "created_by": str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower(),
+    }
+    companies.append(company)
+
+    try:
+        _write_admin_companies(companies)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar la empresa de prueba.") from exc
+
+    return {
+        "ok": True,
+        "item": company,
+        "count": len(companies),
+    }
 
 # ========= META =========
 @app.get("/meta")
