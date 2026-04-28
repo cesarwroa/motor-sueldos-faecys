@@ -80,6 +80,15 @@ class AdminCompanyCreate(BaseModel):
     rama: str = ""
     email: str = ""
     telefono: str = ""
+    actividad: str = ""
+    logo_url: str = ""
+    direccion_calle: str = ""
+    direccion_numero: str = ""
+    direccion_piso: str = ""
+    direccion_depto: str = ""
+    localidad: str = ""
+    provincia: str = ""
+    codigo_postal: str = ""
     estado: str = "prueba"
     observaciones: str = ""
 
@@ -308,6 +317,15 @@ def _read_admin_companies() -> List[Dict[str, Any]]:
                 "rama": str(item.get("rama") or "").strip(),
                 "email": str(item.get("email") or "").strip(),
                 "telefono": str(item.get("telefono") or "").strip(),
+                "actividad": str(item.get("actividad") or "").strip(),
+                "logo_url": str(item.get("logo_url") or "").strip(),
+                "direccion_calle": str(item.get("direccion_calle") or "").strip(),
+                "direccion_numero": str(item.get("direccion_numero") or "").strip(),
+                "direccion_piso": str(item.get("direccion_piso") or "").strip(),
+                "direccion_depto": str(item.get("direccion_depto") or "").strip(),
+                "localidad": str(item.get("localidad") or "").strip(),
+                "provincia": str(item.get("provincia") or "").strip(),
+                "codigo_postal": str(item.get("codigo_postal") or "").strip(),
                 "estado": str(item.get("estado") or "prueba").strip() or "prueba",
                 "observaciones": str(item.get("observaciones") or "").strip(),
                 "created_at": str(item.get("created_at") or "").strip(),
@@ -443,6 +461,15 @@ def create_admin_company(payload: AdminCompanyCreate, authorization: Optional[st
         "rama": payload.rama.strip(),
         "email": payload.email.strip(),
         "telefono": payload.telefono.strip(),
+        "actividad": payload.actividad.strip(),
+        "logo_url": payload.logo_url.strip(),
+        "direccion_calle": payload.direccion_calle.strip(),
+        "direccion_numero": payload.direccion_numero.strip(),
+        "direccion_piso": payload.direccion_piso.strip(),
+        "direccion_depto": payload.direccion_depto.strip(),
+        "localidad": payload.localidad.strip(),
+        "provincia": payload.provincia.strip(),
+        "codigo_postal": payload.codigo_postal.strip(),
         "estado": payload.estado.strip() or "prueba",
         "observaciones": payload.observaciones.strip(),
         "created_at": now,
