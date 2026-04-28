@@ -767,7 +767,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const feedback = $("adminFeaturesFeedback");
     const updatedBy = (window.__featureState?.updated_by || "").trim();
 
-    if(panel) panel.style.display = isAdmin ? "" : "none";
+    if(panel) panel.style.display = isAdmin ? "block" : "none";
     if(toggle){
       toggle.checked = !!window.__featureState?.public_features?.liquidacion_final_publica;
       toggle.disabled = !isAdmin;
