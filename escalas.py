@@ -2416,3 +2416,33 @@ def calcular_final_payload(
             "neto": neto,
         },
     }
+
+
+def _nr_labels(rama: str, mes: Any = "") -> dict:
+    """Override final de etiquetas NR para usar nombres actualizados por rama/mes."""
+    r = _norm(rama).upper()
+    mes_k = _mes_to_key(mes)
+    if r in ("TURISMO", "CEREALES"):
+        return {
+            "no_rem": "Recomp. NR. Acu. 26",
+            "suma_fija": "Incr. NR. Acu. Ene 26",
+        }
+    if mes_k >= "2026-04" and r in (
+        "GENERAL",
+        "FUNEBRES",
+        "FÚNEBRES",
+        "AGUA POTABLE",
+        "CALL CENTER",
+        "CALLCENTER",
+        "CALL",
+        "CENTRO DE LLAMADAS",
+        "CENTRO DE LLAMADA",
+    ):
+        return {
+            "no_rem": "Incr. NR. Acu. Abr 26",
+            "suma_fija": "Recomp. Acu. Abr 26",
+        }
+    return {
+        "no_rem": "Incr. NR. Acu. Dic 25",
+        "suma_fija": "Recomp. NR. Acu. 25",
+    }
