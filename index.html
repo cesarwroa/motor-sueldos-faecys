@@ -1578,6 +1578,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
   function getSelectedAdminCompany(){
+    if(!window.__adminAccess) return null;
     const items = Array.isArray(window.__adminCompanies) ? window.__adminCompanies : [];
     const selectedId = getStoredAdminCompanyId();
     return items.find((item) => String(item?.id || "") === selectedId) || null;
@@ -1628,16 +1629,19 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
   function renderReceiptCompanyPreviews(){
+    const isAdmin = !!window.__adminAccess;
     const company = getSelectedAdminCompany();
     ["companyPreviewMensual", "companyPreviewSac", "companyPreviewFinal"].forEach((id) => {
       const host = $(id);
-      if(host) host.innerHTML = buildCompanyPreviewHtml(company);
+      if(host) host.innerHTML = isAdmin ? buildCompanyPreviewHtml(company) : "";
     });
     const help = $("adminReceiptCompanyHelp");
     if(help){
-      help.textContent = company
-        ? `Empresa activa en recibos: ${company.razon_social || "Empresa de prueba"}`
-        : "Elegí qué empresa querés usar para previsualizar recibos.";
+      help.textContent = !isAdmin
+        ? ""
+        : (company
+          ? `Empresa activa en recibos: ${company.razon_social || "Empresa de prueba"}`
+          : "Elegí qué empresa querés usar para previsualizar recibos.");
     }
   }
 
