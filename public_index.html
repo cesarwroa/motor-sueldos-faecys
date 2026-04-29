@@ -652,7 +652,7 @@ function toggleManejoCajaUI(){
     // Reglas pedidas (Etapa 2):
     // - GENERAL: 2026-01 a 2026-07
     // - FUNEBRES / AGUA: 2026-01 a 2026-07
-    // - CALL: 2026-01 a 2026-04
+    // - CALL: 2026-01 a 2026-07
     // - TURISMO: 2026-01 a 2026-05
     // - CEREALES: 2026-01 a 2026-03
     if(r === "TURISMO") return ["2026-01","2026-02","2026-03","2026-04","2026-05"];
@@ -660,7 +660,7 @@ function toggleManejoCajaUI(){
     if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     if(r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
-    if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04"];
+    if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     // Fallback: desde 2026-01 en adelante (hasta lo disponible)
     return (ALL_MESES||[]).filter(m => /^2026-/.test(m));
   }
