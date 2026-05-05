@@ -3,11 +3,13 @@ from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
+import mimetypes
 import os
+import re
 import time
 import uuid
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -44,6 +46,9 @@ ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-cha
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
 ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
+ADMIN_COMPANY_ASSETS_DIR = BASE_DIR / "data" / "admin_company_assets"
+ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
+ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
 FEATURE_PUBLIC_MAP = {
     "liquidacion_final": "liquidacion_final_publica",
@@ -91,6 +96,15 @@ class AdminCompanyCreate(BaseModel):
     codigo_postal: str = ""
     estado: str = "prueba"
     observaciones: str = ""
+
+
+def _sanitize_admin_asset_stem(value: str) -> str:
+    stem = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(value or "").strip().lower())
+    return stem.strip("-_") or "logo"
+
+
+def _build_admin_company_asset_url(asset_name: str) -> str:
+    return f"/admin/company-assets/{asset_name}"
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -488,6 +502,61 @@ def create_admin_company(payload: AdminCompanyCreate, authorization: Optional[st
         "item": company,
         "count": len(companies),
     }
+
+
+@app.post("/admin/companies/logo")
+async def upload_admin_company_logo(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_admin_feature_access(authorization, "registro_empresas")
+    original_name = str(file.filename or "").strip()
+    suffix = Path(original_name).suffix.lower()
+
+    if suffix not in ADMIN_COMPANY_ASSET_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Formato de logo no valido. Usa PNG, JPG, WEBP, GIF o SVG.",
+        )
+
+    raw = await file.read()
+    await file.close()
+
+    if not raw:
+        raise HTTPException(status_code=400, detail="El archivo de logo esta vacio.")
+    if len(raw) > ADMIN_COMPANY_ASSET_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="El logo supera el tamano maximo permitido.")
+
+    ADMIN_COMPANY_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    stem = _sanitize_admin_asset_stem(Path(original_name).stem)
+    asset_name = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{stem}_{uuid.uuid4().hex[:8]}{suffix}"
+    asset_path = ADMIN_COMPANY_ASSETS_DIR / asset_name
+
+    try:
+        asset_path.write_bytes(raw)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar el logo de la empresa.") from exc
+
+    return {
+        "ok": True,
+        "file_name": asset_name,
+        "original_name": original_name,
+        "logo_url": _build_admin_company_asset_url(asset_name),
+    }
+
+
+@app.get("/admin/company-assets/{asset_name}")
+def admin_company_asset(asset_name: str):
+    safe_name = Path(asset_name).name
+    if safe_name != asset_name:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+
+    asset_path = ADMIN_COMPANY_ASSETS_DIR / safe_name
+    if not asset_path.is_file():
+        raise HTTPException(status_code=404, detail="Archivo no encontrado.")
+
+    media_type = mimetypes.guess_type(str(asset_path))[0] or "application/octet-stream"
+    return FileResponse(asset_path, media_type=media_type)
 
 # ========= META =========
 @app.get("/meta")
