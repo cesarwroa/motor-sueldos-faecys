@@ -222,6 +222,107 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .co-admin-grid .co-admin-col-span{
   grid-column:1 / -1;
 }
+.co-logo-upload{
+  margin-top:6px;
+  padding:14px;
+  border:1px solid #cfe0ff;
+  border-radius:16px;
+  background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%);
+}
+.co-logo-upload-shell{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.co-logo-upload-preview{
+  width:84px;
+  height:84px;
+  border-radius:18px;
+  border:1px dashed #cbd5e1;
+  background:#ffffff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+.co-logo-upload-preview img{
+  max-width:72px;
+  max-height:72px;
+  object-fit:contain;
+  display:none;
+}
+.co-logo-upload-empty{
+  font-size:11px;
+  font-weight:700;
+  color:#94a3b8;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.co-logo-upload-main{
+  min-width:280px;
+  flex:1 1 320px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.co-logo-upload-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.co-logo-upload-picker{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:40px;
+  padding:0 16px;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
+  background:#ffffff;
+  color:#0f172a;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+.co-logo-upload-picker:hover{
+  border-color:#93c5fd;
+  background:#f8fbff;
+}
+.co-logo-upload-filename{
+  color:#475569;
+  font-size:13px;
+}
+.co-logo-upload-remove{
+  background:#fee2e2 !important;
+  border-color:#fecaca !important;
+  color:#b91c1c !important;
+  font-weight:700;
+}
+.co-logo-upload-remove[disabled]{
+  opacity:.65;
+  cursor:not-allowed;
+}
+.co-logo-upload-hint{
+  color:#64748b;
+  font-size:12px;
+}
+.co-logo-upload input[type="file"]{
+  display:none;
+}
+.co-logo-upload-url{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.co-logo-upload-url label{
+  margin:0;
+  font-size:12px;
+  color:#64748b;
+  font-weight:700;
+}
 .co-admin-table{
   width:100%;
   border-collapse:collapse;
@@ -309,6 +410,9 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 @media (max-width: 860px){
   .co-admin-grid{
     grid-template-columns:1fr;
+  }
+  .co-logo-upload-shell{
+    align-items:flex-start;
   }
   .co-company-preview{
     flex-direction:column;
@@ -491,8 +595,17 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       <input id="adminCompanyActivity" type="text" placeholder="Ej. Comercialización mayorista"/>
     </div>
     <div>
-      <label for="adminCompanyLogoUrl">Logo URL</label>
+      <label for="adminCompanyLogoUrl">O pegar URL externa</label>
       <input id="adminCompanyLogoUrl" type="url" placeholder="https://.../logo.png"/>
+    </div>
+    <div>
+      <label for="adminCompanyLogoFile">Logo de la empresa</label>
+      <input id="adminCompanyLogoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,.svg,image/*"/>
+      <div class="note" id="adminCompanyLogoUploadStatus" style="margin-top:6px">Podés subir PNG, JPG, WEBP, GIF o SVG de hasta 5 MB.</div>
+      <div id="adminCompanyLogoPreviewWrap" style="display:none; margin-top:8px; border:1px dashed #cbd5e1; border-radius:12px; padding:10px; background:#fff">
+        <div style="font-size:12px; color:#475569; margin-bottom:6px">Vista previa del logo</div>
+        <img id="adminCompanyLogoPreviewImg" alt="Vista previa del logo" style="max-width:180px; max-height:80px; object-fit:contain; display:block"/>
+      </div>
     </div>
     <div>
       <label for="adminCompanyStreet">Dirección</label>
@@ -816,6 +929,30 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 /* Pie simple */
 #printArea .foot-final{display:grid;grid-template-columns:1fr 1fr;gap:25mm;margin-top:12mm}
 #printArea .firma{border-top:.35mm solid #0f172a;text-align:center;padding-top:6mm;height:22mm}
+#printArea .sheet-duplicate{font:8px/1.2 ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial}
+#printArea .sheet-duplicate .co-receipt-duo{display:grid;grid-template-columns:1fr 1fr;gap:4mm;align-items:start}
+#printArea .sheet-duplicate .co-receipt-copy{border:.35mm solid #0f172a;border-radius:2mm;padding:2.4mm 2.6mm;min-height:260mm;display:flex;flex-direction:column}
+#printArea .sheet-duplicate .co-receipt-copy-head{display:flex;justify-content:space-between;align-items:center;gap:4mm;margin-bottom:1.8mm}
+#printArea .sheet-duplicate .co-receipt-copy-badge{font-size:7px;font-weight:900;letter-spacing:.14em}
+#printArea .sheet-duplicate .co-receipt-copy-role{font-size:6.5px;font-weight:700;text-transform:uppercase;color:#475569}
+#printArea .sheet-duplicate .co-receipt-copy .title{font-size:8.8px;margin-bottom:1.2mm}
+#printArea .sheet-duplicate .co-receipt-copy .subheader{font-size:6.5px;margin-bottom:1.2mm}
+#printArea .sheet-duplicate .co-receipt-copy table{font-size:6.2px;margin-top:1.3mm}
+#printArea .sheet-duplicate .co-receipt-copy thead th{padding:1mm .75mm 1mm}
+#printArea .sheet-duplicate .co-receipt-copy th,#printArea .sheet-duplicate .co-receipt-copy td{padding:.85mm .75mm}
+#printArea .sheet-duplicate .co-receipt-copy th:nth-child(1),#printArea .sheet-duplicate .co-receipt-copy td:nth-child(1){white-space:normal;width:40%}
+#printArea .sheet-duplicate .co-receipt-copy th:not(:first-child),#printArea .sheet-duplicate .co-receipt-copy td:not(:first-child){white-space:nowrap}
+#printArea .sheet-duplicate .co-receipt-copy tfoot td{padding:1mm .75mm}
+#printArea .sheet-duplicate .co-receipt-copy-footer{margin-top:auto;padding-top:2.6mm;display:grid;gap:2.2mm}
+#printArea .sheet-duplicate .co-receipt-copy-ack{font-size:6px;color:#334155}
+#printArea .sheet-duplicate .co-receipt-copy-note{font-size:6.1px;line-height:1.32;min-height:12mm}
+#printArea .sheet-duplicate .co-receipt-copy-signline{border-top:.3mm solid #0f172a;text-align:center;padding-top:1.4mm;font-size:6.4px;font-weight:700}
+#printArea .sheet-duplicate .co-receipt-company{border-bottom:.25mm solid #cbd5e1;padding-bottom:1.6mm;margin-bottom:1.6mm}
+#printArea .sheet-duplicate .co-receipt-company-grid{display:flex;justify-content:space-between;align-items:flex-start;gap:2.2mm}
+#printArea .sheet-duplicate .co-receipt-company-name{font-size:7.8px;font-weight:900;margin-bottom:.8mm}
+#printArea .sheet-duplicate .co-receipt-company-line{font-size:6.3px;margin-bottom:.5mm}
+#printArea .sheet-duplicate .co-receipt-company-meta{font-size:6.3px;text-align:right;min-width:22mm}
+#printArea .sheet-duplicate .co-receipt-company-logo{max-width:22mm;max-height:12mm;object-fit:contain;margin-top:.6mm}
 </style>
 <!-- CO v97 patch (light listeners) -->
 <style>
@@ -898,6 +1035,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   const ADMIN_STORAGE_KEY = "co_admin_token";
   const ADMIN_HASH_KEY = "admin_token";
   const ADMIN_COMPANY_STORAGE_KEY = "co_admin_receipt_company_id";
+  const ADMIN_COMPANY_LOGO_HELP_TEXT = "Podés subir PNG, JPG, WEBP, GIF o SVG de hasta 5 MB.";
 
   const $ = (id) => document.getElementById(id);
   const setText = (id, txt) => { const el=$(id); if(el) el.textContent = txt ?? ""; };
@@ -913,6 +1051,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   window.__adminAccess = false;
   window.__adminSession = null;
   window.__adminCompanies = [];
+  window.__adminActiveCompanyId = "";
   const DEFAULT_FEATURE_ACCESS = Object.freeze({
     liquidacion_final: "admin_only",
     registro_empresas: "admin_only",
@@ -1422,12 +1561,205 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         headers: getAdminAuthHeaders()
       });
       window.__adminCompanies = Array.isArray(data?.items) ? data.items : [];
+      setStoredAdminCompanyId(String(data?.active_company_id || ""));
       renderAdminCompaniesPanel();
       return data;
     }catch(err){
       console.warn("No se pudo cargar el laboratorio de empresas.", err);
       renderAdminCompaniesPanel();
       return null;
+    }
+  }
+
+  async function saveActiveAdminCompany(companyId){
+    if(!isFeatureEnabledForAdmin("registro_empresas")) return null;
+    const nextId = (companyId || "").toString().trim();
+    const url = new URL("/admin/companies/active", API_BASE);
+    const data = await fetchJSON(url.toString(), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAdminAuthHeaders()
+      },
+      body: JSON.stringify({
+        company_id: nextId
+      })
+    });
+    setStoredAdminCompanyId(String(data?.active_company_id || nextId));
+    renderAdminCompaniesPanel();
+    return data;
+  }
+
+  function enhanceAdminCompanyLogoUploader(){
+    const fileInput = $("adminCompanyLogoFile");
+    const fileField = fileInput?.parentElement;
+    const urlInput = $("adminCompanyLogoUrl");
+    const urlField = urlInput?.parentElement;
+    const status = $("adminCompanyLogoUploadStatus");
+    const preview = $("adminCompanyLogoPreviewWrap");
+    const previewImg = $("adminCompanyLogoPreviewImg");
+    if(!fileInput || !fileField || !urlInput || !urlField || !status || !preview || !previewImg || fileField.dataset.logoEnhanced === "1") return;
+
+    const fileLabel = fileField.querySelector('label[for="adminCompanyLogoFile"]');
+    const urlLabel = urlField.querySelector('label[for="adminCompanyLogoUrl"]');
+    fileField.dataset.logoEnhanced = "1";
+    fileField.classList.add("co-admin-col-span");
+    if(fileLabel) fileLabel.textContent = "Logo de la empresa";
+    if(urlLabel) urlLabel.textContent = "O pegar URL externa";
+
+    preview.className = "co-logo-upload-preview";
+    preview.removeAttribute("style");
+    preview.querySelector("div")?.remove();
+    previewImg.removeAttribute("style");
+
+    let empty = $("adminCompanyLogoPreviewEmpty");
+    if(!empty){
+      empty = document.createElement("span");
+      empty.id = "adminCompanyLogoPreviewEmpty";
+      empty.className = "co-logo-upload-empty";
+      empty.textContent = "Sin logo";
+      preview.appendChild(empty);
+    }
+
+    let fileName = $("adminCompanyLogoFileName");
+    if(!fileName){
+      fileName = document.createElement("span");
+      fileName.id = "adminCompanyLogoFileName";
+      fileName.className = "co-logo-upload-filename";
+      fileName.textContent = "Sin archivos seleccionados";
+    }
+
+    let clearBtn = $("adminCompanyLogoClearBtn");
+    if(!clearBtn){
+      clearBtn = document.createElement("button");
+      clearBtn.id = "adminCompanyLogoClearBtn";
+      clearBtn.type = "button";
+      clearBtn.className = "co-logo-upload-remove";
+      clearBtn.textContent = "Quitar logo";
+      clearBtn.disabled = true;
+    }
+
+    status.className = "co-logo-upload-hint";
+    status.removeAttribute("style");
+    urlField.className = "co-logo-upload-url";
+
+    const picker = document.createElement("label");
+    picker.className = "co-logo-upload-picker";
+    picker.htmlFor = "adminCompanyLogoFile";
+    picker.textContent = "Seleccionar archivo";
+
+    const rowTop = document.createElement("div");
+    rowTop.className = "co-logo-upload-row";
+    rowTop.appendChild(picker);
+    rowTop.appendChild(fileName);
+
+    const rowBottom = document.createElement("div");
+    rowBottom.className = "co-logo-upload-row";
+    rowBottom.appendChild(clearBtn);
+    rowBottom.appendChild(status);
+
+    const main = document.createElement("div");
+    main.className = "co-logo-upload-main";
+    main.appendChild(rowTop);
+    main.appendChild(rowBottom);
+    main.appendChild(fileInput);
+    main.appendChild(urlField);
+
+    const shell = document.createElement("div");
+    shell.className = "co-logo-upload-shell";
+    shell.appendChild(preview);
+    shell.appendChild(main);
+
+    const upload = document.createElement("div");
+    upload.className = "co-logo-upload";
+    upload.appendChild(shell);
+
+    while(fileField.firstChild) fileField.removeChild(fileField.firstChild);
+    if(fileLabel) fileField.appendChild(fileLabel);
+    fileField.appendChild(upload);
+    setAdminCompanyLogoFileName((urlInput.value || "").trim() ? "Logo externo" : "");
+    setAdminCompanyLogoUploadStatus("");
+    setAdminCompanyLogoPreview((urlInput.value || "").trim());
+  }
+
+  function setAdminCompanyLogoUploadStatus(message){
+    setText("adminCompanyLogoUploadStatus", message || ADMIN_COMPANY_LOGO_HELP_TEXT);
+  }
+
+  function setAdminCompanyLogoFileName(name){
+    setText("adminCompanyLogoFileName", (name || "").toString().trim() || "Sin archivos seleccionados");
+  }
+
+  function releaseAdminCompanyLogoObjectUrl(){
+    const current = (window.__adminCompanyLogoObjectUrl || "").toString().trim();
+    if(!current) return;
+    try{ URL.revokeObjectURL(current); }catch(_){ }
+    window.__adminCompanyLogoObjectUrl = "";
+  }
+
+  function setAdminCompanyLogoPreview(url){
+    const wrap = $("adminCompanyLogoPreviewWrap");
+    const img = $("adminCompanyLogoPreviewImg");
+    const empty = $("adminCompanyLogoPreviewEmpty");
+    const clearBtn = $("adminCompanyLogoClearBtn");
+    const value = (url || "").toString().trim();
+    if(!wrap || !img) return;
+    if(!value){
+      img.removeAttribute("src");
+      img.style.display = "none";
+      if(empty) empty.style.display = "";
+      if(clearBtn) clearBtn.disabled = true;
+      return;
+    }
+    img.src = value;
+    img.style.display = "block";
+    if(empty) empty.style.display = "none";
+    if(clearBtn) clearBtn.disabled = false;
+  }
+
+  function previewAdminCompanyLogoFile(file){
+    releaseAdminCompanyLogoObjectUrl();
+    if(!file || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return;
+    const localUrl = URL.createObjectURL(file);
+    window.__adminCompanyLogoObjectUrl = localUrl;
+    setAdminCompanyLogoPreview(localUrl);
+  }
+
+  async function uploadAdminCompanyLogo(file){
+    if(!isFeatureEnabledForAdmin("registro_empresas") || !file) return;
+    const input = $("adminCompanyLogoFile");
+    const feedback = $("adminCompaniesFeedback");
+
+    if(input) input.disabled = true;
+    setAdminCompanyLogoFileName(file.name);
+    previewAdminCompanyLogoFile(file);
+    setAdminCompanyLogoUploadStatus(`Subiendo logo: ${file.name}`);
+
+    try{
+      const formData = new FormData();
+      formData.append("file", file);
+      const url = new URL("/admin/companies/logo", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        method: "POST",
+        headers: {
+          ...getAdminAuthHeaders()
+        },
+        body: formData
+      });
+      const logoUrl = (data?.logo_url || "").toString().trim();
+      if(!logoUrl) throw new Error("El servidor no devolvio la URL del logo.");
+      releaseAdminCompanyLogoObjectUrl();
+      setVal("adminCompanyLogoUrl", logoUrl);
+      setAdminCompanyLogoPreview(logoUrl);
+      setAdminCompanyLogoUploadStatus(`Logo cargado: ${file.name}`);
+      if(feedback) feedback.textContent = "Logo listo para guardar con la empresa.";
+    }catch(err){
+      console.error(err);
+      const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo subir el logo.";
+      setAdminCompanyLogoUploadStatus(msg);
+      if(feedback) feedback.textContent = msg;
+    }finally{
+      if(input) input.disabled = false;
     }
   }
 
@@ -1531,6 +1863,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     window.__adminAccess = false;
     window.__adminSession = null;
     window.__adminCompanies = [];
+    window.__adminActiveCompanyId = "";
     setStoredAdminToken("");
     syncAdminUI();
     if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
@@ -1564,18 +1897,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
   function getStoredAdminCompanyId(){
-    try{
-      return (window.localStorage.getItem(ADMIN_COMPANY_STORAGE_KEY) || "").trim();
-    }catch(_){
-      return "";
-    }
+    return (window.__adminActiveCompanyId || "").toString().trim();
   }
 
   function setStoredAdminCompanyId(value){
-    try{
-      if(value) window.localStorage.setItem(ADMIN_COMPANY_STORAGE_KEY, value);
-      else window.localStorage.removeItem(ADMIN_COMPANY_STORAGE_KEY);
-    }catch(_){ }
+    window.__adminActiveCompanyId = (value || "").toString().trim();
   }
 
   function getSelectedAdminCompany(){
@@ -1756,6 +2082,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     setVal("adminCompanyPostalCode", "");
     setVal("adminCompanyEstado", "prueba");
     setVal("adminCompanyNotes", "");
+    if($("adminCompanyLogoFile")) $("adminCompanyLogoFile").value = "";
+    releaseAdminCompanyLogoObjectUrl();
+    setAdminCompanyLogoFileName("");
+    setAdminCompanyLogoPreview("");
+    setAdminCompanyLogoUploadStatus("");
   }
 
   async function saveAdminCompany(){
@@ -1800,7 +2131,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         },
         body: JSON.stringify(payload)
       });
-      if(data?.item?.id) setStoredAdminCompanyId(String(data.item.id));
+      setStoredAdminCompanyId(String(data?.active_company_id || data?.item?.id || ""));
       resetAdminCompanyForm();
       await refreshAdminCompanies();
       if(feedback) feedback.textContent = "Empresa de prueba guardada.";
@@ -1879,6 +2210,69 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     `;
   }
 
+  function shouldPrintReceiptCopies(){
+    return !!window.__adminAccess;
+  }
+
+  function buildCompactPrintCompanyBlock(company){
+    if(!company) return "";
+    const address = buildCompanyAddressLine(company);
+    const location = buildCompanyLocationLine(company);
+    const logo = company.logo_url
+      ? `<img class="co-receipt-company-logo" src="${escapeHtml(company.logo_url)}" alt="Logo empresa"/>`
+      : "";
+    return `
+      <div class="co-receipt-company">
+        <div class="co-receipt-company-grid">
+          <div style="flex:1">
+            <div class="co-receipt-company-name">${escapeHtml(company.razon_social || "Empresa")}</div>
+            ${address ? `<div class="co-receipt-company-line">${escapeHtml(address)}</div>` : ""}
+            ${location ? `<div class="co-receipt-company-line">${escapeHtml(location)}</div>` : ""}
+            ${company.actividad ? `<div class="co-receipt-company-line">${escapeHtml(company.actividad)}</div>` : ""}
+          </div>
+          <div class="co-receipt-company-meta">
+            ${company.cuit ? `<div class="co-receipt-company-line"><strong>CUIT</strong> ${escapeHtml(company.cuit)}</div>` : ""}
+            ${company.rama ? `<div class="co-receipt-company-line">Rama: ${escapeHtml(company.rama)}</div>` : ""}
+            ${logo}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildReceiptCopyHtml({
+    copyLabel,
+    copyRole,
+    signatureLabel,
+    ackLabel,
+    note,
+    company,
+    title,
+    subheader,
+    extra,
+    tableHtml,
+    emptyMessage
+  }){
+    return `
+      <div class="co-receipt-copy">
+        <div class="co-receipt-copy-head">
+          <div class="co-receipt-copy-badge">${escapeHtml(copyLabel)}</div>
+          <div class="co-receipt-copy-role">${escapeHtml(copyRole)}</div>
+        </div>
+        ${buildCompactPrintCompanyBlock(company)}
+        <div class="title">${escapeHtml(title)}</div>
+        <div class="subheader">${escapeHtml(subheader)}</div>
+        ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ""}
+        ${tableHtml || `<div style="margin-top:8mm">${escapeHtml(emptyMessage)}</div>`}
+        <div class="co-receipt-copy-footer">
+          <div class="co-receipt-copy-ack">${escapeHtml(ackLabel)}</div>
+          <div class="co-receipt-copy-note">${escapeHtml(note)}</div>
+          <div class="co-receipt-copy-signline">${escapeHtml(signatureLabel)}</div>
+        </div>
+      </div>
+    `;
+  }
+
   function buildPrintArea(tab){
     const area = $("printArea");
     if(!area) return;
@@ -1898,7 +2292,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const feFmt = isFinal ? fmtDateISO($("lf_egreso")?.value || "") : "";
     const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : "";
     const tbl = cloneTableForPrint(tab);
-    const companyBlock = buildPrintCompanyBlock(getSelectedAdminCompany());
+    const company = getSelectedAdminCompany();
+    const companyBlock = buildPrintCompanyBlock(company);
+    const tableHtml = tbl ? tbl.outerHTML : '';
+    const emptyMessage = 'No hay datos para imprimir. Primero presioná “Calcular”.';
 
     if(!tbl){
       area.innerHTML = `
@@ -3205,11 +3602,93 @@ const p = await fetchJSON(url.toString());
       </div>`;
   }
 
+  function buildPrintAreaEnhanced(tab){
+    const area = $('printArea');
+    if(!area) return;
+
+    const isFinal = (tab === 'final');
+    const isSac = (tab === 'sac');
+    const titulo = isFinal ? 'Liquidacion Final' : (isSac ? 'Recibo SAC' : 'Recibo Mensual');
+    const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || '---';
+    const agrup = (isFinal ? $('lf_outAgrup')?.textContent : $('outAgrup')?.textContent) || $('agrup')?.value || '---';
+    const cat = (isFinal ? $('lf_outCat')?.textContent : $('outCat')?.textContent) || $('categoria')?.value || '---';
+    const escala = (!isFinal
+      ? ($('outEscala')?.textContent || '')
+      : (`Escala ${(($('lf_egreso')?.value || '').slice(0,7)) || ($('mes')?.value || '')}`)
+    ).trim();
+    const extra = isSac ? (($('sacSubtitle')?.textContent || '').toString().trim()) : '';
+    const fiFmt = isFinal ? fmtDateISO($('lf_ingreso')?.value || '') : '';
+    const feFmt = isFinal ? fmtDateISO($('lf_egreso')?.value || '') : '';
+    const fechas = isFinal ? ` · Ingreso: ${fiFmt} · Egreso: ${feFmt}` : '';
+    const subheader = `Rama: ${rama} · Agrup: ${agrup} · Cat: ${cat}${fechas} · ${escala}`;
+    const tbl = cloneTableForPrint(tab);
+    const company = getSelectedAdminCompany();
+    const companyBlock = buildPrintCompanyBlock(company);
+    const tableHtml = tbl ? tbl.outerHTML : '';
+    const emptyMessage = 'No hay datos para imprimir. Primero presiona "Calcular".';
+
+    if(shouldPrintReceiptCopies()){
+      area.innerHTML = `
+        <div class="sheet sheet-duplicate">
+          <div class="co-receipt-duo">
+            ${buildReceiptCopyHtml({
+              copyLabel: 'ORIGINAL',
+              copyRole: 'Empleado',
+              signatureLabel: 'Firma del empleado',
+              ackLabel: 'Constancia para el empleado',
+              note: 'Recibi conforme la liquidacion del periodo indicado y dejo constancia de haber recibido este recibo.',
+              company,
+              title: titulo,
+              subheader,
+              extra,
+              tableHtml,
+              emptyMessage
+            })}
+            ${buildReceiptCopyHtml({
+              copyLabel: 'DUPLICADO',
+              copyRole: 'Empresa',
+              signatureLabel: 'Firma del empleador',
+              ackLabel: 'Constancia para la empresa',
+              note: 'Duplicado para archivo y control interno de la empresa sobre el mismo recibo emitido.',
+              company,
+              title: titulo,
+              subheader,
+              extra,
+              tableHtml,
+              emptyMessage
+            })}
+          </div>
+        </div>`;
+      return;
+    }
+
+    if(!tbl){
+      area.innerHTML = `
+        <div class="sheet">
+          ${companyBlock}
+          <div class="title">${escapeHtml(titulo)}</div>
+          <div class="subheader">${escapeHtml(subheader)}</div>
+          ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
+          <div style="margin-top:10mm">${escapeHtml(emptyMessage)}</div>
+        </div>`;
+      return;
+    }
+
+    area.innerHTML = `
+      <div class="sheet">
+        ${companyBlock}
+        <div class="title">${escapeHtml(titulo)}</div>
+        <div class="subheader">${escapeHtml(subheader)}</div>
+        ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
+        ${tableHtml}
+      </div>`;
+  }
+
   function imprimirPDF(tab){
     // Construye el printArea ANTES de imprimir.
     try{
       const t = tab || 'mensual';
-      buildPrintArea(t);
+      buildPrintAreaEnhanced(t);
 
       // Forzar reflow para que el navegador “vea” el contenido
       const area = $('printArea');
@@ -3340,6 +3819,7 @@ try{
 
   
 function wire(){
+    enhanceAdminCompanyLogoUploader();
     // Rama: refrescar agrups/cats y togglear UI condicional.
     $("rama")?.addEventListener("change", async () => {
       try{ applyBranchUI(); }catch(_){ }
@@ -3500,9 +3980,52 @@ function wire(){
     $("adminSaveCompanyBtn")?.addEventListener("click", () => {
       saveAdminCompany();
     });
-    $("adminReceiptCompanySelect")?.addEventListener("change", (ev) => {
-      setStoredAdminCompanyId(String(ev?.target?.value || ""));
+    $("adminCompanyLogoUrl")?.addEventListener("input", (ev) => {
+      const value = String(ev?.target?.value || "").trim();
+      if(value){
+        releaseAdminCompanyLogoObjectUrl();
+        if($("adminCompanyLogoFile")) $("adminCompanyLogoFile").value = "";
+        setAdminCompanyLogoFileName("Logo externo");
+      }else{
+        setAdminCompanyLogoFileName("");
+      }
+      setAdminCompanyLogoPreview(value);
+    });
+    $("adminCompanyLogoFile")?.addEventListener("change", async (ev) => {
+      const file = ev?.target?.files?.[0];
+      if(file) await uploadAdminCompanyLogo(file);
+      else{
+        setAdminCompanyLogoFileName("");
+        setAdminCompanyLogoPreview(($("adminCompanyLogoUrl")?.value || "").trim());
+      }
+    });
+    $("adminCompanyLogoClearBtn")?.addEventListener("click", () => {
+      releaseAdminCompanyLogoObjectUrl();
+      if($("adminCompanyLogoFile")) $("adminCompanyLogoFile").value = "";
+      setVal("adminCompanyLogoUrl", "");
+      setAdminCompanyLogoFileName("");
+      setAdminCompanyLogoPreview("");
+      setAdminCompanyLogoUploadStatus("");
+    });
+    $("adminCompanyLogoPreviewImg")?.addEventListener("error", () => {
+      setAdminCompanyLogoUploadStatus("No se pudo previsualizar el logo.");
+    });
+    $("adminReceiptCompanySelect")?.addEventListener("change", async (ev) => {
+      const feedback = $("adminCompaniesFeedback");
+      const nextId = String(ev?.target?.value || "");
+      setStoredAdminCompanyId(nextId);
       renderAdminCompaniesPanel();
+      if(feedback) feedback.textContent = "Guardando empresa activa...";
+      try{
+        await saveActiveAdminCompany(nextId);
+        if(feedback) feedback.textContent = nextId ? "Empresa activa guardada." : "Selección de empresa activa limpiada.";
+      }catch(err){
+        console.error(err);
+        if(feedback){
+          const msg = err && err.message ? String(err.message).replace(/^HTTP\\s+\\d+\\s*/, "") : "No se pudo guardar la empresa activa.";
+          feedback.textContent = msg;
+        }
+      }
     });
 
     try{ updateWarnJornada23(); }catch(_){ }

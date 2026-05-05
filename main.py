@@ -46,6 +46,7 @@ ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-cha
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
 ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
+ADMIN_COMPANY_STATE_FILE = BASE_DIR / "data" / "admin_company_state.json"
 ADMIN_COMPANY_ASSETS_DIR = BASE_DIR / "data" / "admin_company_assets"
 ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
@@ -96,6 +97,10 @@ class AdminCompanyCreate(BaseModel):
     codigo_postal: str = ""
     estado: str = "prueba"
     observaciones: str = ""
+
+
+class AdminCompanyActiveUpdate(BaseModel):
+    company_id: str = ""
 
 
 def _sanitize_admin_asset_stem(value: str) -> str:
@@ -356,6 +361,63 @@ def _write_admin_companies(companies: List[Dict[str, Any]]) -> None:
     tmp_path.write_text(json.dumps(companies, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp_path.replace(ADMIN_COMPANIES_FILE)
 
+
+def _default_admin_company_state() -> Dict[str, Any]:
+    return {
+        "active_company_id": "",
+        "updated_at": None,
+        "updated_by": "",
+    }
+
+
+def _normalize_admin_company_state(raw: Any) -> Dict[str, Any]:
+    state = _default_admin_company_state()
+    if not isinstance(raw, dict):
+        return state
+
+    active_company_id = raw.get("active_company_id")
+    if isinstance(active_company_id, str):
+        state["active_company_id"] = active_company_id.strip()
+
+    updated_at = raw.get("updated_at")
+    if isinstance(updated_at, str) and updated_at.strip():
+        state["updated_at"] = updated_at.strip()
+
+    updated_by = raw.get("updated_by")
+    if isinstance(updated_by, str):
+        state["updated_by"] = updated_by.strip()
+
+    return state
+
+
+def _read_admin_company_state() -> Dict[str, Any]:
+    if not ADMIN_COMPANY_STATE_FILE.exists():
+        return _default_admin_company_state()
+
+    try:
+        raw = json.loads(ADMIN_COMPANY_STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        raw = {}
+    return _normalize_admin_company_state(raw)
+
+
+def _write_admin_company_state(state: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = _normalize_admin_company_state(state)
+    ADMIN_COMPANY_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ADMIN_COMPANY_STATE_FILE.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(normalized, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(ADMIN_COMPANY_STATE_FILE)
+    return normalized
+
+
+def _resolve_active_admin_company_id(companies: List[Dict[str, Any]], requested_id: str) -> str:
+    wanted = str(requested_id or "").strip()
+    if wanted and any(str(item.get("id") or "") == wanted for item in companies):
+        return wanted
+    if companies:
+        return str(companies[0].get("id") or "").strip()
+    return ""
+
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
@@ -452,16 +514,22 @@ def update_admin_features(payload: AdminFeaturesUpdate, authorization: Optional[
 def admin_companies(authorization: Optional[str] = Header(default=None)):
     _require_admin_feature_access(authorization, "registro_empresas")
     items = sorted(_read_admin_companies(), key=lambda item: (item.get("razon_social") or "").lower())
+    state = _read_admin_company_state()
+    active_company_id = _resolve_active_admin_company_id(items, state.get("active_company_id") or "")
     return {
         "ok": True,
         "items": items,
         "count": len(items),
+        "active_company_id": active_company_id,
+        "active_company_updated_at": state.get("updated_at"),
+        "active_company_updated_by": state.get("updated_by") or "",
     }
 
 
 @app.post("/admin/companies")
 def create_admin_company(payload: AdminCompanyCreate, authorization: Optional[str] = Header(default=None)):
     admin_payload = _require_admin_feature_access(authorization, "registro_empresas")
+    admin_email = str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower()
     razon_social = payload.razon_social.strip()
     if not razon_social:
         raise HTTPException(status_code=400, detail="La razón social es obligatoria.")
@@ -488,18 +556,54 @@ def create_admin_company(payload: AdminCompanyCreate, authorization: Optional[st
         "observaciones": payload.observaciones.strip(),
         "created_at": now,
         "updated_at": now,
-        "created_by": str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower(),
+        "created_by": admin_email,
     }
     companies.append(company)
+    company_state = {
+        "active_company_id": company["id"],
+        "updated_at": now,
+        "updated_by": admin_email,
+    }
 
     try:
         _write_admin_companies(companies)
+        _write_admin_company_state(company_state)
     except OSError as exc:
         raise HTTPException(status_code=500, detail="No se pudo guardar la empresa de prueba.") from exc
 
     return {
         "ok": True,
         "item": company,
+        "count": len(companies),
+        "active_company_id": company["id"],
+    }
+
+
+@app.put("/admin/companies/active")
+def set_active_admin_company(payload: AdminCompanyActiveUpdate, authorization: Optional[str] = Header(default=None)):
+    admin_payload = _require_admin_feature_access(authorization, "registro_empresas")
+    companies = sorted(_read_admin_companies(), key=lambda item: (item.get("razon_social") or "").lower())
+    requested_id = payload.company_id.strip()
+
+    if requested_id and not any(str(item.get("id") or "") == requested_id for item in companies):
+        raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
+
+    state = {
+        "active_company_id": requested_id,
+        "updated_at": _feature_timestamp(),
+        "updated_by": str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower(),
+    }
+
+    try:
+        saved = _write_admin_company_state(state)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar la empresa activa.") from exc
+
+    return {
+        "ok": True,
+        "active_company_id": saved.get("active_company_id") or "",
+        "updated_at": saved.get("updated_at"),
+        "updated_by": saved.get("updated_by") or "",
         "count": len(companies),
     }
 
