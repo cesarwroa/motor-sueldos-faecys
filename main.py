@@ -47,6 +47,8 @@ ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
 ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
 ADMIN_COMPANY_STATE_FILE = BASE_DIR / "data" / "admin_company_state.json"
+ADMIN_EMPLOYEES_FILE = BASE_DIR / "data" / "admin_employees.json"
+ADMIN_EMPLOYEE_STATE_FILE = BASE_DIR / "data" / "admin_employee_state.json"
 ADMIN_COMPANY_ASSETS_DIR = BASE_DIR / "data" / "admin_company_assets"
 ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
@@ -101,6 +103,29 @@ class AdminCompanyCreate(BaseModel):
 
 class AdminCompanyActiveUpdate(BaseModel):
     company_id: str = ""
+
+
+class AdminEmployeeCreate(BaseModel):
+    company_id: str
+    legajo: str = ""
+    apellido_nombre: str
+    cuil: str = ""
+    sueldo_jornal: str = ""
+    categoria: str = ""
+    tarea: str = ""
+    fecha_ingreso: str = ""
+    obra_social: str = ""
+    obra_social_periodo: str = ""
+    deposito_previsional: str = ""
+    deposito_previsional_fecha: str = ""
+    lugar_pago: str = ""
+    estado: str = "prueba"
+    observaciones: str = ""
+
+
+class AdminEmployeeActiveUpdate(BaseModel):
+    company_id: str
+    employee_id: str = ""
 
 
 def _sanitize_admin_asset_stem(value: str) -> str:
@@ -362,6 +387,59 @@ def _write_admin_companies(companies: List[Dict[str, Any]]) -> None:
     tmp_path.replace(ADMIN_COMPANIES_FILE)
 
 
+def _read_admin_employees() -> List[Dict[str, Any]]:
+    if not ADMIN_EMPLOYEES_FILE.exists():
+        return []
+
+    try:
+        raw = json.loads(ADMIN_EMPLOYEES_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        raw = []
+
+    if not isinstance(raw, list):
+        return []
+
+    employees: List[Dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        apellido_nombre = str(item.get("apellido_nombre") or "").strip()
+        company_id = str(item.get("company_id") or "").strip()
+        if not apellido_nombre or not company_id:
+            continue
+        employees.append(
+            {
+                "id": str(item.get("id") or "").strip() or uuid.uuid4().hex[:12],
+                "company_id": company_id,
+                "legajo": str(item.get("legajo") or "").strip(),
+                "apellido_nombre": apellido_nombre,
+                "cuil": str(item.get("cuil") or "").strip(),
+                "sueldo_jornal": str(item.get("sueldo_jornal") or "").strip(),
+                "categoria": str(item.get("categoria") or "").strip(),
+                "tarea": str(item.get("tarea") or "").strip(),
+                "fecha_ingreso": str(item.get("fecha_ingreso") or "").strip(),
+                "obra_social": str(item.get("obra_social") or "").strip(),
+                "obra_social_periodo": str(item.get("obra_social_periodo") or "").strip(),
+                "deposito_previsional": str(item.get("deposito_previsional") or "").strip(),
+                "deposito_previsional_fecha": str(item.get("deposito_previsional_fecha") or "").strip(),
+                "lugar_pago": str(item.get("lugar_pago") or "").strip(),
+                "estado": str(item.get("estado") or "prueba").strip() or "prueba",
+                "observaciones": str(item.get("observaciones") or "").strip(),
+                "created_at": str(item.get("created_at") or "").strip(),
+                "updated_at": str(item.get("updated_at") or item.get("created_at") or "").strip(),
+                "created_by": str(item.get("created_by") or "").strip(),
+            }
+        )
+    return employees
+
+
+def _write_admin_employees(employees: List[Dict[str, Any]]) -> None:
+    ADMIN_EMPLOYEES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ADMIN_EMPLOYEES_FILE.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(employees, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(ADMIN_EMPLOYEES_FILE)
+
+
 def _default_admin_company_state() -> Dict[str, Any]:
     return {
         "active_company_id": "",
@@ -416,6 +494,73 @@ def _resolve_active_admin_company_id(companies: List[Dict[str, Any]], requested_
         return wanted
     if companies:
         return str(companies[0].get("id") or "").strip()
+    return ""
+
+
+def _default_admin_employee_state() -> Dict[str, Any]:
+    return {
+        "active_employee_by_company_id": {},
+        "updated_at": None,
+        "updated_by": "",
+    }
+
+
+def _normalize_admin_employee_state(raw: Any) -> Dict[str, Any]:
+    state = _default_admin_employee_state()
+    if not isinstance(raw, dict):
+        return state
+
+    raw_active = raw.get("active_employee_by_company_id")
+    if isinstance(raw_active, dict):
+        state["active_employee_by_company_id"] = {
+            str(company_id).strip(): str(employee_id).strip()
+            for company_id, employee_id in raw_active.items()
+            if str(company_id).strip() and str(employee_id).strip()
+        }
+
+    updated_at = raw.get("updated_at")
+    if isinstance(updated_at, str) and updated_at.strip():
+        state["updated_at"] = updated_at.strip()
+
+    updated_by = raw.get("updated_by")
+    if isinstance(updated_by, str):
+        state["updated_by"] = updated_by.strip()
+
+    return state
+
+
+def _read_admin_employee_state() -> Dict[str, Any]:
+    if not ADMIN_EMPLOYEE_STATE_FILE.exists():
+        return _default_admin_employee_state()
+
+    try:
+        raw = json.loads(ADMIN_EMPLOYEE_STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        raw = {}
+    return _normalize_admin_employee_state(raw)
+
+
+def _write_admin_employee_state(state: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = _normalize_admin_employee_state(state)
+    ADMIN_EMPLOYEE_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ADMIN_EMPLOYEE_STATE_FILE.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(normalized, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(ADMIN_EMPLOYEE_STATE_FILE)
+    return normalized
+
+
+def _resolve_active_admin_employee_id(
+    employees: List[Dict[str, Any]],
+    company_id: str,
+    requested_id: str,
+) -> str:
+    company = str(company_id or "").strip()
+    wanted = str(requested_id or "").strip()
+    company_employees = [item for item in employees if str(item.get("company_id") or "") == company]
+    if wanted and any(str(item.get("id") or "") == wanted for item in company_employees):
+        return wanted
+    if company_employees:
+        return str(company_employees[0].get("id") or "").strip()
     return ""
 
 # ========= HOME → HTML =========
@@ -605,6 +750,150 @@ def set_active_admin_company(payload: AdminCompanyActiveUpdate, authorization: O
         "updated_at": saved.get("updated_at"),
         "updated_by": saved.get("updated_by") or "",
         "count": len(companies),
+    }
+
+
+@app.get("/admin/employees")
+def admin_employees(company_id: str = Query(default=""), authorization: Optional[str] = Header(default=None)):
+    _require_admin_feature_access(authorization, "registro_empresas")
+    companies = sorted(_read_admin_companies(), key=lambda item: (item.get("razon_social") or "").lower())
+    company_state = _read_admin_company_state()
+    selected_company_id = str(company_id or "").strip() or _resolve_active_admin_company_id(
+        companies,
+        company_state.get("active_company_id") or "",
+    )
+
+    if selected_company_id and not any(str(item.get("id") or "") == selected_company_id for item in companies):
+        raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
+
+    employees = sorted(
+        [
+            item
+            for item in _read_admin_employees()
+            if not selected_company_id or str(item.get("company_id") or "") == selected_company_id
+        ],
+        key=lambda item: ((item.get("apellido_nombre") or "").lower(), item.get("legajo") or ""),
+    )
+    employee_state = _read_admin_employee_state()
+    active_map = employee_state.get("active_employee_by_company_id") or {}
+    active_employee_id = _resolve_active_admin_employee_id(
+        employees,
+        selected_company_id,
+        active_map.get(selected_company_id) or "",
+    )
+    return {
+        "ok": True,
+        "company_id": selected_company_id,
+        "items": employees,
+        "count": len(employees),
+        "active_employee_id": active_employee_id,
+        "active_employee_updated_at": employee_state.get("updated_at"),
+        "active_employee_updated_by": employee_state.get("updated_by") or "",
+    }
+
+
+@app.post("/admin/employees")
+def create_admin_employee(payload: AdminEmployeeCreate, authorization: Optional[str] = Header(default=None)):
+    admin_payload = _require_admin_feature_access(authorization, "registro_empresas")
+    admin_email = str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower()
+    company_id = payload.company_id.strip()
+    apellido_nombre = payload.apellido_nombre.strip()
+
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Seleccioná una empresa para cargar el empleado.")
+    if not any(str(item.get("id") or "") == company_id for item in _read_admin_companies()):
+        raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
+    if not apellido_nombre:
+        raise HTTPException(status_code=400, detail="El apellido y nombre del empleado es obligatorio.")
+
+    employees = _read_admin_employees()
+    now = _feature_timestamp()
+    employee = {
+        "id": uuid.uuid4().hex[:12],
+        "company_id": company_id,
+        "legajo": payload.legajo.strip(),
+        "apellido_nombre": apellido_nombre,
+        "cuil": payload.cuil.strip(),
+        "sueldo_jornal": payload.sueldo_jornal.strip(),
+        "categoria": payload.categoria.strip(),
+        "tarea": payload.tarea.strip(),
+        "fecha_ingreso": payload.fecha_ingreso.strip(),
+        "obra_social": payload.obra_social.strip(),
+        "obra_social_periodo": payload.obra_social_periodo.strip(),
+        "deposito_previsional": payload.deposito_previsional.strip(),
+        "deposito_previsional_fecha": payload.deposito_previsional_fecha.strip(),
+        "lugar_pago": payload.lugar_pago.strip(),
+        "estado": payload.estado.strip() or "prueba",
+        "observaciones": payload.observaciones.strip(),
+        "created_at": now,
+        "updated_at": now,
+        "created_by": admin_email,
+    }
+    employees.append(employee)
+
+    employee_state = _read_admin_employee_state()
+    active_map = dict(employee_state.get("active_employee_by_company_id") or {})
+    active_map[company_id] = employee["id"]
+    employee_state["active_employee_by_company_id"] = active_map
+    employee_state["updated_at"] = now
+    employee_state["updated_by"] = admin_email
+
+    try:
+        _write_admin_employees(employees)
+        _write_admin_employee_state(employee_state)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar el empleado de prueba.") from exc
+
+    return {
+        "ok": True,
+        "item": employee,
+        "count": len([item for item in employees if item.get("company_id") == company_id]),
+        "active_employee_id": employee["id"],
+    }
+
+
+@app.put("/admin/employees/active")
+def set_active_admin_employee(payload: AdminEmployeeActiveUpdate, authorization: Optional[str] = Header(default=None)):
+    admin_payload = _require_admin_feature_access(authorization, "registro_empresas")
+    company_id = payload.company_id.strip()
+    employee_id = payload.employee_id.strip()
+
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Seleccioná una empresa para elegir empleado.")
+    if not any(str(item.get("id") or "") == company_id for item in _read_admin_companies()):
+        raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
+
+    employees = [
+        item
+        for item in _read_admin_employees()
+        if str(item.get("company_id") or "") == company_id
+    ]
+    if employee_id and not any(str(item.get("id") or "") == employee_id for item in employees):
+        raise HTTPException(status_code=404, detail="El empleado seleccionado no existe.")
+
+    employee_state = _read_admin_employee_state()
+    active_map = dict(employee_state.get("active_employee_by_company_id") or {})
+    if employee_id:
+        active_map[company_id] = employee_id
+    else:
+        active_map.pop(company_id, None)
+    employee_state["active_employee_by_company_id"] = active_map
+    employee_state["updated_at"] = _feature_timestamp()
+    employee_state["updated_by"] = str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower()
+
+    try:
+        saved = _write_admin_employee_state(employee_state)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar el empleado activo.") from exc
+
+    saved_map = saved.get("active_employee_by_company_id") or {}
+    return {
+        "ok": True,
+        "company_id": company_id,
+        "active_employee_id": saved_map.get(company_id) or "",
+        "updated_at": saved.get("updated_at"),
+        "updated_by": saved.get("updated_by") or "",
+        "count": len(employees),
     }
 
 

@@ -407,6 +407,30 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   color:#64748b;
   background:#f8fafc;
 }
+.co-employee-preview{
+  display:grid;
+  grid-template-columns:1.4fr 1fr;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid #d1fae5;
+  border-radius:14px;
+  background:#f7fffb;
+  margin:8px 0 10px;
+}
+.co-employee-preview-name{
+  font-size:17px;
+  font-weight:900;
+  margin-bottom:5px;
+}
+.co-employee-preview-line{
+  color:#334155;
+  font-size:13px;
+  margin:2px 0;
+}
+.co-employee-preview-strong{
+  font-weight:800;
+  color:#0f172a;
+}
 @media (max-width: 860px){
   .co-admin-grid{
     grid-template-columns:1fr;
@@ -421,6 +445,9 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
     width:auto;
     min-width:0;
     justify-content:flex-start;
+  }
+  .co-employee-preview{
+    grid-template-columns:1fr;
   }
 }
 
@@ -660,6 +687,103 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <tbody id="adminCompaniesTbody"></tbody>
   </table>
 </div>
+<div class="card no-print co-admin-panel" id="adminEmployeesPanel">
+  <div class="co-admin-panel-head">
+    <div>
+      <div class="co-admin-kicker">Nómina admin</div>
+      <h2 class="co-admin-panel-title">Empleados de prueba</h2>
+      <p class="co-admin-panel-copy">Cargá los datos del trabajador que después van a aparecer en el encabezado del recibo.</p>
+    </div>
+  </div>
+  <div class="note">
+    <label for="adminReceiptEmployeeSelect" style="display:inline-block; margin:0">Empleado activo en recibos:</label>
+    <select id="adminReceiptEmployeeSelect" style="max-width:360px; margin-left:8px">
+      <option value="">Sin seleccionar</option>
+    </select>
+    <span id="adminReceiptEmployeeHelp" style="margin-left:8px">Elegí una empresa y cargá empleados de prueba.</span>
+  </div>
+  <div class="co-admin-grid">
+    <div>
+      <label for="adminEmployeeFile">Legajo</label>
+      <input id="adminEmployeeFile" type="text" placeholder="19"/>
+    </div>
+    <div>
+      <label for="adminEmployeeName">Apellido y nombre</label>
+      <input id="adminEmployeeName" type="text" placeholder="Carballo, Andrea Belen"/>
+    </div>
+    <div>
+      <label for="adminEmployeeCuil">CUIL</label>
+      <input id="adminEmployeeCuil" type="text" placeholder="27-38095534-8"/>
+    </div>
+    <div>
+      <label for="adminEmployeeSalary">Sueldo / Jornal</label>
+      <input id="adminEmployeeSalary" type="text" placeholder="1.099.977,00"/>
+    </div>
+    <div>
+      <label for="adminEmployeeCategory">Categoría</label>
+      <input id="adminEmployeeCategory" type="text" placeholder="ADMINISTRATIVO C"/>
+    </div>
+    <div>
+      <label for="adminEmployeeTask">Tarea</label>
+      <input id="adminEmployeeTask" type="text" placeholder="Administración"/>
+    </div>
+    <div>
+      <label for="adminEmployeeStartDate">Ingreso</label>
+      <input id="adminEmployeeStartDate" type="date"/>
+    </div>
+    <div>
+      <label for="adminEmployeeStatus">Estado</label>
+      <select id="adminEmployeeStatus">
+        <option value="prueba">Prueba</option>
+        <option value="activo">Activo</option>
+        <option value="pausado">Pausado</option>
+      </select>
+    </div>
+    <div>
+      <label for="adminEmployeeHealth">Obra social</label>
+      <input id="adminEmployeeHealth" type="text" placeholder="OS Personal Asociado a la Asociación Mut"/>
+    </div>
+    <div>
+      <label for="adminEmployeeHealthPeriod">Período obra social</label>
+      <input id="adminEmployeeHealthPeriod" type="text" placeholder="03/2026"/>
+    </div>
+    <div>
+      <label for="adminEmployeeDeposit">Depósito previsional</label>
+      <input id="adminEmployeeDeposit" type="text" placeholder="COMAFI S.A."/>
+    </div>
+    <div>
+      <label for="adminEmployeeDepositDate">Fecha depósito</label>
+      <input id="adminEmployeeDepositDate" type="date"/>
+    </div>
+    <div>
+      <label for="adminEmployeePayPlace">Lugar de pago</label>
+      <input id="adminEmployeePayPlace" type="text" placeholder="CABA"/>
+    </div>
+    <div class="co-admin-col-span">
+      <label for="adminEmployeeNotes">Observaciones</label>
+      <textarea id="adminEmployeeNotes" placeholder="Notas internas, datos pendientes o condiciones particulares."></textarea>
+    </div>
+  </div>
+  <div class="co-admin-panel-actions">
+    <button id="adminSaveEmployeeBtn" type="button">Guardar empleado de prueba</button>
+    <span class="co-admin-inline-feedback" id="adminEmployeesFeedback"></span>
+  </div>
+  <div class="note">Empleados cargados: <span id="adminEmployeesCount">0</span></div>
+  <div id="adminEmployeesEmpty" class="co-admin-empty">Todavía no cargaste empleados para la empresa activa.</div>
+  <table class="co-admin-table" id="adminEmployeesTable" style="display:none">
+    <thead>
+      <tr>
+        <th>Legajo</th>
+        <th>Empleado</th>
+        <th>CUIL</th>
+        <th>Categoría</th>
+        <th>Ingreso</th>
+        <th>Actualizado</th>
+      </tr>
+    </thead>
+    <tbody id="adminEmployeesTbody"></tbody>
+  </table>
+</div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
 <div><label>Rama</label><select id="rama"></select></div>
@@ -743,6 +867,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="badge" style="margin-top:8px">Recibo Mensual</div>
 <div id="companyPreviewMensual"></div>
+<div id="employeePreviewMensual"></div>
 
 
 <div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
@@ -771,6 +896,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="badge" style="margin-top:8px">Recibo SAC</div>
 <div id="companyPreviewSac"></div>
+<div id="employeePreviewSac"></div>
 <div id="sacSubtitle" style="margin:6px 0;color:#64748b"></div>
 <div class="table-wrapper">
 <table class="table">
@@ -879,6 +1005,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="badge" style="margin-top:8px">Liquidación Final</div>
 <div id="companyPreviewFinal"></div>
+<div id="employeePreviewFinal"></div>
 <div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
@@ -1052,6 +1179,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   window.__adminSession = null;
   window.__adminCompanies = [];
   window.__adminActiveCompanyId = "";
+  window.__adminEmployees = [];
+  window.__adminActiveEmployeeId = "";
   const DEFAULT_FEATURE_ACCESS = Object.freeze({
     liquidacion_final: "admin_only",
     registro_empresas: "admin_only",
@@ -1497,6 +1626,63 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }finally{
       if(saveBtn) saveBtn.disabled = !window.__adminAccess;
     }
+    renderReceiptEmployeePreviews();
+  }
+
+  function formatAdminDate(value){
+    const raw = (value || "").toString().trim();
+    return raw ? fmtDateISO(raw) : "";
+  }
+
+  function buildEmployeePreviewHtml(employee){
+    if(!employee){
+      return `<div class="co-company-preview-empty">Elegí un empleado de prueba para ver cómo queda el bloque del trabajador.</div>`;
+    }
+    const leftLines = [
+      employee.legajo ? `Legajo: ${employee.legajo}` : "",
+      employee.cuil ? `CUIL: ${employee.cuil}` : "",
+      employee.fecha_ingreso ? `Ingreso: ${formatAdminDate(employee.fecha_ingreso)}` : "",
+      employee.sueldo_jornal ? `Sueldo / Jornal: ${employee.sueldo_jornal}` : ""
+    ].filter(Boolean);
+    const rightLines = [
+      employee.categoria ? `Categoría: ${employee.categoria}` : "",
+      employee.tarea ? `Tarea: ${employee.tarea}` : "",
+      employee.obra_social ? `Obra social: ${employee.obra_social}` : "",
+      employee.obra_social_periodo ? `Período: ${employee.obra_social_periodo}` : "",
+      employee.deposito_previsional ? `Depósito previsional: ${employee.deposito_previsional}` : "",
+      employee.deposito_previsional_fecha ? `Fecha depósito: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
+    ].filter(Boolean);
+    return `
+      <div class="co-employee-preview">
+        <div>
+          <div class="co-employee-preview-name">${escapeHtml(employee.apellido_nombre || "Empleado de prueba")}</div>
+          ${leftLines.map((line) => `<div class="co-employee-preview-line">${escapeHtml(line)}</div>`).join("")}
+        </div>
+        <div>
+          ${rightLines.map((line) => `<div class="co-employee-preview-line">${escapeHtml(line)}</div>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderReceiptEmployeePreviews(){
+    const isAdmin = !!window.__adminAccess;
+    const employee = getSelectedAdminEmployee();
+    ["employeePreviewMensual", "employeePreviewSac", "employeePreviewFinal"].forEach((id) => {
+      const host = $(id);
+      if(host) host.innerHTML = isAdmin ? buildEmployeePreviewHtml(employee) : "";
+    });
+    const help = $("adminReceiptEmployeeHelp");
+    if(help){
+      const company = getSelectedAdminCompany();
+      help.textContent = !isAdmin
+        ? ""
+        : (!company
+          ? "Elegí una empresa para cargar empleados."
+          : (employee
+            ? `Empleado activo en recibos: ${employee.apellido_nombre || "Empleado de prueba"}`
+            : "Elegí qué empleado querés usar para previsualizar recibos."));
+    }
   }
 
   function renderAdminCompaniesPanel(){
@@ -1552,6 +1738,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   async function refreshAdminCompanies(){
     if(!isFeatureEnabledForAdmin("registro_empresas")){
       renderAdminCompaniesPanel();
+      renderAdminEmployeesPanel();
       return null;
     }
 
@@ -1857,6 +2044,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
     renderAdminFeaturePanel();
     renderAdminCompaniesPanel();
+    renderAdminEmployeesPanel();
   }
 
   function clearAdminSession(){
@@ -1864,6 +2052,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     window.__adminSession = null;
     window.__adminCompanies = [];
     window.__adminActiveCompanyId = "";
+    window.__adminEmployees = [];
+    window.__adminActiveEmployeeId = "";
     setStoredAdminToken("");
     syncAdminUI();
     if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
@@ -1904,10 +2094,25 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     window.__adminActiveCompanyId = (value || "").toString().trim();
   }
 
+  function getStoredAdminEmployeeId(){
+    return (window.__adminActiveEmployeeId || "").toString().trim();
+  }
+
+  function setStoredAdminEmployeeId(value){
+    window.__adminActiveEmployeeId = (value || "").toString().trim();
+  }
+
   function getSelectedAdminCompany(){
     if(!window.__adminAccess) return null;
     const items = Array.isArray(window.__adminCompanies) ? window.__adminCompanies : [];
     const selectedId = getStoredAdminCompanyId();
+    return items.find((item) => String(item?.id || "") === selectedId) || null;
+  }
+
+  function getSelectedAdminEmployee(){
+    if(!window.__adminAccess) return null;
+    const items = Array.isArray(window.__adminEmployees) ? window.__adminEmployees : [];
+    const selectedId = getStoredAdminEmployeeId();
     return items.find((item) => String(item?.id || "") === selectedId) || null;
   }
 
@@ -2047,6 +2252,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   async function refreshAdminCompanies(){
     if(!isFeatureEnabledForAdmin("registro_empresas")){
       renderAdminCompaniesPanel();
+      renderAdminEmployeesPanel();
       return null;
     }
 
@@ -2056,12 +2262,213 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         headers: getAdminAuthHeaders()
       });
       window.__adminCompanies = Array.isArray(data?.items) ? data.items : [];
+      setStoredAdminCompanyId(String(data?.active_company_id || ""));
       renderAdminCompaniesPanel();
+      await refreshAdminEmployees();
       return data;
     }catch(err){
       console.warn("No se pudo cargar el laboratorio de empresas.", err);
       renderAdminCompaniesPanel();
+      renderAdminEmployeesPanel();
       return null;
+    }
+  }
+
+  function renderAdminEmployeesPanel(){
+    const panel = $("adminEmployeesPanel");
+    const isVisible = isFeatureEnabledForAdmin("registro_empresas");
+    const company = getSelectedAdminCompany();
+    const empty = $("adminEmployeesEmpty");
+    const table = $("adminEmployeesTable");
+    const tbody = $("adminEmployeesTbody");
+    const select = $("adminReceiptEmployeeSelect");
+    const saveBtn = $("adminSaveEmployeeBtn");
+
+    if(panel) panel.style.display = isVisible ? "block" : "none";
+    if(saveBtn) saveBtn.disabled = !isVisible || !company;
+    if(!isVisible || !company){
+      window.__adminEmployees = [];
+      setStoredAdminEmployeeId("");
+      if(tbody) tbody.innerHTML = "";
+      if(table) table.style.display = "none";
+      if(empty) empty.style.display = "block";
+      if(select) select.innerHTML = '<option value="">Sin seleccionar</option>';
+      setText("adminEmployeesCount", "0");
+      renderReceiptEmployeePreviews();
+      return;
+    }
+
+    const items = Array.isArray(window.__adminEmployees) ? window.__adminEmployees : [];
+    let selectedId = getStoredAdminEmployeeId();
+    if(items.length && !items.some((item) => String(item?.id || "") === selectedId)){
+      selectedId = String(items[0]?.id || "");
+      setStoredAdminEmployeeId(selectedId);
+    }
+
+    setText("adminEmployeesCount", String(items.length));
+    if(select){
+      const options = ['<option value="">Sin seleccionar</option>'].concat(
+        items.map((item) => `<option value="${escapeHtml(item.id || "")}">${escapeHtml(item.apellido_nombre || "Empleado")}</option>`)
+      );
+      select.innerHTML = options.join("");
+      select.value = selectedId || "";
+    }
+
+    if(!tbody || !table || !empty){
+      renderReceiptEmployeePreviews();
+      return;
+    }
+
+    tbody.innerHTML = "";
+    if(!items.length){
+      table.style.display = "none";
+      empty.style.display = "block";
+      renderReceiptEmployeePreviews();
+      return;
+    }
+
+    empty.style.display = "none";
+    table.style.display = "";
+    items.forEach((item) => {
+      const tr = document.createElement("tr");
+      const values = [
+        item?.legajo || "—",
+        item?.apellido_nombre || "—",
+        item?.cuil || "—",
+        item?.categoria || "—",
+        item?.fecha_ingreso ? formatAdminDate(item.fecha_ingreso) : "—",
+        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "—"
+      ];
+      values.forEach((value) => {
+        const td = document.createElement("td");
+        td.textContent = String(value ?? "");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    renderReceiptEmployeePreviews();
+  }
+
+  async function refreshAdminEmployees(){
+    const company = getSelectedAdminCompany();
+    if(!isFeatureEnabledForAdmin("registro_empresas") || !company){
+      renderAdminEmployeesPanel();
+      return null;
+    }
+
+    try{
+      const url = new URL("/admin/employees", API_BASE);
+      url.searchParams.set("company_id", String(company.id || ""));
+      const data = await fetchJSON(url.toString(), {
+        headers: getAdminAuthHeaders()
+      });
+      window.__adminEmployees = Array.isArray(data?.items) ? data.items : [];
+      setStoredAdminEmployeeId(String(data?.active_employee_id || ""));
+      renderAdminEmployeesPanel();
+      return data;
+    }catch(err){
+      console.warn("No se pudo cargar la nómina de empleados.", err);
+      renderAdminEmployeesPanel();
+      return null;
+    }
+  }
+
+  async function saveActiveAdminEmployee(employeeId){
+    const company = getSelectedAdminCompany();
+    if(!isFeatureEnabledForAdmin("registro_empresas") || !company) return null;
+    const nextId = (employeeId || "").toString().trim();
+    const url = new URL("/admin/employees/active", API_BASE);
+    const data = await fetchJSON(url.toString(), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAdminAuthHeaders()
+      },
+      body: JSON.stringify({
+        company_id: String(company.id || ""),
+        employee_id: nextId
+      })
+    });
+    setStoredAdminEmployeeId(String(data?.active_employee_id || nextId));
+    renderAdminEmployeesPanel();
+    return data;
+  }
+
+  function resetAdminEmployeeForm(){
+    setVal("adminEmployeeFile", "");
+    setVal("adminEmployeeName", "");
+    setVal("adminEmployeeCuil", "");
+    setVal("adminEmployeeSalary", "");
+    setVal("adminEmployeeCategory", "");
+    setVal("adminEmployeeTask", "");
+    setVal("adminEmployeeStartDate", "");
+    setVal("adminEmployeeStatus", "prueba");
+    setVal("adminEmployeeHealth", "");
+    setVal("adminEmployeeHealthPeriod", "");
+    setVal("adminEmployeeDeposit", "");
+    setVal("adminEmployeeDepositDate", "");
+    setVal("adminEmployeePayPlace", "");
+    setVal("adminEmployeeNotes", "");
+  }
+
+  async function saveAdminEmployee(){
+    if(!isFeatureEnabledForAdmin("registro_empresas")) return;
+    const company = getSelectedAdminCompany();
+    const feedback = $("adminEmployeesFeedback");
+    const saveBtn = $("adminSaveEmployeeBtn");
+    if(!company){
+      if(feedback) feedback.textContent = "Primero elegí una empresa activa.";
+      return;
+    }
+    const payload = {
+      company_id: String(company.id || ""),
+      legajo: ($("adminEmployeeFile")?.value || "").trim(),
+      apellido_nombre: ($("adminEmployeeName")?.value || "").trim(),
+      cuil: ($("adminEmployeeCuil")?.value || "").trim(),
+      sueldo_jornal: ($("adminEmployeeSalary")?.value || "").trim(),
+      categoria: ($("adminEmployeeCategory")?.value || "").trim(),
+      tarea: ($("adminEmployeeTask")?.value || "").trim(),
+      fecha_ingreso: ($("adminEmployeeStartDate")?.value || "").trim(),
+      obra_social: ($("adminEmployeeHealth")?.value || "").trim(),
+      obra_social_periodo: ($("adminEmployeeHealthPeriod")?.value || "").trim(),
+      deposito_previsional: ($("adminEmployeeDeposit")?.value || "").trim(),
+      deposito_previsional_fecha: ($("adminEmployeeDepositDate")?.value || "").trim(),
+      lugar_pago: ($("adminEmployeePayPlace")?.value || "").trim(),
+      estado: ($("adminEmployeeStatus")?.value || "prueba").trim(),
+      observaciones: ($("adminEmployeeNotes")?.value || "").trim()
+    };
+
+    if(!payload.apellido_nombre){
+      if(feedback) feedback.textContent = "Completá el apellido y nombre del empleado.";
+      $("adminEmployeeName")?.focus();
+      return;
+    }
+
+    if(saveBtn) saveBtn.disabled = true;
+    if(feedback) feedback.textContent = "Guardando empleado...";
+
+    try{
+      const url = new URL("/admin/employees", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAdminAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+      setStoredAdminEmployeeId(String(data?.active_employee_id || data?.item?.id || ""));
+      resetAdminEmployeeForm();
+      await refreshAdminEmployees();
+      if(feedback) feedback.textContent = "Empleado de prueba guardado.";
+    }catch(err){
+      console.error(err);
+      if(feedback){
+        const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo guardar el empleado.";
+        feedback.textContent = msg;
+      }
+    }finally{
+      if(saveBtn) saveBtn.disabled = !getSelectedAdminCompany();
     }
   }
 
@@ -2183,6 +2590,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
     renderAdminFeaturePanel();
     renderAdminCompaniesPanel();
+    renderAdminEmployeesPanel();
   }
 
   function buildPrintCompanyBlock(company){
@@ -2214,6 +2622,31 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     return !!window.__adminAccess;
   }
 
+  function buildPrintEmployeeBlock(employee){
+    if(!employee) return "";
+    const left = [
+      employee.legajo ? `Legajo: ${employee.legajo}` : "",
+      employee.apellido_nombre ? `Empleado: ${employee.apellido_nombre}` : "",
+      employee.cuil ? `CUIL: ${employee.cuil}` : "",
+      employee.sueldo_jornal ? `Sueldo / Jornal: ${employee.sueldo_jornal}` : ""
+    ].filter(Boolean);
+    const right = [
+      employee.categoria ? `Categoría: ${employee.categoria}` : "",
+      employee.tarea ? `Tarea: ${employee.tarea}` : "",
+      employee.fecha_ingreso ? `Ingreso: ${formatAdminDate(employee.fecha_ingreso)}` : "",
+      employee.obra_social ? `Obra social: ${employee.obra_social}` : "",
+      employee.obra_social_periodo ? `Período: ${employee.obra_social_periodo}` : "",
+      employee.deposito_previsional ? `Depósito previsional: ${employee.deposito_previsional}` : "",
+      employee.deposito_previsional_fecha ? `Fecha: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
+    ].filter(Boolean);
+    return `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:4mm; margin:-2mm 0 5mm; border:0.3mm solid #cbd5e1; padding:2.8mm 3.2mm;">
+        <div>${left.map((line) => `<div style="font-size:10.5px; margin-bottom:.8mm">${escapeHtml(line)}</div>`).join("")}</div>
+        <div>${right.map((line) => `<div style="font-size:10.5px; margin-bottom:.8mm">${escapeHtml(line)}</div>`).join("")}</div>
+      </div>
+    `;
+  }
+
   function buildCompactPrintCompanyBlock(company){
     if(!company) return "";
     const address = buildCompanyAddressLine(company);
@@ -2240,6 +2673,34 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     `;
   }
 
+  function buildCompactPrintEmployeeBlock(employee){
+    if(!employee) return "";
+    const first = [
+      employee.legajo ? `Legajo ${employee.legajo}` : "",
+      employee.apellido_nombre || "",
+      employee.cuil ? `CUIL ${employee.cuil}` : ""
+    ].filter(Boolean).join(" · ");
+    const second = [
+      employee.sueldo_jornal ? `Sueldo / Jornal: ${employee.sueldo_jornal}` : "",
+      employee.categoria ? `Categoría: ${employee.categoria}` : "",
+      employee.tarea ? `Tarea: ${employee.tarea}` : "",
+      employee.fecha_ingreso ? `Ingreso: ${formatAdminDate(employee.fecha_ingreso)}` : ""
+    ].filter(Boolean).join(" · ");
+    const third = [
+      employee.obra_social ? `Obra social: ${employee.obra_social}` : "",
+      employee.obra_social_periodo ? `Período: ${employee.obra_social_periodo}` : "",
+      employee.deposito_previsional ? `Depósito previsional: ${employee.deposito_previsional}` : "",
+      employee.deposito_previsional_fecha ? `Fecha: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
+    ].filter(Boolean).join(" · ");
+    return `
+      <div class="co-receipt-company" style="margin-top:2mm">
+        ${first ? `<div class="co-receipt-company-line"><strong>${escapeHtml(first)}</strong></div>` : ""}
+        ${second ? `<div class="co-receipt-company-line">${escapeHtml(second)}</div>` : ""}
+        ${third ? `<div class="co-receipt-company-line">${escapeHtml(third)}</div>` : ""}
+      </div>
+    `;
+  }
+
   function buildReceiptCopyHtml({
     copyLabel,
     copyRole,
@@ -2247,6 +2708,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     ackLabel,
     note,
     company,
+    employee,
     title,
     subheader,
     extra,
@@ -2260,6 +2722,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
           <div class="co-receipt-copy-role">${escapeHtml(copyRole)}</div>
         </div>
         ${buildCompactPrintCompanyBlock(company)}
+        ${buildCompactPrintEmployeeBlock(employee)}
         <div class="title">${escapeHtml(title)}</div>
         <div class="subheader">${escapeHtml(subheader)}</div>
         ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ""}
@@ -2293,7 +2756,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : "";
     const tbl = cloneTableForPrint(tab);
     const company = getSelectedAdminCompany();
+    const employee = getSelectedAdminEmployee();
     const companyBlock = buildPrintCompanyBlock(company);
+    const employeeBlock = buildPrintEmployeeBlock(employee);
     const tableHtml = tbl ? tbl.outerHTML : '';
     const emptyMessage = 'No hay datos para imprimir. Primero presioná “Calcular”.';
 
@@ -3623,7 +4088,9 @@ const p = await fetchJSON(url.toString());
     const subheader = `Rama: ${rama} · Agrup: ${agrup} · Cat: ${cat}${fechas} · ${escala}`;
     const tbl = cloneTableForPrint(tab);
     const company = getSelectedAdminCompany();
+    const employee = getSelectedAdminEmployee();
     const companyBlock = buildPrintCompanyBlock(company);
+    const employeeBlock = buildPrintEmployeeBlock(employee);
     const tableHtml = tbl ? tbl.outerHTML : '';
     const emptyMessage = 'No hay datos para imprimir. Primero presiona "Calcular".';
 
@@ -3638,6 +4105,7 @@ const p = await fetchJSON(url.toString());
               ackLabel: 'Constancia para el empleado',
               note: 'Recibi conforme la liquidacion del periodo indicado y dejo constancia de haber recibido este recibo.',
               company,
+              employee,
               title: titulo,
               subheader,
               extra,
@@ -3651,6 +4119,7 @@ const p = await fetchJSON(url.toString());
               ackLabel: 'Constancia para la empresa',
               note: 'Duplicado para archivo y control interno de la empresa sobre el mismo recibo emitido.',
               company,
+              employee,
               title: titulo,
               subheader,
               extra,
@@ -3666,6 +4135,7 @@ const p = await fetchJSON(url.toString());
       area.innerHTML = `
         <div class="sheet">
           ${companyBlock}
+          ${employeeBlock}
           <div class="title">${escapeHtml(titulo)}</div>
           <div class="subheader">${escapeHtml(subheader)}</div>
           ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
@@ -3677,6 +4147,7 @@ const p = await fetchJSON(url.toString());
     area.innerHTML = `
       <div class="sheet">
         ${companyBlock}
+        ${employeeBlock}
         <div class="title">${escapeHtml(titulo)}</div>
         <div class="subheader">${escapeHtml(subheader)}</div>
         ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
@@ -4014,15 +4485,39 @@ function wire(){
       const feedback = $("adminCompaniesFeedback");
       const nextId = String(ev?.target?.value || "");
       setStoredAdminCompanyId(nextId);
+      window.__adminEmployees = [];
+      setStoredAdminEmployeeId("");
       renderAdminCompaniesPanel();
+      renderAdminEmployeesPanel();
       if(feedback) feedback.textContent = "Guardando empresa activa...";
       try{
         await saveActiveAdminCompany(nextId);
+        await refreshAdminEmployees();
         if(feedback) feedback.textContent = nextId ? "Empresa activa guardada." : "Selección de empresa activa limpiada.";
       }catch(err){
         console.error(err);
         if(feedback){
           const msg = err && err.message ? String(err.message).replace(/^HTTP\\s+\\d+\\s*/, "") : "No se pudo guardar la empresa activa.";
+          feedback.textContent = msg;
+        }
+      }
+    });
+    $("adminSaveEmployeeBtn")?.addEventListener("click", () => {
+      saveAdminEmployee();
+    });
+    $("adminReceiptEmployeeSelect")?.addEventListener("change", async (ev) => {
+      const feedback = $("adminEmployeesFeedback");
+      const nextId = String(ev?.target?.value || "");
+      setStoredAdminEmployeeId(nextId);
+      renderAdminEmployeesPanel();
+      if(feedback) feedback.textContent = "Guardando empleado activo...";
+      try{
+        await saveActiveAdminEmployee(nextId);
+        if(feedback) feedback.textContent = nextId ? "Empleado activo guardado." : "Selección de empleado activa limpiada.";
+      }catch(err){
+        console.error(err);
+        if(feedback){
+          const msg = err && err.message ? String(err.message).replace(/^HTTP\\s+\\d+\\s*/, "") : "No se pudo guardar el empleado activo.";
           feedback.textContent = msg;
         }
       }
