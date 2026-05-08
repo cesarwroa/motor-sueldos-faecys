@@ -142,16 +142,16 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
     r = _norm(rama).upper()
     mes_k = _mes_to_key(mes)
+    if mes_k >= "2026-04" and r in ("GENERAL", "FUNEBRES", "FÚNEBRES", "AGUA POTABLE", "CEREALES"):
+        return {
+            "no_rem": "Incr. NR. Acu. Abr 26",
+            "suma_fija": "Recomp. Acu. Abr 26",
+        }
     if r in ("TURISMO", "CEREALES"):
         # En el maestro de Turismo/Cereales, suele venir 60k en no_rem y 40k en suma_fija.
         return {
             "no_rem": "Recomp. NR. Acu. 26",
             "suma_fija": "Incr. NR. Acu. Ene 26",
-        }
-    if mes_k >= "2026-04" and r in ("GENERAL", "FUNEBRES", "FÚNEBRES", "AGUA POTABLE"):
-        return {
-            "no_rem": "Incr. NR. Acu. Abr 26",
-            "suma_fija": "Recomp. Acu. Abr 26",
         }
     return {
         "no_rem": "Incr. NR. Acu. Dic 25",
@@ -2422,16 +2422,12 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Override final de etiquetas NR para usar nombres actualizados por rama/mes."""
     r = _norm(rama).upper()
     mes_k = _mes_to_key(mes)
-    if r in ("TURISMO", "CEREALES"):
-        return {
-            "no_rem": "Recomp. NR. Acu. 26",
-            "suma_fija": "Incr. NR. Acu. Ene 26",
-        }
     if mes_k >= "2026-04" and r in (
         "GENERAL",
         "FUNEBRES",
         "FÚNEBRES",
         "AGUA POTABLE",
+        "CEREALES",
         "CALL CENTER",
         "CALLCENTER",
         "CALL",
@@ -2441,6 +2437,11 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
         return {
             "no_rem": "Incr. NR. Acu. Abr 26",
             "suma_fija": "Recomp. Acu. Abr 26",
+        }
+    if r in ("TURISMO", "CEREALES"):
+        return {
+            "no_rem": "Recomp. NR. Acu. 26",
+            "suma_fija": "Incr. NR. Acu. Ene 26",
         }
     return {
         "no_rem": "Incr. NR. Acu. Dic 25",
