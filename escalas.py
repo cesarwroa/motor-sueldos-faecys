@@ -142,6 +142,11 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
     r = _norm(rama).upper()
     mes_k = _mes_to_key(mes)
+    if mes_k >= "2026-05" and r == "TURISMO":
+        return {
+            "no_rem": "Incr. NR. Acu. May 26",
+            "suma_fija": "Recomp. Acu. May 26",
+        }
     if mes_k >= "2026-04" and r in ("GENERAL", "FUNEBRES", "FÚNEBRES", "AGUA POTABLE", "CEREALES"):
         return {
             "no_rem": "Incr. NR. Acu. Abr 26",
@@ -689,14 +694,20 @@ def calcular_payload(
                 "2026-02": {"le": 112.31, "gt": 129.16},
                 "2026-03": {"le": 112.31, "gt": 129.16},
                 "2026-04": {"le": 112.31, "gt": 129.16},
-                "2026-05": {"le": 122.31, "gt": 140.66},
+                "2026-05": {"le": 114.76, "gt": 131.97},
+                "2026-06": {"le": 116.59, "gt": 134.08},
+                "2026-07": {"le": 118.43, "gt": 136.19},
+                "2026-08": {"le": 130.43, "gt": 149.99},
             },
             "C5": {
                 "2026-01": {"le": 110.62, "gt": 127.21},
                 "2026-02": {"le": 110.62, "gt": 127.21},
                 "2026-03": {"le": 110.62, "gt": 127.21},
                 "2026-04": {"le": 110.62, "gt": 127.21},
-                "2026-05": {"le": 120.62, "gt": 138.71},
+                "2026-05": {"le": 113.03, "gt": 129.99},
+                "2026-06": {"le": 114.84, "gt": 132.07},
+                "2026-07": {"le": 116.65, "gt": 134.15},
+                "2026-08": {"le": 128.65, "gt": 147.95},
             },
         }
 
@@ -887,7 +898,7 @@ def calcular_payload(
                         rem_total = round2(rem_total + val)
 
     # -------- TURISMO: Adicional por Título --------
-    # Se aplica sobre el básico (REM) y sobre el NR de $40.000 (en nuestro maestro = suma_fija).
+    # Se aplica sobre el básico (REM) y sobre el total NR vigente (no_rem + suma_fija).
     try:
         titulo_pct_f = float(titulo_pct or 0.0)
     except Exception:
@@ -898,8 +909,7 @@ def calcular_payload(
     titulo_nr = 0.0
     if base["rama"] == "TURISMO" and titulo_pct_f > 0:
         titulo_rem = round2(bas * (titulo_pct_f / 100.0)) if bas else 0.0
-        # Turismo: $40.000 NR corresponde a suma_fija (sf)
-        titulo_nr = round2(sf * (titulo_pct_f / 100.0)) if sf else 0.0
+        titulo_nr = round2(nr_base_total * (titulo_pct_f / 100.0)) if nr_base_total else 0.0
         rem_total = round2(rem_total + titulo_rem)
         nr_total = round2(nr_total + titulo_nr)
 
@@ -1055,7 +1065,7 @@ def calcular_payload(
     # TURISMO: adicional por título (48hs)
     if base["rama"] == "TURISMO" and titulo_pct_f > 0:
         titulo_rem_os = round2(bas_os * (titulo_pct_f / 100.0)) if bas_os else 0.0
-        titulo_nr_os = round2(sf_os * (titulo_pct_f / 100.0)) if sf_os else 0.0
+        titulo_nr_os = round2(nr_base_total_os * (titulo_pct_f / 100.0)) if nr_base_total_os else 0.0
         rem_total_os = round2(rem_total_os + titulo_rem_os)
         nr_total_os = round2(nr_total_os + titulo_nr_os)
 
@@ -1414,7 +1424,7 @@ def calcular_payload(
         items.append(item(
             'Adicional por Título (NR)',
             n=titulo_nr,
-            base_num=sf,
+            base_num=nr_base_total,
         ))
 
     # Conexiones (Agua Potable): no se agrega fila, porque el selector modifica el básico y los NR.
@@ -2422,6 +2432,11 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Override final de etiquetas NR para usar nombres actualizados por rama/mes."""
     r = _norm(rama).upper()
     mes_k = _mes_to_key(mes)
+    if mes_k >= "2026-05" and r == "TURISMO":
+        return {
+            "no_rem": "Incr. NR. Acu. May 26",
+            "suma_fija": "Recomp. Acu. May 26",
+        }
     if mes_k >= "2026-04" and r in (
         "GENERAL",
         "FUNEBRES",
