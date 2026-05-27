@@ -464,6 +464,26 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     return n.toLocaleString("es-AR", { style:"currency", currency:"ARS", minimumFractionDigits:2, maximumFractionDigits:2 });
   };
 
+  function trackAnalyticsEvent(name, params){
+    try{
+      if(typeof window.gtag !== "function") return;
+      window.gtag("event", name, {
+        event_category: "calculadora",
+        ...params
+      });
+    }catch(_){ }
+  }
+
+  function currentAnalyticsContext(extra){
+    return {
+      rama: $("rama")?.value || "",
+      agrupamiento: $("agrup")?.value || "",
+      categoria: $("categoria")?.value || "",
+      mes: $("mes")?.value || "",
+      ...extra
+    };
+  }
+
 
   function normalizeFAECYSConcept(concepto){
     const c0 = String(concepto ?? '').trim();
@@ -1530,10 +1550,19 @@ const p = await fetchJSON(url.toString());
       }
 
       setText("status", "Calculado.");
+      trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
+        tipo_calculo: "mensual",
+        jornada: String(jornada),
+        con_osecac: osecac ? "si" : "no",
+        afiliado: afiliado ? "si" : "no"
+      }));
     }catch(err){
       console.error(err);
       alert("Error al calcular (API). Revisá conexión o datos.");
       setText("status", "Error al calcular.");
+      trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
+        tipo_calculo: "mensual"
+      }));
     }
   }
 
@@ -1633,6 +1662,9 @@ const p = await fetchJSON(url.toString());
     // Construye el printArea ANTES de imprimir.
     try{
       const t = tab || 'mensual';
+      trackAnalyticsEvent("imprimir_pdf", currentAnalyticsContext({
+        tipo_calculo: t
+      }));
       buildPrintArea(t);
 
       // Forzar reflow para que el navegador “vea” el contenido
@@ -2584,11 +2616,18 @@ function switchTab(tab){
       window.__lastFinalCalc = data;
 
       setText('diagFinal', 'Calculado.');
+      trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
+        tipo_calculo: "liquidacion_final",
+        tipo_baja: tipo
+      }));
 
     }catch(err){
       console.error(err);
       alert('Error al calcular Liquidación Final (API).');
       setText('diagFinal', 'Error al calcular.');
+      trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
+        tipo_calculo: "liquidacion_final"
+      }));
     }
   };
 
