@@ -1021,6 +1021,15 @@ def calcular(
     conexiones: int = 0,
     # Fúnebres: ids de adicionales seleccionados (coma-separados)
     fun_adic: Optional[List[str]] = Query(None),
+    # Ley 27.802 / art. 140 LCT: conceptos a cargo del empleador (desde 2026-05)
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 0,
+    art_fijo: float = 0,
+    scvo_legal: bool = True,
+    seguro_vida_cct_prima: float = 0,
+    osecac_adicional_patronal: bool = True,
+    la_estrella: bool = True,
+    instituto_capacitacion: bool = True,
 ):
     return calcular_payload(
         rama=rama,
@@ -1059,6 +1068,14 @@ def calcular(
         conex_cat=conex_cat,
         conexiones=conexiones,
         fun_adic=(";".join(fun_adic) if fun_adic else ""),
+        regimen_contribuciones=regimen_contribuciones,
+        art_pct=art_pct,
+        art_fijo=art_fijo,
+        scvo_legal=scvo_legal,
+        seguro_vida_cct_prima=seguro_vida_cct_prima,
+        osecac_adicional_patronal=osecac_adicional_patronal,
+        la_estrella=la_estrella,
+        instituto_capacitacion=instituto_capacitacion,
     )
 
 

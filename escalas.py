@@ -513,6 +513,15 @@ def calcular_payload(
     conexiones: int = 0,
     # Fúnebres: ids de adicionales seleccionados (coma-separados)
     fun_adic: str = "",
+    # Ley 27.802 / art. 140 LCT: conceptos a cargo del empleador
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 0,
+    art_fijo: float = 0,
+    scvo_legal: bool = True,
+    seguro_vida_cct_prima: float = 0,
+    osecac_adicional_patronal: bool = True,
+    la_estrella: bool = True,
+    instituto_capacitacion: bool = True,
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
 
@@ -524,6 +533,8 @@ def calcular_payload(
     base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
     if not base.get("ok"):
         return base
+    mes_key = _mes_to_key(base.get("mes") or mes)
+    aplica_costo_empleador = bool(mes_key and mes_key >= "2026-05")
 
     # -------- Bases prorrateadas (48hs) --------
     # CALL CENTER: la categoría ya trae su jornada (20/21/24/30/34/35/36/48hs).
@@ -1159,6 +1170,10 @@ def calcular_payload(
         except Exception:
             sind_fijo_monto = 0.0
 
+    seguro_vida_cct_prima_monto = round2(_fpos(seguro_vida_cct_prima))
+    seguro_vida_cct_trabajador = round2(seguro_vida_cct_prima_monto / 3.0) if seguro_vida_cct_prima_monto else 0.0
+    seguro_vida_cct_empleador = round2(seguro_vida_cct_prima_monto * (2.0 / 3.0)) if seguro_vida_cct_prima_monto else 0.0
+
     ded_pre = round2(
         jub
         + pami
@@ -1169,6 +1184,7 @@ def calcular_payload(
         + sind_af
         + sind
         + sind_fijo_monto
+        + seguro_vida_cct_trabajador
         + aus_rem
         + susp_rem
         + faltante_desc
@@ -1254,6 +1270,7 @@ def calcular_payload(
         + mensual_sind_solid
         + mensual_sind
         + mensual_sind_fijo_monto
+        + seguro_vida_cct_trabajador
         + aus_rem
         + susp_rem
         + faltante_desc
@@ -1525,6 +1542,13 @@ def calcular_payload(
             d=adelanto,
         ))
 
+    if seguro_vida_cct_trabajador:
+        items.append(item(
+            "Seguro vida art. 97 CCT 130/75 (1/3)",
+            d=seguro_vida_cct_trabajador,
+            base_num=seguro_vida_cct_prima_monto,
+        ))
+
     if mensual_embargo_monto:
         items.append(item(
             "Embargo (desc.)",
@@ -1576,6 +1600,102 @@ def calcular_payload(
             sind_fijo_val=sac_sind_fijo_monto,
         )
 
+    def contrib_item(concepto: str, importe: float, base_num: float = 0.0) -> Dict[str, Any]:
+        out = {
+            "concepto": concepto,
+            "importe": float(round2(importe)),
+        }
+        if base_num:
+            out["base"] = float(round2(base_num))
+        return out
+
+    regimen_raw = _norm_fold(regimen_contribuciones)
+    if "RIFL" in regimen_raw:
+        regimen_key = "rifl"
+        regimen_label = "RIFL 5%"
+        ss_rates = [
+            ("SIPA empleador (1,31%)", 1.31),
+            ("INSSJP / PAMI empleador (3%)", 3.0),
+            ("Asignaciones Familiares (0,57%)", 0.57),
+            ("Fondo Nacional de Empleo (0,12%)", 0.12),
+        ]
+    elif "20" in regimen_raw or regimen_raw.endswith("A"):
+        regimen_key = "inciso_a"
+        regimen_label = "Inciso A 20,40%"
+        ss_rates = [
+            ("SIPA empleador (12,35%)", 12.35),
+            ("INSSJP / PAMI empleador (1,58%)", 1.58),
+            ("Asignaciones Familiares (5,40%)", 5.40),
+            ("Fondo Nacional de Empleo (1,07%)", 1.07),
+        ]
+    else:
+        regimen_key = "inciso_b"
+        regimen_label = "Inciso B 18%"
+        ss_rates = [
+            ("SIPA empleador (10,77%)", 10.77),
+            ("INSSJP / PAMI empleador (1,58%)", 1.58),
+            ("Asignaciones Familiares (4,70%)", 4.70),
+            ("Fondo Nacional de Empleo (0,95%)", 0.95),
+        ]
+
+    contribuciones_empleador_items: List[Dict[str, Any]] = []
+    contrib_base_ss = float(mensual_rem_aportes or 0.0)
+    if aplica_costo_empleador and contrib_base_ss:
+        for label, pct in ss_rates:
+            contribuciones_empleador_items.append(contrib_item(label, contrib_base_ss * (pct / 100.0), contrib_base_ss))
+
+    if aplica_costo_empleador and bool(osecac) and not bool(jubilado) and mensual_os_base:
+        contribuciones_empleador_items.append(contrib_item("Obra Social empleador (6%)", mensual_os_base * 0.06, mensual_os_base))
+
+    try:
+        art_pct_f = max(0.0, float(art_pct or 0.0))
+    except Exception:
+        art_pct_f = 0.0
+    if aplica_costo_empleador and art_pct_f and mensual_base_fs:
+        contribuciones_empleador_items.append(contrib_item(f"ART variable ({_fmt_pct(art_pct_f)}%)", mensual_base_fs * (art_pct_f / 100.0), mensual_base_fs))
+
+    art_fijo_monto = round2(_fpos(art_fijo)) if aplica_costo_empleador else 0.0
+    if art_fijo_monto:
+        contribuciones_empleador_items.append(contrib_item("FFEP / ART fijo", art_fijo_monto))
+
+    scvo_monto = 424.62 if (aplica_costo_empleador and bool(scvo_legal)) else 0.0
+    if scvo_monto:
+        contribuciones_empleador_items.append(contrib_item("Seguro de vida obligatorio Dec. 1567/74", scvo_monto))
+
+    if aplica_costo_empleador and seguro_vida_cct_empleador:
+        contribuciones_empleador_items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_vida_cct_empleador, seguro_vida_cct_prima_monto))
+
+    rama_norm = _norm_fold(base.get("rama"))
+    if aplica_costo_empleador and bool(instituto_capacitacion):
+        if rama_norm in ("GENERAL", "FUNEBRES", "FUNEBRE", "AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
+            inacap_base = (
+                _basico_ref("GENERAL", mes, ["MAESTRANZA A", "MAESTRANZA  A"], "GENERAL")
+                or _basico_ref(base.get("rama"), mes, ["MAESTRANZA A", "MAESTRANZA  A"], agrup)
+                or bas_base
+            )
+            if inacap_base:
+                contribuciones_empleador_items.append(contrib_item("INACAP (0,5%)", inacap_base * 0.005, inacap_base))
+        elif rama_norm == "TURISMO":
+            incatur_base = round2(mensual_rem_total + mensual_nr_total)
+            if incatur_base:
+                contribuciones_empleador_items.append(contrib_item("INCATUR (1%)", incatur_base * 0.01, incatur_base))
+        elif rama_norm == "CEREALES":
+            incagro_base = (
+                _basico_ref(base.get("rama"), mes, ["MAESTRANZA A", "MAESTRANZA  A"], agrup)
+                or bas_base
+            )
+            if incagro_base:
+                contribuciones_empleador_items.append(contrib_item("INCAGRO (1%)", incagro_base * 0.01, incagro_base))
+
+    if aplica_costo_empleador and bool(osecac_adicional_patronal):
+        contribuciones_empleador_items.append(contrib_item("OSECAC contribucion patronal adicional", 28000.0))
+
+    if aplica_costo_empleador and bool(la_estrella) and rama_norm != "CEREALES" and mensual_rem_aportes:
+        contribuciones_empleador_items.append(contrib_item("La Estrella (1,60%)", mensual_rem_aportes * 0.016, mensual_rem_aportes))
+
+    total_contribuciones_empleador = round2(sum(float(x.get("importe") or 0.0) for x in contribuciones_empleador_items))
+    costo_laboral_total = round2(mensual_rem_total + mensual_nr_total + total_contribuciones_empleador)
+
     return {
         "ok": True,
         "rama": base["rama"],
@@ -1608,6 +1728,18 @@ def calcular_payload(
             "nr": float(mensual_nr_total),
             "ded": float(mensual_ded_total),
             "neto": float(mensual_neto),
+            "contribuciones_empleador": float(total_contribuciones_empleador),
+            "costo_laboral_total": float(costo_laboral_total),
+        },
+        "contribuciones_empleador": {
+            "regimen": regimen_key,
+            "regimen_label": regimen_label,
+            "items": contribuciones_empleador_items,
+            "total": float(total_contribuciones_empleador),
+            "costo_laboral_total": float(costo_laboral_total),
+            "seguro_vida_cct_prima": float(seguro_vida_cct_prima_monto),
+            "seguro_vida_cct_trabajador": float(seguro_vida_cct_trabajador),
+            "seguro_vida_cct_empleador": float(seguro_vida_cct_empleador),
         },
         "recibo_sac": (
             {

@@ -858,6 +858,29 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
   </div>
 </details>
+<div class="note" id="employerCostBox" style="margin-top:8px">
+  <strong>Contribuciones del empleador / Costo laboral</strong>
+  <div id="employerCostNote" style="margin-top:4px;color:#64748b">Descuento art. 97 todos los meses si informas prima; contribuciones patronales desde mayo 2026.</div>
+  <div class="grid cols-4" style="margin-top:8px">
+    <div>
+      <label>Regimen contribuciones</label>
+      <select id="regimenContribuciones">
+        <option value="inciso_b">Inciso B 18%</option>
+        <option value="inciso_a">Inciso A 20,40%</option>
+        <option value="rifl">RIFL 5%</option>
+      </select>
+    </div>
+    <div><label>ART variable (%)</label><input id="artPct" min="0" step="0.01" type="number" value="0"/></div>
+    <div><label>FFEP / ART fijo</label><input id="artFijo" min="0" step="0.01" type="number" value="0"/></div>
+    <div><label>Prima Seguro vida art. 97 (editable/estim.)</label><input id="seguroVidaCctPrima" min="0" step="0.01" type="number" value="5305.49"/></div>
+  </div>
+  <div class="grid cols-4" style="margin-top:8px">
+    <div><label><input id="aplicaScvoLegal" type="checkbox" checked/> SCVO legal Dec. 1567/74</label></div>
+    <div><label><input id="aplicaOsecacPatronal" type="checkbox" checked/> OSECAC patronal $28.000</label></div>
+    <div><label><input id="aplicaLaEstrella" type="checkbox" checked/> La Estrella 1,60%</label></div>
+    <div><label><input id="aplicaInstitutoCapacitacion" type="checkbox" checked/> <span id="lblInstitutoCapacitacion">INACAP / Instituto</span></label></div>
+  </div>
+</div>
 </div>
 <!--MENSUAL_EXTRAS_END-->
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
@@ -889,6 +912,19 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </tr>
 </tfoot>
 </table>
+</div>
+<div id="employerContribSection" style="margin-top:16px">
+<div class="badge">Contribuciones del empleador</div>
+<div class="table-wrapper" style="margin-top:6px">
+<table class="table co-employer-table" id="employerContribTable">
+<thead><tr><th>Concepto</th><th class="right">Base</th><th class="right">Importe</th></tr></thead>
+<tbody id="tbodyEmployerContrib"><tr><td colspan="3">Sin calcular.</td></tr></tbody>
+<tfoot>
+<tr><td colspan="2"><strong>Total contribuciones empleador</strong></td><td class="right" id="totEmployerContrib">$0,00</td></tr>
+<tr><td colspan="2"><strong>Costo laboral total</strong></td><td class="right" id="costoLaboralTotal">$0,00</td></tr>
+</tfoot>
+</table>
+</div>
 </div>
 <div id="paneSac" style="display:none; margin-top:16px">
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
@@ -3322,6 +3358,8 @@ function applyBranchUI(){
     const showTur = isTurismoRama(rama);
     const showFun = isFunebresRama(rama);
     const showCall = isCallRama(rama);
+    try{ updateEmployerCostBranchUI(); }catch(_){ }
+    try{ updateEmployerCostNote(); }catch(_){ }
 
     // CO: en Fúnebres, dar más espacio a Categoría y correr Mes a la derecha
     const topSel = document.getElementById('topSelectors');
@@ -3710,6 +3748,78 @@ const p = await fetchJSON(url.toString());
     setText(netoId, money(t.neto || 0));
   }
 
+  function coCheckboxValue(id, fallback=true){
+    const el = $(id);
+    return el ? !!el.checked : !!fallback;
+  }
+
+  function appendEmployerCostParams(url){
+    url.searchParams.set("regimen_contribuciones", $("regimenContribuciones")?.value || "inciso_b");
+    url.searchParams.set("art_pct", String(Math.max(0, num($("artPct")?.value || 0) || 0)));
+    url.searchParams.set("art_fijo", String(Math.max(0, num($("artFijo")?.value || 0) || 0)));
+    url.searchParams.set("scvo_legal", coCheckboxValue("aplicaScvoLegal") ? "true" : "false");
+    url.searchParams.set("seguro_vida_cct_prima", String(Math.max(0, num($("seguroVidaCctPrima")?.value || 0) || 0)));
+    url.searchParams.set("osecac_adicional_patronal", coCheckboxValue("aplicaOsecacPatronal") ? "true" : "false");
+    url.searchParams.set("la_estrella", coCheckboxValue("aplicaLaEstrella") ? "true" : "false");
+    url.searchParams.set("instituto_capacitacion", coCheckboxValue("aplicaInstitutoCapacitacion") ? "true" : "false");
+  }
+
+  function updateEmployerCostNote(){
+    const mes = ($("mes")?.value || "").toString().slice(0, 7);
+    const active = !!mes && mes >= "2026-05";
+    setText("employerCostNote", active
+      ? "Contribuciones vigentes desde mayo 2026. El descuento del seguro art. 97 se aplica todos los meses si informas prima."
+      : "Antes de mayo 2026 solo se aplica el descuento del seguro art. 97 si informas prima; las contribuciones patronales no se muestran.");
+  }
+
+  function updateEmployerCostBranchUI(){
+    const rama = normRama($("rama")?.value || "");
+    let instituto = "INACAP / Instituto";
+    if(rama === "TURISMO") instituto = "INCATUR";
+    else if(rama === "CEREALES") instituto = "INCAGRO";
+    else if(rama === "GENERAL" || rama === "FUNEBRES" || rama === "FUNEBRE" || rama === "AGUA POTABLE" || rama === "AGUA" || rama === "AGUAPOTABLE") instituto = "INACAP";
+    setText("lblInstitutoCapacitacion", instituto);
+
+    const estrella = $("aplicaLaEstrella");
+    if(estrella){
+      estrella.disabled = (rama === "CEREALES");
+      if(rama === "CEREALES") estrella.checked = false;
+      else if(!estrella.dataset.userTouched) estrella.checked = true;
+    }
+  }
+
+  function renderEmployerContributions(data){
+    const tbody = $("tbodyEmployerContrib");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    const contrib = data?.contribuciones_empleador || {};
+    const items = Array.isArray(contrib.items) ? contrib.items : [];
+    if(!items.length){
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 3;
+      td.textContent = "No aplica o no hay importes. Esta seccion rige desde mayo 2026.";
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    }else{
+      for(const it of items){
+        const tr = document.createElement("tr");
+        const tdC = document.createElement("td");
+        tdC.textContent = it?.concepto || "";
+        const tdB = document.createElement("td");
+        tdB.className = "right";
+        tdB.textContent = it?.base ? money(it.base) : "";
+        const tdI = document.createElement("td");
+        tdI.className = "right";
+        tdI.textContent = money(it?.importe || 0);
+        tr.append(tdC, tdB, tdI);
+        tbody.appendChild(tr);
+      }
+    }
+    setText("totEmployerContrib", money(contrib.total || data?.totales?.contribuciones_empleador || 0));
+    setText("costoLaboralTotal", money(contrib.costo_laboral_total || data?.totales?.costo_laboral_total || 0));
+  }
+
   function resetSacReceipt(){
     clearTbody("tbodySac");
     setText("sacSubtitle", "");
@@ -3802,6 +3912,7 @@ const p = await fetchJSON(url.toString());
     if(conex_cat && conex_cat !== "--") url.searchParams.set("conex_cat", conex_cat);
     if(conexiones > 0) url.searchParams.set("conexiones", String(conexiones));
     url.searchParams.set("fun_adic", fun_adics.join(","));
+    appendEmployerCostParams(url);
     return url;
   }
 
@@ -3931,6 +4042,7 @@ const p = await fetchJSON(url.toString());
       url.searchParams.set("km_menos100", String(km_menos100));
       url.searchParams.set("km_mas100", String(km_mas100));
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
+      appendEmployerCostParams(url);
 
       const data = await fetchJSON(url.toString());
 
@@ -3959,6 +4071,7 @@ const p = await fetchJSON(url.toString());
       }catch{ /* ignore */ }
       renderReceiptRows("tbodyMensual", data.items);
       setReceiptTotals("totRem", "totNR", "totDed", "neto", data.totales || {});
+      renderEmployerContributions(data);
 
       const sac = data?.recibo_sac;
       if(sac && Array.isArray(sac.items) && sac.items.length){
@@ -4047,6 +4160,25 @@ const p = await fetchJSON(url.toString());
     // En print siempre queremos tabla “limpia”
     tbl.classList.remove('table');
     tbl.classList.add('print-table');
+
+    if(tab !== 'final' && tab !== 'sac'){
+      const contribSrc = document.querySelector('#employerContribTable');
+      if(contribSrc){
+        const contribTbl = contribSrc.cloneNode(true);
+        contribTbl.classList.remove('table');
+        contribTbl.classList.add('print-table');
+        const wrap = document.createElement('div');
+        wrap.appendChild(tbl);
+        const h = document.createElement('div');
+        h.className = 'subheader';
+        h.style.marginTop = '4mm';
+        h.style.fontWeight = '700';
+        h.textContent = 'Contribuciones del empleador';
+        wrap.appendChild(h);
+        wrap.appendChild(contribTbl);
+        return wrap;
+      }
+    }
 
     return tbl;
   }
@@ -4341,8 +4473,11 @@ function wire(){
       await refreshPayload();
     });
 
-    $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } syncOsecacOptionText(); refreshPayload(); });
+    $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } syncOsecacOptionText(); updateEmployerCostNote(); refreshPayload(); });
     $("hs")?.addEventListener("change", () => { try{ updateWarnJornada23(); }catch(_){ } refreshPayload(); });
+    ["aplicaLaEstrella","aplicaInstitutoCapacitacion","aplicaScvoLegal","aplicaOsecacPatronal"].forEach(id => {
+      $(id)?.addEventListener("change", (ev) => { try{ ev.currentTarget.dataset.userTouched = "1"; }catch(_){ } });
+    });
 
     
 
@@ -5258,6 +5393,7 @@ function switchTab(tab){
       await refreshAdminSession();
       await refreshFeatureState({ adminView: !!window.__adminAccess });
       await loadMeta();
+      try{ updateEmployerCostBranchUI(); updateEmployerCostNote(); }catch(_){ }
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }catch(err){
       console.error(err);
