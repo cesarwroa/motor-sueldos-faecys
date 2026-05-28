@@ -516,7 +516,7 @@ def calcular_payload(
     # Ley 27.802 / art. 140 LCT: conceptos a cargo del empleador
     regimen_contribuciones: str = "inciso_b",
     art_pct: float = 0,
-    art_fijo: float = 0,
+    art_fijo: float = 1765,
     scvo_legal: bool = True,
     seguro_vida_cct_prima: float = 0,
     osecac_adicional_patronal: bool = True,
@@ -1658,7 +1658,7 @@ def calcular_payload(
     if art_fijo_monto:
         contribuciones_empleador_items.append(contrib_item("FFEP / ART fijo", art_fijo_monto))
 
-    scvo_monto = 424.62 if (aplica_costo_empleador and bool(scvo_legal)) else 0.0
+    scvo_monto = 424.62 if aplica_costo_empleador else 0.0
     if scvo_monto:
         contribuciones_empleador_items.append(contrib_item("Seguro de vida obligatorio Dec. 1567/74", scvo_monto))
 
@@ -1666,7 +1666,7 @@ def calcular_payload(
         contribuciones_empleador_items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_vida_cct_empleador, seguro_vida_cct_prima_monto))
 
     rama_norm = _norm_fold(base.get("rama"))
-    if aplica_costo_empleador and bool(instituto_capacitacion):
+    if aplica_costo_empleador:
         if rama_norm in ("GENERAL", "FUNEBRES", "FUNEBRE", "AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
             inacap_base = (
                 _basico_ref("GENERAL", mes, ["MAESTRANZA A", "MAESTRANZA  A"], "GENERAL")
@@ -1687,10 +1687,10 @@ def calcular_payload(
             if incagro_base:
                 contribuciones_empleador_items.append(contrib_item("INCAGRO (1%)", incagro_base * 0.01, incagro_base))
 
-    if aplica_costo_empleador and bool(osecac_adicional_patronal):
+    if aplica_costo_empleador:
         contribuciones_empleador_items.append(contrib_item("OSECAC contribucion patronal adicional", 28000.0))
 
-    if aplica_costo_empleador and bool(la_estrella) and rama_norm != "CEREALES" and mensual_rem_aportes:
+    if aplica_costo_empleador and rama_norm != "CEREALES" and mensual_rem_aportes:
         contribuciones_empleador_items.append(contrib_item("La Estrella (1,60%)", mensual_rem_aportes * 0.016, mensual_rem_aportes))
 
     total_contribuciones_empleador = round2(sum(float(x.get("importe") or 0.0) for x in contribuciones_empleador_items))

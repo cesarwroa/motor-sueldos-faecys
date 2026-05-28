@@ -871,14 +871,14 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       </select>
     </div>
     <div><label>ART variable (%)</label><input id="artPct" min="0" step="0.01" type="number" value="0"/></div>
-    <div><label>FFEP / ART fijo</label><input id="artFijo" min="0" step="0.01" type="number" value="0"/></div>
+    <div><label>FFEP / ART fijo</label><input id="artFijo" min="0" step="0.01" type="number" value="1765"/></div>
     <div><label>Prima Seguro vida art. 97 (editable/estim.)</label><input id="seguroVidaCctPrima" min="0" step="0.01" type="number" value="5305.49"/></div>
   </div>
   <div class="grid cols-4" style="margin-top:8px">
-    <div><label><input id="aplicaScvoLegal" type="checkbox" checked/> SCVO legal Dec. 1567/74</label></div>
-    <div><label><input id="aplicaOsecacPatronal" type="checkbox" checked/> OSECAC patronal $28.000</label></div>
-    <div><label><input id="aplicaLaEstrella" type="checkbox" checked/> La Estrella 1,60%</label></div>
-    <div><label><input id="aplicaInstitutoCapacitacion" type="checkbox" checked/> <span id="lblInstitutoCapacitacion">INACAP / Instituto</span></label></div>
+    <div><label>SCVO legal Dec. 1567/74</label><div class="inline-hint">Aplicado automaticamente</div></div>
+    <div><label>OSECAC patronal $28.000</label><div class="inline-hint">Aplicado automaticamente</div></div>
+    <div><label>La Estrella 1,60%</label><div class="inline-hint" id="laEstrellaAutoText">Aplicado automaticamente</div></div>
+    <div><label><span id="lblInstitutoCapacitacion">INACAP / Instituto</span></label><div class="inline-hint">Aplicado automaticamente</div></div>
   </div>
 </div>
 </div>
@@ -3757,11 +3757,11 @@ const p = await fetchJSON(url.toString());
     url.searchParams.set("regimen_contribuciones", $("regimenContribuciones")?.value || "inciso_b");
     url.searchParams.set("art_pct", String(Math.max(0, num($("artPct")?.value || 0) || 0)));
     url.searchParams.set("art_fijo", String(Math.max(0, num($("artFijo")?.value || 0) || 0)));
-    url.searchParams.set("scvo_legal", coCheckboxValue("aplicaScvoLegal") ? "true" : "false");
+    url.searchParams.set("scvo_legal", "true");
     url.searchParams.set("seguro_vida_cct_prima", String(Math.max(0, num($("seguroVidaCctPrima")?.value || 0) || 0)));
-    url.searchParams.set("osecac_adicional_patronal", coCheckboxValue("aplicaOsecacPatronal") ? "true" : "false");
-    url.searchParams.set("la_estrella", coCheckboxValue("aplicaLaEstrella") ? "true" : "false");
-    url.searchParams.set("instituto_capacitacion", coCheckboxValue("aplicaInstitutoCapacitacion") ? "true" : "false");
+    url.searchParams.set("osecac_adicional_patronal", "true");
+    url.searchParams.set("la_estrella", "true");
+    url.searchParams.set("instituto_capacitacion", "true");
   }
 
   function updateEmployerCostNote(){
@@ -3780,12 +3780,7 @@ const p = await fetchJSON(url.toString());
     else if(rama === "GENERAL" || rama === "FUNEBRES" || rama === "FUNEBRE" || rama === "AGUA POTABLE" || rama === "AGUA" || rama === "AGUAPOTABLE") instituto = "INACAP";
     setText("lblInstitutoCapacitacion", instituto);
 
-    const estrella = $("aplicaLaEstrella");
-    if(estrella){
-      estrella.disabled = (rama === "CEREALES");
-      if(rama === "CEREALES") estrella.checked = false;
-      else if(!estrella.dataset.userTouched) estrella.checked = true;
-    }
+    setText("laEstrellaAutoText", rama === "CEREALES" ? "No aplica en Cereales" : "Aplicado automaticamente");
   }
 
   function renderEmployerContributions(data){
@@ -4475,9 +4470,6 @@ function wire(){
 
     $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } syncOsecacOptionText(); updateEmployerCostNote(); refreshPayload(); });
     $("hs")?.addEventListener("change", () => { try{ updateWarnJornada23(); }catch(_){ } refreshPayload(); });
-    ["aplicaLaEstrella","aplicaInstitutoCapacitacion","aplicaScvoLegal","aplicaOsecacPatronal"].forEach(id => {
-      $(id)?.addEventListener("change", (ev) => { try{ ev.currentTarget.dataset.userTouched = "1"; }catch(_){ } });
-    });
 
     
 

@@ -1024,7 +1024,7 @@ def calcular(
     # Ley 27.802 / art. 140 LCT: conceptos a cargo del empleador (desde 2026-05)
     regimen_contribuciones: str = "inciso_b",
     art_pct: float = 0,
-    art_fijo: float = 0,
+    art_fijo: float = 1765,
     scvo_legal: bool = True,
     seguro_vida_cct_prima: float = 0,
     osecac_adicional_patronal: bool = True,
