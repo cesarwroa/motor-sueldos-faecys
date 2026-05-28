@@ -1023,7 +1023,7 @@ def calcular(
     fun_adic: Optional[List[str]] = Query(None),
     # Ley 27.802 / art. 140 LCT: conceptos a cargo del empleador (desde 2026-05)
     regimen_contribuciones: str = "inciso_b",
-    art_pct: float = 0,
+    art_pct: float = 3,
     art_fijo: float = 1765,
     scvo_legal: bool = True,
     seguro_vida_cct_prima: float = 0,
