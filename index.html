@@ -960,7 +960,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="card" id="paneFinal" style="display:none">
 <div class="grid cols-4">
 <div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
-<div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input checked="" id="lf_use_lastday" type="checkbox"/> Usar último día del mes si está vacío</label></div></div>
+<div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input id="lf_use_lastday" type="checkbox"/> Usar &uacute;ltimo d&iacute;a del mes seleccionado</label></div></div>
 <div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
 <div id="lf_hsWrap"><label>Jornada</label>
   <input id="lf_hs" type="number" min="1" max="48" value="48" list="lf_hs_list"/>
@@ -3083,15 +3083,29 @@ function toggleManejoCajaUI(){
     return (ALL_MESES||[]).filter(m => /^2026-/.test(m));
   }
 
+  function _currentYYYYMMLocal(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+  function defaultMesDisponible(disponibles){
+    if(!disponibles || !disponibles.length) return "";
+    const actual = _currentYYYYMMLocal();
+    if(disponibles.includes(actual)) return actual;
+    return disponibles[disponibles.length - 1];
+  }
+
   function refreshMesesForRama(rama){
     const pref = mesesPorRama(rama);
     const disponibles = (pref||[]).filter(m => (ALL_MESES||[]).includes(m));
-    fillSelect($("mes"), disponibles, "Mes");
     const sel = $("mes");
+    const cur = sel?.value || "";
+    fillSelect(sel, disponibles, "Mes");
     if(!sel) return;
-    // si no quedó seleccionado, usar el último disponible
-    if(!sel.value && disponibles.length){
-      sel.value = disponibles[disponibles.length-1];
+    if(disponibles.length && !disponibles.includes(cur)){
+      sel.value = defaultMesDisponible(disponibles);
     }
     syncOsecacOptionText();
   }
@@ -4685,6 +4699,10 @@ function wire(){
           const vng = $('lf_vac_no_goz');
           if(vng) delete vng.dataset.manual;
         }
+        if(id === 'lf_use_lastday' && $('lf_use_lastday')?.checked){
+          const last = _lastDayOfYYYYMM($('mes')?.value || '');
+          if(last && $('lf_egreso')) $('lf_egreso').value = last;
+        }
         _lfUpdateDerived();
         try{ updateWarnJornada23(); }catch(_){ }
         try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
@@ -4908,6 +4926,7 @@ function switchTab(tab){
         if(lfhs && hs && !lfhs.dataset.manual) lfhs.value = String(hs.value || 48);
       }catch(_){ }
 
+      try{ _ensureLfEgresoDefault(); }catch(_){ }
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }else{
       tMens.classList.add('active');
@@ -5045,16 +5064,7 @@ function switchTab(tab){
     const categoria = $('categoria')?.value || '';
     const jornada = getEffectiveJornada();
 
-    let fe = $('lf_egreso')?.value || '';
-    if(!fe && $('lf_use_lastday')?.checked){
-      const msel = $('mes')?.value || '';
-      const last = _lastDayOfYYYYMM(msel);
-      if(last){
-        fe = last;
-        if($('lf_egreso')) $('lf_egreso').value = fe;
-        _lfUpdateDerived();
-      }
-    }
+    let fe = _ensureLfEgresoDefault();
     if(!rama || !agrup || !categoria || !fe) return null;
 
     const fi = $('lf_ingreso')?.value || '';
@@ -5221,6 +5231,30 @@ function switchTab(tab){
     }catch(_){ return ''; }
   }
 
+  function _todayYMDLocal(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function _ensureLfEgresoDefault(){
+    const el = $('lf_egreso');
+    if(!el) return '';
+    if(el.value) return el.value;
+
+    let fe = '';
+    if($('lf_use_lastday')?.checked){
+      fe = _lastDayOfYYYYMM($('mes')?.value || '');
+    }
+    if(!fe) fe = _todayYMDLocal();
+
+    el.value = fe;
+    try{ _lfUpdateDerived(); }catch(_){ }
+    return fe;
+  }
+
   window.calcularFinal = async function(){
     try{
       const rama = $('rama')?.value || '';
@@ -5232,12 +5266,7 @@ function switchTab(tab){
       }
 
       let fi = $('lf_ingreso')?.value || '';
-      let fe = $('lf_egreso')?.value || '';
-      if(!fe && $('lf_use_lastday')?.checked){
-        fe = _lastDayOfYYYYMM($('mes')?.value || '');
-        if($('lf_egreso')) $('lf_egreso').value = fe;
-        try{ _lfUpdateDerived(); }catch(_){ }
-      }
+      let fe = _ensureLfEgresoDefault();
 
       if(!fi || !fe){
         alert('Completá Fecha de Alta (Ingreso) y Fecha de Baja (Egreso).');
