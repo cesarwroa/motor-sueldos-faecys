@@ -466,6 +466,226 @@ def find_row(rama: str, agrup: str, categoria: str, mes: str) -> Optional[Dict[s
         return None
     return res
 
+
+def _positive_float(value: Any) -> float:
+    try:
+        return max(0.0, float(value or 0.0))
+    except Exception:
+        return 0.0
+
+
+def _canon_ref(s: Any) -> str:
+    s = _norm(s).upper()
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _basico_ref_empleador(_rama: str, _mes: str, candidates: List[str], agrup_hint: Optional[str] = None) -> float:
+    idx = _build_index()
+    mes_k = _mes_to_key(_mes)
+    cand_can = [_canon_ref(c) for c in candidates]
+    agr_can = _canon_ref(agrup_hint) if agrup_hint else None
+
+    def _search(rama_k: str, agr_k: Optional[str]) -> float:
+        for contains in (False, True):
+            for (r, _agr, cat, m), rec in idx.get("payload", {}).items():
+                if r != rama_k or m != mes_k:
+                    continue
+                if agr_k and _canon_ref(_agr) != agr_k:
+                    continue
+                cat_c = _canon_ref(cat)
+                if "MENORES" in cat_c:
+                    continue
+                ok = any((cc in cat_c) for cc in cand_can) if contains else (cat_c in cand_can)
+                if ok:
+                    try:
+                        return float(rec.get("basico") or 0.0)
+                    except Exception:
+                        return 0.0
+        return 0.0
+
+    r0 = _canon_ref(_rama)
+    v = _search(r0, agr_can) if agr_can else 0.0
+    if not v:
+        v = _search(r0, None)
+    if (not v) and r0 != "GENERAL":
+        v = _search("GENERAL", agr_can) if agr_can else 0.0
+    if (not v) and r0 != "GENERAL":
+        v = _search("GENERAL", None)
+    return float(v or 0.0)
+
+
+def _calcular_contribuciones_empleador(
+    *,
+    rama: str,
+    agrup: str,
+    mes: str,
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 3,
+    art_fijo: float = 1765,
+    seguro_vida_cct_prima: float = 0,
+    osecac: bool = True,
+    jubilado: bool = False,
+    rem_aportes: float = 0,
+    os_base: float = 0,
+    base_fs: float = 0,
+    bruto_trabajador: float = 0,
+    basico_ref_fallback: float = 0,
+) -> Dict[str, Any]:
+    def contrib_item(concepto: str, importe: float, base_num: float = 0.0) -> Dict[str, Any]:
+        out = {
+            "concepto": concepto,
+            "importe": float(round2(importe)),
+        }
+        if base_num:
+            out["base"] = float(round2(base_num))
+        return out
+
+    regimen_raw = _norm_fold(regimen_contribuciones)
+    if "RIFL" in regimen_raw:
+        regimen_key = "rifl"
+        regimen_label = "RIFL 5%"
+        ss_rates = [
+            ("SIPA empleador (1,31%)", 1.31),
+            ("INSSJP / PAMI empleador (3%)", 3.0),
+            ("Asignaciones Familiares (0,57%)", 0.57),
+            ("Fondo Nacional de Empleo (0,12%)", 0.12),
+        ]
+    elif "20" in regimen_raw or regimen_raw.endswith("A"):
+        regimen_key = "inciso_a"
+        regimen_label = "Inciso A 20,40%"
+        ss_rates = [
+            ("SIPA empleador (12,35%)", 12.35),
+            ("INSSJP / PAMI empleador (1,58%)", 1.58),
+            ("Asignaciones Familiares (5,40%)", 5.40),
+            ("Fondo Nacional de Empleo (1,07%)", 1.07),
+        ]
+    else:
+        regimen_key = "inciso_b"
+        regimen_label = "Inciso B 18%"
+        ss_rates = [
+            ("SIPA empleador (10,77%)", 10.77),
+            ("INSSJP / PAMI empleador (1,58%)", 1.58),
+            ("Asignaciones Familiares (4,70%)", 4.70),
+            ("Fondo Nacional de Empleo (0,95%)", 0.95),
+        ]
+
+    aplica_costo_empleador = bool(_mes_to_key(mes) and _mes_to_key(mes) >= "2026-05")
+    items: List[Dict[str, Any]] = []
+    contrib_base_ss = round2(_positive_float(rem_aportes))
+    os_base_f = round2(_positive_float(os_base))
+    base_fs_f = round2(_positive_float(base_fs))
+
+    if aplica_costo_empleador and contrib_base_ss:
+        for label, pct in ss_rates:
+            items.append(contrib_item(label, contrib_base_ss * (pct / 100.0), contrib_base_ss))
+
+    if aplica_costo_empleador and bool(osecac) and not bool(jubilado) and os_base_f:
+        items.append(contrib_item("Obra Social empleador (6%)", os_base_f * 0.06, os_base_f))
+
+    art_pct_f = _positive_float(art_pct)
+    if aplica_costo_empleador and art_pct_f and base_fs_f:
+        items.append(contrib_item(f"ART variable ({_fmt_pct(art_pct_f)}%)", base_fs_f * (art_pct_f / 100.0), base_fs_f))
+
+    art_fijo_monto = round2(_positive_float(art_fijo)) if aplica_costo_empleador else 0.0
+    if art_fijo_monto:
+        items.append(contrib_item("FFEP / ART fijo", art_fijo_monto))
+
+    scvo_monto = 424.62 if aplica_costo_empleador else 0.0
+    if scvo_monto:
+        items.append(contrib_item("Seguro de vida obligatorio Dec. 1567/74", scvo_monto))
+
+    seguro_prima = round2(_positive_float(seguro_vida_cct_prima))
+    seguro_trabajador = round2(seguro_prima / 3.0) if seguro_prima else 0.0
+    seguro_empleador = round2(seguro_prima * (2.0 / 3.0)) if seguro_prima else 0.0
+    if aplica_costo_empleador and seguro_empleador:
+        items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_empleador, seguro_prima))
+
+    rama_norm = _norm_fold(rama)
+    if aplica_costo_empleador:
+        if rama_norm in ("GENERAL", "FUNEBRES", "FUNEBRE", "AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
+            inacap_base = (
+                _basico_ref_empleador("GENERAL", mes, ["MAESTRANZA A", "MAESTRANZA  A"], "GENERAL")
+                or _basico_ref_empleador(rama, mes, ["MAESTRANZA A", "MAESTRANZA  A"], agrup)
+                or _positive_float(basico_ref_fallback)
+            )
+            if inacap_base:
+                items.append(contrib_item("INACAP (0,5%)", inacap_base * 0.005, inacap_base))
+        elif rama_norm == "TURISMO":
+            incatur_base = round2(_positive_float(bruto_trabajador))
+            if incatur_base:
+                items.append(contrib_item("INCATUR (1%)", incatur_base * 0.01, incatur_base))
+        elif rama_norm == "CEREALES":
+            incagro_base = (
+                _basico_ref_empleador(rama, mes, ["MAESTRANZA A", "MAESTRANZA  A"], agrup)
+                or _positive_float(basico_ref_fallback)
+            )
+            if incagro_base:
+                items.append(contrib_item("INCAGRO (1%)", incagro_base * 0.01, incagro_base))
+
+        items.append(contrib_item("OSECAC contribucion patronal adicional", 28000.0))
+
+    if aplica_costo_empleador and rama_norm != "CEREALES" and contrib_base_ss:
+        items.append(contrib_item("La Estrella (1,60%)", contrib_base_ss * 0.016, contrib_base_ss))
+
+    total = round2(sum(float(x.get("importe") or 0.0) for x in items))
+    costo_total = round2(_positive_float(bruto_trabajador) + total)
+    return {
+        "regimen": regimen_key,
+        "regimen_label": regimen_label,
+        "items": items,
+        "total": float(total),
+        "costo_laboral_total": float(costo_total),
+        "seguro_vida_cct_prima": float(seguro_prima),
+        "seguro_vida_cct_trabajador": float(seguro_trabajador),
+        "seguro_vida_cct_empleador": float(seguro_empleador),
+    }
+
+
+def _tope_indemnizatorio_art245(rama: str, mes: str) -> Dict[str, Any]:
+    idx = _build_index()
+    rama_k = _canon_ref(rama)
+    mes_k = _mes_to_key(mes)
+    valores: List[float] = []
+    vistos = set()
+    for (r, agr, cat, m), rec in idx.get("payload", {}).items():
+        if r != rama_k or m != mes_k:
+            continue
+        cat_c = _canon_ref(cat)
+        if not cat_c or "MENORES" in cat_c:
+            continue
+        key = (r, agr, cat_c, m)
+        if key in vistos:
+            continue
+        vistos.add(key)
+        bas = _positive_float(rec.get("basico"))
+        nr = round2(_positive_float(rec.get("no_rem")) + _positive_float(rec.get("suma_fija")))
+        base_categoria = round2(bas + nr)
+        if base_categoria <= 0:
+            continue
+        presentismo = round2(base_categoria / 12.0)
+        valores.append(round2(base_categoria + presentismo))
+    if not valores:
+        return {
+            "aplica": False,
+            "rama": rama_k,
+            "mes": mes_k,
+            "cantidad": 0,
+            "promedio_base": 0.0,
+            "tope_mensual": 0.0,
+        }
+    promedio = round2(sum(valores) / len(valores))
+    return {
+        "aplica": True,
+        "rama": rama_k,
+        "mes": mes_k,
+        "cantidad": len(valores),
+        "promedio_base": float(promedio),
+        "tope_mensual": float(round2(promedio * 3.0)),
+        "incluye_presentismo": True,
+        "incluye_no_remunerativos": True,
+    }
+
 def calcular_payload(
     rama: str,
     agrup: str,
@@ -1918,8 +2138,9 @@ def _months_diff(fecha_ing: _dt.date, fecha_egr: _dt.date) -> int:
 
 def _years_art245(fecha_ing: _dt.date, fecha_egr: _dt.date) -> int:
     """Años computables art. 245: 1 por año o fracción mayor a 3 meses."""
+    # Periodo de prueba general: 6 meses.
     total_months = _months_diff(fecha_ing, fecha_egr)
-    if total_months < 3:
+    if total_months < 6:
         return 0
     years = total_months // 12
     rem_months = total_months % 12
@@ -1955,6 +2176,7 @@ def calcular_final_payload(
     mejor_total: float = 0.0,
     dias_mes: int = 0,
     vac_anuales: int = 0,
+    vac_dias_computables: float = 0.0,
     vac_no_gozadas_dias: float = 0.0,
     preaviso_dias: int = 0,
     integracion: bool = True,
@@ -1988,6 +2210,14 @@ def calcular_final_payload(
     fun_adic: str = "",
     jubilado: bool = False,
     embargo: float = 0.0,
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 3,
+    art_fijo: float = 1765,
+    scvo_legal: bool = True,
+    seguro_vida_cct_prima: float = 0,
+    osecac_adicional_patronal: bool = True,
+    la_estrella: bool = True,
+    instituto_capacitacion: bool = True,
 ) -> Dict[str, Any]:
     """Liquidación final básica (MVP Etapa 9).
 
@@ -2004,6 +2234,7 @@ def calcular_final_payload(
     fe = _parse_date_yyyy_mm_dd(fecha_egreso)
     if fe < fi:
         raise ValueError('La fecha de egreso no puede ser anterior a la de ingreso')
+    mes_baja = f"{fe.year:04d}-{fe.month:02d}"
 
     # Base mejor salario
     mr = float(mejor_rem or 0.0)
@@ -2054,9 +2285,12 @@ def calcular_final_payload(
     start_year = max(fi, _dt.date(fe.year, 1, 1))
     dias_anio = (fe - start_year).days + 1
     dias_anio = max(0, dias_anio)
+    dias_vac_computables = round2(_positive_float(vac_dias_computables))
+    if dias_vac_computables <= 0:
+        dias_vac_computables = float(dias_anio)
 
     # Sugerencia de vacaciones por proporción, pero el usuario define los días finales
-    vac_sugeridas = round2(vac_an * (dias_anio / 365.0)) if dias_anio else 0.0
+    vac_sugeridas = round2(vac_an * (dias_vac_computables / 365.0)) if dias_vac_computables else 0.0
     vac_no_goz = float(vac_no_gozadas_dias or 0.0)
     if vac_no_goz <= 0:
         vac_no_goz = float(vac_sugeridas or 0.0)
@@ -2167,17 +2401,25 @@ def calcular_final_payload(
     prev_total = round2(base_total * (prev_dias / 30.0)) if prev_dias else 0.0
     sac_prev_total = round2(prev_total / 12.0) if (sac_sobre_preaviso and prev_total) else 0.0
 
+    tope_indemnizatorio = _tope_indemnizatorio_art245(rama, mes_baja)
+    tope_mensual_245 = round2(tope_indemnizatorio.get("tope_mensual") or 0.0)
+    base_art245 = base_total
+    tope_aplicado = False
+    if tope_mensual_245 > 0 and base_total > tope_mensual_245:
+        base_art245 = tope_mensual_245
+        tope_aplicado = True
+
     # Indemnización antigüedad (art. 245)
     ind_antig = 0.0
     # Indemnización por fallecimiento (art. 248)
     ind_fall = 0.0
     tipo_n = (tipo or '').strip().upper()
     if tipo_n in ('DESPIDO_SIN_CAUSA', 'DESPIDO SIN CAUSA', 'SIN_CAUSA'):
-        ind_antig = round2(base_total * float(anios_245 or 0))
+        ind_antig = round2(base_art245 * float(anios_245 or 0))
 
     if tipo_n == 'FALLECIMIENTO':
         # Art. 248: indemnización por fallecimiento = 50% de la indemnización art. 245
-        ind_fall = round2(base_total * float(anios_245 or 0) * 0.5)
+        ind_fall = round2(base_art245 * float(anios_245 or 0) * 0.5)
 
     # Armado de items
     def item(concepto: str, r: float = 0.0, n: float = 0.0, i: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
@@ -2313,10 +2555,10 @@ def calcular_final_payload(
             items.append(item("SAC s/ preaviso", i=sac_prev_total, base_num=prev_total))
 
     if ind_fall:
-        items.append(item("Indemnización por fallecimiento (Art. 248)", i=ind_fall, base_num=base_total))
+        items.append(item("Indemnización por fallecimiento (Art. 248)", i=ind_fall, base_num=base_art245))
 
     if ind_antig:
-        items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_total))
+        items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_art245))
 
     # -----------------
     # Extras del mes de baja (mismos conceptos que en mensual, pero dentro de Liquidación Final)
@@ -2436,6 +2678,8 @@ def calcular_final_payload(
     base_fs = round2(rem_aportes + nr_aportable)
     faecys = round2(base_fs * 0.005) if base_fs else 0.0
     sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
+    seguro_vida_cct_prima_monto = round2(_positive_float(seguro_vida_cct_prima))
+    seguro_vida_cct_trabajador = round2(seguro_vida_cct_prima_monto / 3.0) if seguro_vida_cct_prima_monto else 0.0
 
     if bool(jubilado):
         # Jubilado: según criterio del sistema vigente
@@ -2473,9 +2717,9 @@ def calcular_final_payload(
     # Total de deducciones (para neto): debe contemplar todos los conceptos
     # que efectivamente se agregan a la columna de Deducciones.
     if bool(jubilado):
-        ded_pre = round2(jub + faecys + sind_solid + sind + sind_fijo_monto)
+        ded_pre = round2(jub + faecys + sind_solid + sind + sind_fijo_monto + seguro_vida_cct_trabajador)
     else:
-        ded_pre = round2(jub + pami + os_aporte + osecac_100 + faecys + sind_solid + sind + sind_fijo_monto)
+        ded_pre = round2(jub + pami + os_aporte + osecac_100 + faecys + sind_solid + sind + sind_fijo_monto + seguro_vida_cct_trabajador)
 
     neto_pre = round2((rem_total + nr_total + ind_total) - ded_pre)
 
@@ -2522,6 +2766,9 @@ def calcular_final_payload(
         if sind_fijo_monto:
             items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
 
+    if seguro_vida_cct_trabajador:
+        items.append(item("Seguro vida art. 97 CCT 130/75 (1/3)", d=seguro_vida_cct_trabajador, base_num=seguro_vida_cct_prima_monto))
+
     if embargo_monto:
         items.append(item("Embargo (desc.)", d=embargo_monto, base_num=neto_pre))
 
@@ -2529,6 +2776,23 @@ def calcular_final_payload(
     rem_total = round2(sum(x.get('r', 0.0) for x in items))
     nr_total = round2(sum(x.get('n', 0.0) for x in items))
     ind_total = round2(sum(x.get('i', 0.0) for x in items))
+    bruto_trabajador_total = round2(rem_total + nr_total + ind_total)
+    contribuciones_empleador = _calcular_contribuciones_empleador(
+        rama=rama,
+        agrup=agrup,
+        mes=mes_baja,
+        regimen_contribuciones=regimen_contribuciones,
+        art_pct=art_pct,
+        art_fijo=art_fijo,
+        seguro_vida_cct_prima=seguro_vida_cct_prima,
+        osecac=osecac,
+        jubilado=jubilado,
+        rem_aportes=rem_aportes,
+        os_base=os_base,
+        base_fs=base_fs,
+        bruto_trabajador=bruto_trabajador_total,
+        basico_ref_fallback=bas_full_r,
+    )
 
     return {
         "ok": True,
@@ -2547,8 +2811,15 @@ def calcular_final_payload(
         "mes_completo": bool(mes_completo),
         "dias_semestre": dias_sem,
         "vac_anuales": vac_an,
+        "vac_dias_computables": dias_vac_computables,
         "vac_no_gozadas_dias": vac_no_goz,
         "vac_sugeridas": vac_sugeridas,
+        "tope_indemnizatorio": {
+            **tope_indemnizatorio,
+            "base_original": float(round2(base_total)),
+            "base_aplicada": float(round2(base_art245)),
+            "aplicado": bool(tope_aplicado),
+        },
         "items": items,
         "totales": {
             "rem": rem_total,
@@ -2556,7 +2827,10 @@ def calcular_final_payload(
             "ind": ind_total,
             "ded": ded_total,
             "neto": neto,
+            "contribuciones_empleador": float(contribuciones_empleador.get("total") or 0.0),
+            "costo_laboral_total": float(contribuciones_empleador.get("costo_laboral_total") or 0.0),
         },
+        "contribuciones_empleador": contribuciones_empleador,
     }
 
 

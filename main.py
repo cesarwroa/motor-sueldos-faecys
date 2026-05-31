@@ -1097,6 +1097,7 @@ def calcular_final(
     # Parámetros
     dias_mes: int = 0,
     vac_anuales: int = 14,
+    vac_dias_computables: float = 0.0,
     vac_no_gozadas_dias: float = 0.0,
     preaviso_dias: int = 0,
     integracion: bool = True,
@@ -1130,6 +1131,14 @@ def calcular_final(
     fun_adic: Optional[List[str]] = Query(default=[]),
     jubilado: bool = False,
     embargo: float = 0,
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 3,
+    art_fijo: float = 1765,
+    scvo_legal: bool = True,
+    seguro_vida_cct_prima: float = 0,
+    osecac_adicional_patronal: bool = True,
+    la_estrella: bool = True,
+    instituto_capacitacion: bool = True,
     authorization: Optional[str] = Header(default=None),
 ):
     public_enabled = _is_public_feature_enabled("liquidacion_final_publica")
@@ -1150,6 +1159,7 @@ def calcular_final(
         mejor_total=mejor_total,
         dias_mes=dias_mes,
         vac_anuales=vac_anuales,
+        vac_dias_computables=vac_dias_computables,
         vac_no_gozadas_dias=vac_no_gozadas_dias,
         preaviso_dias=preaviso_dias,
         integracion=integracion,
@@ -1182,6 +1192,14 @@ def calcular_final(
         fun_adic=(";".join(fun_adic) if fun_adic else ""),
         jubilado=jubilado,
         embargo=embargo,
+        regimen_contribuciones=regimen_contribuciones,
+        art_pct=art_pct,
+        art_fijo=art_fijo,
+        scvo_legal=scvo_legal,
+        seguro_vida_cct_prima=seguro_vida_cct_prima,
+        osecac_adicional_patronal=osecac_adicional_patronal,
+        la_estrella=la_estrella,
+        instituto_capacitacion=instituto_capacitacion,
     )
 # ========= FUNEBRES =========
 @app.get("/adicionales-funebres")
