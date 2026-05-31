@@ -1652,6 +1652,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         }
       });
     }
+    if((!rawAccess || typeof rawAccess !== "object") && nextPublic.liquidacion_final_publica){
+      nextAccess.liquidacion_final = "public";
+    }
     nextPublic.liquidacion_final_publica = nextAccess.liquidacion_final === "public";
 
     window.__featureState = {
