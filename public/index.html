@@ -4341,7 +4341,8 @@ const p = await fetchJSON(url.toString());
 
   function useAdminAnexoFormat(tab){
     const key = monthKeyForTab(tab === 'sac' ? 'mensual' : tab);
-    return !!(key && key >= '2026-06' && isFeatureEnabledForAdmin('anexo_costo_empleador'));
+    const enabled = isFeaturePublic('anexo_costo_empleador') || isFeatureEnabledForAdmin('anexo_costo_empleador');
+    return !!(key && key >= '2026-06' && enabled);
   }
 
   function adminContributionData(data){
