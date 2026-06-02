@@ -169,6 +169,14 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   background:#e2e8f0;
   color:#475569;
 }
+.co-feature-fixed{
+  font-size:13px;
+  font-weight:800;
+  color:#047857;
+  background:#d1fae5;
+  border-radius:999px;
+  padding:8px 12px;
+}
 .co-feature-switch{
   display:inline-flex;
   align-items:center;
@@ -1191,6 +1199,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 .anexo-legend span{display:inline-flex;align-items:center;gap:2px}
 .anexo-legend i{display:inline-block;width:6px;height:6px}
 .anexo-pie-svg{display:block;width:154px;height:154px;margin:6px auto 0;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.co-feature-fixed{font-size:13px;font-weight:800;color:#047857;background:#d1fae5;border-radius:999px;padding:8px 12px}
 #printArea .anexo-cost-sheet{width:190mm;max-width:none;border:.5mm solid #4b4b4b}
 #printArea .anexo-desc{font-size:8.5px;padding:1.2mm 1.5mm;border-bottom:.45mm solid #555}
 #printArea .anexo-table-title{grid-template-columns:1fr 32mm;font-size:10px;border-bottom:.45mm solid #555}
@@ -1338,21 +1347,22 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   window.__adminEmployees = [];
   window.__adminActiveEmployeeId = "";
   const DEFAULT_FEATURE_ACCESS = Object.freeze({
-    liquidacion_final: "admin_only",
+    liquidacion_final: "public",
     registro_empresas: "admin_only",
-    anexo_costo_empleador: "admin_only",
+    anexo_costo_empleador: "public",
     portal_empresa: "admin_only",
     firma_digital: "admin_only",
     portal_empleado: "admin_only"
   });
   const DEFAULT_PUBLIC_FEATURES = Object.freeze({
-    liquidacion_final_publica: false
+    liquidacion_final_publica: true
   });
   const ADMIN_FEATURE_DEFS = Object.freeze([
     {
       key: "liquidacion_final",
       label: "Liquidacion Final",
-      description: "Controla la pestana de Liquidacion Final. En solo admin la probas vos; en publico queda disponible para todos."
+      description: "Disponible siempre para todos.",
+      fixed: true
     },
     {
       key: "registro_empresas",
@@ -1362,7 +1372,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     {
       key: "anexo_costo_empleador",
       label: "Anexo costo empleador",
-      description: "Muestra la previsualizacion y PDF tipo anexo desde escala 2026-06, solo con el detalle de costo empleador."
+      description: "Fijo desde escala 2026-06 para pantalla, impresion y PDF.",
+      fixed: true
     },
     {
       key: "portal_empresa",
@@ -1439,7 +1450,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
   function canUseFinal(){
-    return isFeaturePublic("liquidacion_final") || isFeatureEnabledForAdmin("liquidacion_final");
+    return true;
   }
 
   function formatFeatureUpdatedAt(value){
@@ -1647,12 +1658,14 @@ tr.co-total-row > td:first-child { font-weight: 700; }
           <span>${feature.description}</span>
         </div>
         <div class="co-feature-controls">
-          <span class="co-feature-status" id="featureStatus__${feature.key}">Oculta</span>
-          <select class="co-feature-select" id="featureAccess__${feature.key}">
-            <option value="off">Oculta</option>
-            <option value="admin_only">Solo admin</option>
-            <option value="public">Publica</option>
-          </select>
+          <span class="co-feature-status" id="featureStatus__${feature.key}">${feature.fixed ? 'Fija' : 'Oculta'}</span>
+          ${feature.fixed ? '<span class="co-feature-fixed">Siempre activa</span>' : `
+            <select class="co-feature-select" id="featureAccess__${feature.key}">
+              <option value="off">Oculta</option>
+              <option value="admin_only">Solo admin</option>
+              <option value="public">Publica</option>
+            </select>
+          `}
         </div>
       </div>
     `).join("");
@@ -1727,6 +1740,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     if((!rawAccess || typeof rawAccess !== "object") && nextPublic.liquidacion_final_publica){
       nextAccess.liquidacion_final = "public";
     }
+    nextAccess.liquidacion_final = "public";
+    nextAccess.anexo_costo_empleador = "public";
     nextPublic.liquidacion_final_publica = nextAccess.liquidacion_final === "public";
 
     window.__featureState = {
@@ -4341,8 +4356,7 @@ const p = await fetchJSON(url.toString());
 
   function useAdminAnexoFormat(tab){
     const key = monthKeyForTab(tab === 'sac' ? 'mensual' : tab);
-    const enabled = isFeaturePublic('anexo_costo_empleador') || isFeatureEnabledForAdmin('anexo_costo_empleador');
-    return !!(key && key >= '2026-06' && enabled);
+    return !!(key && key >= '2026-06');
   }
 
   function adminContributionData(data){
