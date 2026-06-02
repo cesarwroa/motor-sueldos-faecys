@@ -2921,7 +2921,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : "";
     const tbl = cloneTableForPrint(tab);
     const adminSource = isFinal ? window.__lastFinalCalc : window.__lastMensualCalc;
-    const adminData = isSac ? adminSource?.recibo_sac : adminSource;
+    const adminData = isSac && adminSource?.recibo_sac ? { ...adminSource.recibo_sac, __parentCalc: adminSource } : adminSource;
     if(useAdminAnexoFormat(tab) && adminData){
       area.innerHTML = `<div class="sheet">${buildAdminSheetHtml(adminData, adminSubtitle(tab, adminData))}</div>`;
       return;
@@ -4346,9 +4346,29 @@ const p = await fetchJSON(url.toString());
 
   function adminContributionData(data){
     const src = data?.contribuciones_empleador || data?.contribuciones || {};
-    const items = Array.isArray(src.items) ? src.items : [];
-    const total = num(src.total ?? data?.totales?.contribuciones_empleador ?? 0);
-    const costo = num(src.costo_laboral_total ?? data?.totales?.costo_laboral_total ?? 0);
+    let items = Array.isArray(src.items) ? src.items : [];
+    let total = num(src.total ?? data?.totales?.contribuciones_empleador ?? 0);
+    if((!items.length || !total) && data?.__parentCalc){
+      const parentContrib = data.__parentCalc?.contribuciones_empleador || {};
+      const parentItems = Array.isArray(parentContrib.items) ? parentContrib.items : [];
+      const t = data?.totales || {};
+      const rem = num(t.rem || 0);
+      const nr = num(t.nr || 0);
+      const baseTotal = rem + nr;
+      items = parentItems.map(it => {
+        const label = String(it?.concepto || it?.label || '');
+        const base = num(it?.base_num ?? it?.base ?? 0);
+        const importe = num(it?.importe ?? it?.monto ?? it?.total ?? 0);
+        if(!base || !importe) return null;
+        const rate = importe / base;
+        const key = adminGroupKey(label);
+        const nextBase = (key === 'obra') ? baseTotal : ((key === 'art') ? baseTotal : rem);
+        if(!nextBase || !rate) return null;
+        return { ...it, base_num: nextBase, importe: Math.round(nextBase * rate * 100) / 100 };
+      }).filter(Boolean);
+      total = Math.round(items.reduce((acc, it) => acc + num(it?.importe || 0), 0) * 100) / 100;
+    }
+    const costo = num(src.costo_laboral_total ?? data?.totales?.costo_laboral_total ?? 0) || num((data?.totales?.rem || 0) + (data?.totales?.nr || 0) + total);
     return { items, total, costo };
   }
 
@@ -4402,7 +4422,9 @@ const p = await fetchJSON(url.toString());
     const m = adminAnexoModel(data || {});
     const desc = escapeHtml(subtitle || '');
     const total = g => num((g?.empleador || 0) + (g?.trabajador || 0));
-    const amountOf = it => num(it?.importe ?? it?.monto ?? it?.total ?? it?.r ?? it?.n ?? it?.i ?? it?.d ?? 0);
+    const employerAmountOf = it => num(it?.importe ?? it?.monto ?? it?.total ?? 0);
+    const haberAmountOf = it => num(it?.r || 0) + num(it?.n || 0) + num(it?.i || 0);
+    const descuentoAmountOf = it => num(it?.d || 0);
     const conceptoOf = it => normalizeFAECYSConcept(String(it?.concepto || it?.label || ''));
     const unidadOf = it => {
       const c = conceptoOf(it);
@@ -4414,8 +4436,9 @@ const p = await fetchJSON(url.toString());
       const b = it?.base_num ?? it?.base ?? '';
       return typeof b === 'number' ? money(b) : escapeHtml(b);
     };
-    const renderConceptRows = items => {
-      const clean = (items || []).filter(it => conceptoOf(it) || amountOf(it));
+    const renderConceptRows = (items, amountFn) => {
+      const getAmount = amountFn || employerAmountOf;
+      const clean = (items || []).filter(it => conceptoOf(it) || getAmount(it));
       if(!clean.length){
         return `<tr><td>Etc..</td><td class="right"></td><td></td><td class="right">${money(0)}</td></tr>`;
       }
@@ -4423,14 +4446,14 @@ const p = await fetchJSON(url.toString());
         <td>${escapeHtml(conceptoOf(it) || 'Etc..')}</td>
         <td class="right">${escapeHtml(unidadOf(it))}</td>
         <td class="right">${baseOf(it)}</td>
-        <td class="right">${money(amountOf(it))}</td>
+        <td class="right">${money(getAmount(it))}</td>
       </tr>`).join('');
     };
     const contrib = adminContributionData(data || {});
-    const employerRows = renderConceptRows(contrib.items);
+    const employerRows = renderConceptRows(contrib.items, employerAmountOf);
     const allItems = Array.isArray(data?.items) ? data.items : [];
-    const haberesRows = renderConceptRows(allItems.filter(it => num(it?.r || 0) || num(it?.n || 0) || num(it?.i || 0)));
-    const descuentosRows = renderConceptRows(allItems.filter(it => num(it?.d || 0)));
+    const haberesRows = renderConceptRows(allItems.filter(it => haberAmountOf(it)), haberAmountOf);
+    const descuentosRows = renderConceptRows(allItems.filter(it => descuentoAmountOf(it)), descuentoAmountOf);
     const block = (label, g, extra) => `
       <div class="anexo-cost-block">
         <div><strong>${escapeHtml(label)}</strong><strong>${money(total(g))}</strong></div>
@@ -4547,7 +4570,7 @@ const p = await fetchJSON(url.toString());
     const sheets = [buildAdminSheetHtml(data, adminSubtitle(tab, data))];
     const sac = data?.recibo_sac;
     if(tab === 'mensual' && sac && sac.totales){
-      sheets.push(buildAdminSheetHtml(sac, adminSubtitle('sac', sac)));
+      sheets.push(buildAdminSheetHtml({ ...sac, __parentCalc: data }, adminSubtitle('sac', sac)));
     }
     host.innerHTML = sheets.join('<div style="height:12px"></div>');
     host.style.display = '';
@@ -4697,7 +4720,7 @@ const p = await fetchJSON(url.toString());
     const subheader = `Rama: ${rama} · Agrup: ${agrup} · Cat: ${cat}${fechas} · ${escala}`;
     const tbl = cloneTableForPrint(tab);
     const adminSource = isFinal ? window.__lastFinalCalc : window.__lastMensualCalc;
-    const adminData = isSac ? adminSource?.recibo_sac : adminSource;
+    const adminData = isSac && adminSource?.recibo_sac ? { ...adminSource.recibo_sac, __parentCalc: adminSource } : adminSource;
     if(useAdminAnexoFormat(tab) && adminData){
       area.innerHTML = `<div class="sheet">${buildAdminSheetHtml(adminData, adminSubtitle(tab, adminData))}</div>`;
       return;
