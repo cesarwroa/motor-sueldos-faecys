@@ -4393,9 +4393,9 @@ const p = await fetchJSON(url.toString());
     const s = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
     if(/INSSJP|PAMI/.test(s)) return 'pami';
     if(/OBRA SOCIAL|OSECAC/.test(s)) return 'obra';
-    if(/ART|FFEP/.test(s)) return 'art';
-    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567/.test(s)) return 'scvo';
     if(/FAECYS|SIND|INACAP|INCATUR|INCAGRO|ESTRELLA/.test(s)) return 'sindical';
+    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567|SEGURO VIDA ART\.?\s*97|CCT 130\/75/.test(s)) return 'scvo';
+    if(/ART VARIABLE|FFEP|ART FIJO/.test(s)) return 'art';
     if(/JUBIL|SIPA|SEGURIDAD SOCIAL|FONDO NACIONAL|ASIGNACIONES|FNE/.test(s)) return 'seguridad';
     return 'seguridad';
   }
