@@ -4357,6 +4357,8 @@ const p = await fetchJSON(url.toString());
       const baseTotal = rem + nr;
       items = parentItems.map(it => {
         const label = String(it?.concepto || it?.label || '');
+        const labelKey = label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+        if(/SEGURO VIDA ART\.?\s*97|CCT 130\/75 EMPLEADOR/.test(labelKey)) return null;
         const base = num(it?.base_num ?? it?.base ?? 0);
         const importe = num(it?.importe ?? it?.monto ?? it?.total ?? 0);
         if(!base || !importe) return null;
