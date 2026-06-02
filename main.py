@@ -59,6 +59,7 @@ FEATURE_PUBLIC_MAP = {
 DEFAULT_FEATURE_ACCESS = {
     "liquidacion_final": "admin_only",
     "registro_empresas": "admin_only",
+    "anexo_costo_empleador": "admin_only",
     "portal_empresa": "admin_only",
     "firma_digital": "admin_only",
     "portal_empleado": "admin_only",
@@ -76,6 +77,7 @@ class AdminLoginRequest(BaseModel):
 class AdminFeaturesUpdate(BaseModel):
     liquidacion_final: Optional[str] = None
     registro_empresas: Optional[str] = None
+    anexo_costo_empleador: Optional[str] = None
     portal_empresa: Optional[str] = None
     firma_digital: Optional[str] = None
     portal_empleado: Optional[str] = None

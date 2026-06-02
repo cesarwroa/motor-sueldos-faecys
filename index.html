@@ -1340,6 +1340,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   const DEFAULT_FEATURE_ACCESS = Object.freeze({
     liquidacion_final: "admin_only",
     registro_empresas: "admin_only",
+    anexo_costo_empleador: "admin_only",
     portal_empresa: "admin_only",
     firma_digital: "admin_only",
     portal_empleado: "admin_only"
@@ -1357,6 +1358,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       key: "registro_empresas",
       label: "Registro de empresas",
       description: "Habilita el laboratorio admin para cargar empresas de prueba antes del alta publica."
+    },
+    {
+      key: "anexo_costo_empleador",
+      label: "Anexo costo empleador",
+      description: "Muestra la previsualizacion y PDF tipo anexo desde escala 2026-06, solo con el detalle de costo empleador."
     },
     {
       key: "portal_empresa",
@@ -4335,7 +4341,7 @@ const p = await fetchJSON(url.toString());
 
   function useAdminAnexoFormat(tab){
     const key = monthKeyForTab(tab === 'sac' ? 'mensual' : tab);
-    return !!(key && key >= '2026-06');
+    return !!(key && key >= '2026-06' && isFeatureEnabledForAdmin('anexo_costo_empleador'));
   }
 
   function adminContributionData(data){
