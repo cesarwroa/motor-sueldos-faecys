@@ -57,15 +57,15 @@ FEATURE_PUBLIC_MAP = {
     "liquidacion_final": "liquidacion_final_publica",
 }
 DEFAULT_FEATURE_ACCESS = {
-    "liquidacion_final": "admin_only",
+    "liquidacion_final": "public",
     "registro_empresas": "admin_only",
-    "anexo_costo_empleador": "admin_only",
+    "anexo_costo_empleador": "public",
     "portal_empresa": "admin_only",
     "firma_digital": "admin_only",
     "portal_empleado": "admin_only",
 }
 DEFAULT_PUBLIC_FEATURES = {
-    "liquidacion_final_publica": False,
+    "liquidacion_final_publica": True,
 }
 
 
@@ -250,6 +250,8 @@ def _normalize_feature_store(raw: Any) -> Dict[str, Any]:
         if "liquidacion_final_publica" in raw_public and bool(raw_public.get("liquidacion_final_publica")):
             store["feature_access"]["liquidacion_final"] = "public"
 
+    store["feature_access"]["liquidacion_final"] = "public"
+    store["feature_access"]["anexo_costo_empleador"] = "public"
     store["public_features"] = _feature_access_to_public_features(store["feature_access"])
 
     updated_at = raw.get("updated_at")
@@ -644,6 +646,8 @@ def update_admin_features(payload: AdminFeaturesUpdate, authorization: Optional[
     if payload.liquidacion_final_publica is not None and payload.liquidacion_final is None:
         feature_access["liquidacion_final"] = "public" if bool(payload.liquidacion_final_publica) else "admin_only"
 
+    feature_access["liquidacion_final"] = "public"
+    feature_access["anexo_costo_empleador"] = "public"
     public_features = _feature_access_to_public_features(feature_access)
     store["feature_access"] = feature_access
     store["public_features"] = public_features
@@ -1143,11 +1147,6 @@ def calcular_final(
     instituto_capacitacion: bool = True,
     authorization: Optional[str] = Header(default=None),
 ):
-    public_enabled = _is_public_feature_enabled("liquidacion_final_publica")
-    admin_session = _optional_admin_session(authorization)
-    if not public_enabled and not admin_session:
-        raise HTTPException(status_code=403, detail="LiquidaciÃ³n Final disponible solo para administrador.")
-
     return calcular_final_payload(
         rama=rama,
         agrup=agrup,
