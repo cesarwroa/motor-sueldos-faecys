@@ -926,6 +926,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </table>
 </div>
 </div>
+<div class="rp-admin-preview" id="adminPreviewMensual" style="display:none"></div>
 <div id="paneSac" style="display:none; margin-top:16px">
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
 <button onclick="imprimirPDF('sac')" type="button">Imprimir / PDF SAC</button>
@@ -1083,6 +1084,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </table>
 </div>
 </div>
+<div class="rp-admin-preview" id="adminPreviewFinal" style="display:none"></div>
 <div class="note" id="lfTopeIndemnizatorioBox" style="margin-top:8px">
   <strong>Tope indemnizatorio art. 245</strong>
   <div id="lfTopeIndemnizatorio">Sin calcular.</div>
@@ -1150,6 +1152,70 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 #printArea .sheet-duplicate .co-receipt-company-line{font-size:6.3px;margin-bottom:.5mm}
 #printArea .sheet-duplicate .co-receipt-company-meta{font-size:6.3px;text-align:right;min-width:22mm}
 #printArea .sheet-duplicate .co-receipt-company-logo{max-width:22mm;max-height:12mm;object-fit:contain;margin-top:.6mm}
+.rp-admin-preview{margin-top:12px;border:1px solid #d0d7e2;background:#fff;padding:12px;color:#111827}
+.rp-admin-preview .admin-sheet{max-width:960px}
+.admin-sheet{font:11px/1.28 Arial,Helvetica,sans-serif;color:#111827}
+.anexo-cost-sheet{border:2px solid #4b4b4b;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#111;padding:0;max-width:960px}
+.anexo-desc{font-size:12px;font-weight:700;padding:5px 7px;border-bottom:2px solid #555;background:#fff}
+.anexo-table-title{display:grid;grid-template-columns:1fr 130px;align-items:center;background:#d9d9d9;border-bottom:2px solid #555;font-size:13px;font-weight:900;text-align:center}
+.anexo-table-title span{padding:4px 7px}
+.anexo-table-title strong{text-align:right;padding:4px 7px;border-left:1px solid #777}
+.anexo-main-table{width:100%;border-collapse:collapse;table-layout:fixed;border-bottom:2px solid #555}
+.anexo-main-table th,.anexo-main-table td{border-right:1px solid #777;padding:4px 5px;font-size:11px;line-height:1.18}
+.anexo-main-table th{background:#d9d9d9;border-bottom:1px solid #777;text-align:center;font-size:8px;font-weight:900}
+.anexo-main-table th:nth-child(1),.anexo-main-table td:nth-child(1){width:34%;text-align:left}
+.anexo-main-table th:nth-child(2),.anexo-main-table td:nth-child(2){width:12%;text-align:right}
+.anexo-main-table th:nth-child(3),.anexo-main-table td:nth-child(3){width:24%;text-align:right}
+.anexo-main-table th:nth-child(4),.anexo-main-table td:nth-child(4){width:30%;text-align:right;border-right:0}
+.anexo-main-table tbody{height:154px}
+.anexo-main-table tbody tr:last-child td{padding-bottom:14px}
+.anexo-bruto-table tbody{height:178px}
+.anexo-band{display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1fr;align-items:center;background:#d9d9d9;border-bottom:2px solid #555;font-size:14px;font-weight:800}
+.anexo-band span{padding:4px 7px;border-right:1px solid #777;text-align:right}
+.anexo-band span:first-child{text-align:left}
+.anexo-band span:last-child{border-right:0}
+.anexo-neto{display:grid;grid-template-columns:1fr 170px;align-items:center;background:#d9d9d9;border-bottom:2px solid #555;font-size:17px;font-weight:900}
+.anexo-neto span{text-align:center;padding:5px 6px}
+.anexo-neto strong{text-align:right;padding:5px 7px}
+.anexo-main{display:grid;grid-template-columns:1fr 300px;gap:12px;padding:8px 10px 6px}
+.anexo-detail-title{text-align:center;text-decoration:underline;font-size:14px;font-weight:900;margin-bottom:6px}
+.anexo-cost-grid{display:grid;grid-template-columns:1fr 1fr;gap:34px}
+.anexo-cost-block{margin-bottom:14px;font-size:12px}
+.anexo-cost-block div{display:grid;grid-template-columns:1fr 86px;gap:8px;margin:2px 0}
+.anexo-cost-block div:first-child{font-weight:900}
+.anexo-cost-block strong:last-child,.anexo-cost-block span:last-child{text-align:right}
+.anexo-note{font-size:11px;margin-top:5px}
+.anexo-chart-card{border:1px solid #d9d9d9;border-radius:8px;padding:8px;background:#fff;box-shadow:0 0 0 1px #f0f0f0 inset;min-height:220px}
+.anexo-chart-title{text-align:center;font-size:20px;margin:0 0 4px;color:#111}
+.anexo-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 8px;font-size:8px;margin-bottom:4px}
+.anexo-legend span{display:inline-flex;align-items:center;gap:2px}
+.anexo-legend i{display:inline-block;width:6px;height:6px}
+.anexo-pie-svg{display:block;width:154px;height:154px;margin:6px auto 0;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+#printArea .anexo-cost-sheet{width:190mm;max-width:none;border:.5mm solid #4b4b4b}
+#printArea .anexo-desc{font-size:8.5px;padding:1.2mm 1.5mm;border-bottom:.45mm solid #555}
+#printArea .anexo-table-title{grid-template-columns:1fr 32mm;font-size:10px;border-bottom:.45mm solid #555}
+#printArea .anexo-table-title span,#printArea .anexo-table-title strong{padding:.9mm 1.5mm}
+#printArea .anexo-main-table{border-bottom:.45mm solid #555}
+#printArea .anexo-main-table th,#printArea .anexo-main-table td{padding:.8mm 1mm;font-size:7.2px;line-height:1.15;border-right:.25mm solid #777}
+#printArea .anexo-main-table th{font-size:5.5px;border-bottom:.25mm solid #777}
+#printArea .anexo-main-table th:nth-child(4),#printArea .anexo-main-table td:nth-child(4){border-right:0}
+#printArea .anexo-main-table tbody{height:34mm}
+#printArea .anexo-main-table tbody tr:last-child td{padding-bottom:2.5mm}
+#printArea .anexo-bruto-table tbody{height:37mm}
+#printArea .anexo-band{font-size:11px;border-bottom:.45mm solid #555}
+#printArea .anexo-band span{padding:1.1mm 1.5mm}
+#printArea .anexo-neto{font-size:13px;border-bottom:.45mm solid #555;grid-template-columns:1fr 38mm}
+#printArea .anexo-neto span,#printArea .anexo-neto strong{padding:1.4mm 1.5mm}
+#printArea .anexo-main{grid-template-columns:1fr 55mm;gap:3mm;padding:2mm 2.5mm 1.5mm}
+#printArea .anexo-detail-title{font-size:11px;margin-bottom:1.5mm}
+#printArea .anexo-cost-grid{gap:8mm}
+#printArea .anexo-cost-block{font-size:9px;margin-bottom:3mm}
+#printArea .anexo-cost-block div{grid-template-columns:1fr 22mm;gap:2mm;margin:.5mm 0}
+#printArea .anexo-note{font-size:8.5px;margin-top:1mm}
+#printArea .anexo-chart-card{min-height:43mm;border:.25mm solid #d9d9d9;border-radius:2mm;padding:1.8mm}
+#printArea .anexo-chart-title{font-size:13px;margin-bottom:1mm}
+#printArea .anexo-legend{font-size:5.8px;gap:.8mm 1.3mm;margin-bottom:1mm}
+#printArea .anexo-pie-svg{width:34mm;height:34mm;margin-top:1mm}
 </style>
 <!-- CO v97 patch (light listeners) -->
 <style>
@@ -2848,6 +2914,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const feFmt = isFinal ? fmtDateISO($("lf_egreso")?.value || "") : "";
     const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : "";
     const tbl = cloneTableForPrint(tab);
+    const adminSource = isFinal ? window.__lastFinalCalc : window.__lastMensualCalc;
+    const adminData = isSac ? adminSource?.recibo_sac : adminSource;
+    if(useAdminAnexoFormat(tab) && adminData){
+      area.innerHTML = `<div class="sheet">${buildAdminSheetHtml(adminData, adminSubtitle(tab, adminData))}</div>`;
+      return;
+    }
     const company = getSelectedAdminCompany();
     const employee = getSelectedAdminEmployee();
     const companyBlock = buildPrintCompanyBlock(company);
@@ -4173,7 +4245,7 @@ const p = await fetchJSON(url.toString());
         const rem = num(data?.totales?.rem);
         const nr = num(data?.totales?.nr);
         const key = [rama, agrup, categoria, mes, jornada].join("|");
-        window.__lastMensualCalc = {
+        window.__lastMensualSummary = {
           key,
           rama,
           agrup,
@@ -4190,6 +4262,7 @@ const p = await fetchJSON(url.toString());
       renderReceiptRows("tbodyMensual", data.items);
       setReceiptTotals("totRem", "totNR", "totDed", "neto", data.totales || {});
       renderEmployerContributions(data);
+      renderAdminPreview('mensual', data);
 
       const sac = data?.recibo_sac;
       if(sac && Array.isArray(sac.items) && sac.items.length){
@@ -4250,6 +4323,229 @@ const p = await fetchJSON(url.toString());
     return `${d}/${m}/${y}`;
   }
 
+
+  function monthKeyForTab(tab){
+    if(tab === 'final'){
+      const egreso = String($('lf_egreso')?.value || '');
+      if(/^\d{4}-\d{2}/.test(egreso)) return egreso.slice(0,7);
+    }
+    const mes = String($('mes')?.value || '');
+    return /^\d{4}-\d{2}/.test(mes) ? mes.slice(0,7) : '';
+  }
+
+  function useAdminAnexoFormat(tab){
+    const key = monthKeyForTab(tab === 'sac' ? 'mensual' : tab);
+    return !!(key && key >= '2026-06');
+  }
+
+  function adminContributionData(data){
+    const src = data?.contribuciones_empleador || data?.contribuciones || {};
+    const items = Array.isArray(src.items) ? src.items : [];
+    const total = num(src.total ?? data?.totales?.contribuciones_empleador ?? 0);
+    const costo = num(src.costo_laboral_total ?? data?.totales?.costo_laboral_total ?? 0);
+    return { items, total, costo };
+  }
+
+  function adminGroupKey(label){
+    const s = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+    if(/INSSJP|PAMI/.test(s)) return 'pami';
+    if(/OBRA SOCIAL|OSECAC/.test(s)) return 'obra';
+    if(/ART|FFEP/.test(s)) return 'art';
+    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567/.test(s)) return 'scvo';
+    if(/FAECYS|SIND|INACAP|INCATUR|INCAGRO|ESTRELLA/.test(s)) return 'sindical';
+    if(/JUBIL|SIPA|SEGURIDAD SOCIAL|FONDO NACIONAL|ASIGNACIONES|FNE/.test(s)) return 'seguridad';
+    return 'seguridad';
+  }
+
+  function adminAnexoModel(data){
+    const t = data?.totales || {};
+    const contrib = adminContributionData(data || {});
+    const rem = num(t.rem || 0);
+    const nr = num(t.nr || 0);
+    const ded = num(t.ded || 0);
+    const neto = num(t.neto ?? (rem + nr - ded));
+    const groups = {
+      sindical: { empleador: 0, trabajador: 0 },
+      seguridad: { empleador: 0, trabajador: 0 },
+      obra: { empleador: 0, trabajador: 0 },
+      pami: { empleador: 0, trabajador: 0 },
+      art: { empleador: 0, trabajador: 0 },
+      scvo: { empleador: 0, trabajador: 0 }
+    };
+    (Array.isArray(data?.items) ? data.items : []).forEach(it => {
+      const d = num(it?.d || 0);
+      if(!d) return;
+      const key = adminGroupKey(it?.concepto || '');
+      if(groups[key]) groups[key].trabajador += d;
+    });
+    contrib.items.forEach(it => {
+      const amount = num(it?.importe ?? it?.monto ?? it?.total ?? 0);
+      if(!amount) return;
+      const key = adminGroupKey(it?.concepto || it?.label || '');
+      if(groups[key]) groups[key].empleador += amount;
+    });
+    Object.keys(groups).forEach(k => {
+      groups[k].empleador = Math.round(groups[k].empleador * 100) / 100;
+      groups[k].trabajador = Math.round(groups[k].trabajador * 100) / 100;
+    });
+    const costo = contrib.costo || (rem + nr + contrib.total);
+    return { rem, nr, ded, neto, costo, groups };
+  }
+
+  function buildAdminSheetHtml(data, subtitle){
+    const m = adminAnexoModel(data || {});
+    const desc = escapeHtml(subtitle || '');
+    const total = g => num((g?.empleador || 0) + (g?.trabajador || 0));
+    const amountOf = it => num(it?.importe ?? it?.monto ?? it?.total ?? it?.r ?? it?.n ?? it?.i ?? it?.d ?? 0);
+    const conceptoOf = it => normalizeFAECYSConcept(String(it?.concepto || it?.label || ''));
+    const unidadOf = it => {
+      const c = conceptoOf(it);
+      const mPct = c.match(/\(([\d.,]+)%\)/);
+      if(mPct) return `${mPct[1]}%`;
+      return it?.unidad ?? it?.cantidad ?? '';
+    };
+    const baseOf = it => {
+      const b = it?.base_num ?? it?.base ?? '';
+      return typeof b === 'number' ? money(b) : escapeHtml(b);
+    };
+    const renderConceptRows = items => {
+      const clean = (items || []).filter(it => conceptoOf(it) || amountOf(it));
+      if(!clean.length){
+        return `<tr><td>Etc..</td><td class="right"></td><td></td><td class="right">${money(0)}</td></tr>`;
+      }
+      return clean.map(it => `<tr>
+        <td>${escapeHtml(conceptoOf(it) || 'Etc..')}</td>
+        <td class="right">${escapeHtml(unidadOf(it))}</td>
+        <td class="right">${baseOf(it)}</td>
+        <td class="right">${money(amountOf(it))}</td>
+      </tr>`).join('');
+    };
+    const contrib = adminContributionData(data || {});
+    const employerRows = renderConceptRows(contrib.items);
+    const allItems = Array.isArray(data?.items) ? data.items : [];
+    const haberesRows = renderConceptRows(allItems.filter(it => num(it?.r || 0) || num(it?.n || 0) || num(it?.i || 0)));
+    const descuentosRows = renderConceptRows(allItems.filter(it => num(it?.d || 0)));
+    const block = (label, g, extra) => `
+      <div class="anexo-cost-block">
+        <div><strong>${escapeHtml(label)}</strong><strong>${money(total(g))}</strong></div>
+        <div><span>Empleador</span><span>${money(g?.empleador || 0)}</span></div>
+        ${extra ? `<div><span>${escapeHtml(extra.label)}</span><span>${money(extra.amount || 0)}</span></div>` : `<div><span>Trabajador</span><span>${money(g?.trabajador || 0)}</span></div>`}
+      </div>`;
+    const chartValues = [
+      { label:'Sueldo Neto', color:'#4f81bd', amount:m.neto },
+      { label:'Seguridad Social', color:'#c0504d', amount:total(m.groups.seguridad) },
+      { label:'Costo Sindical', color:'#9bbb59', amount:total(m.groups.sindical) },
+      { label:'Obra Social', color:'#8064a2', amount:total(m.groups.obra) },
+      { label:'PAMI', color:'#4bacc6', amount:total(m.groups.pami) },
+      { label:'ART', color:'#f79646', amount:total(m.groups.art) }
+    ];
+    const rawChartBase = chartValues.reduce((acc, x) => acc + Math.max(0, x.amount), 0);
+    const chartSlices = chartValues.map(x => ({ ...x, drawAmount: rawChartBase ? Math.max(0, x.amount) : 1 }));
+    const chartBase = chartSlices.reduce((acc, x) => acc + x.drawAmount, 0) || chartSlices.length;
+    const polar = (cx, cy, r, deg) => {
+      const a = (deg - 90) * Math.PI / 180;
+      return { x: cx + (r * Math.cos(a)), y: cy + (r * Math.sin(a)) };
+    };
+    let accDeg = 0;
+    const svgSlices = chartSlices.map(x => {
+      const deg = (x.drawAmount / chartBase) * 360;
+      const start = accDeg;
+      const end = accDeg + deg;
+      accDeg = end;
+      const mid = start + deg / 2;
+      const off = polar(0, 0, 7, mid);
+      const cx = 80 + off.x;
+      const cy = 86 + off.y;
+      const p1 = polar(cx, cy, 54, start);
+      const p2 = polar(cx, cy, 54, end);
+      const large = deg > 180 ? 1 : 0;
+      const labelPos = polar(cx, cy, 34, mid);
+      const pct = Math.round((x.drawAmount / chartBase) * 100);
+      return `<g>
+        <path d="M ${cx.toFixed(2)} ${cy.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A 54 54 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} Z" fill="${x.color}" stroke="#fff" stroke-width="3"/>
+        <text x="${labelPos.x.toFixed(2)}" y="${labelPos.y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="10" font-weight="700">${pct}%</text>
+      </g>`;
+    }).join('');
+    const legend = chartValues.map(x => `<span><i style="background:${x.color}"></i>${escapeHtml(x.label)}</span>`).join('');
+    return `
+      <div class="admin-sheet anexo-cost-sheet">
+        ${desc ? `<div class="anexo-desc">${desc}</div>` : ''}
+        <div class="anexo-table-title"><span>COSTO TOTAL EMPLEADOR</span><strong>${money(m.costo)}</strong></div>
+        <table class="anexo-main-table">
+          <thead><tr><th>CONCEPTO</th><th>UNIDAD</th><th>BASE</th><th>MONTO</th></tr></thead>
+          <tbody>${employerRows}</tbody>
+        </table>
+        <div class="anexo-table-title"><span>SUB TOTAL CONTRIBUCIONES EMPLEADOR</span><strong>${money(contrib.total)}</strong></div>
+        <div class="anexo-table-title"><span>SUELDO BRUTO</span><strong>${money(m.rem + m.nr)}</strong></div>
+        <table class="anexo-main-table anexo-bruto-table">
+          <thead><tr><th>CONCEPTO</th><th>UNIDAD</th><th>BASE</th><th>MONTO</th></tr></thead>
+          <tbody>${haberesRows}${descuentosRows}</tbody>
+        </table>
+        <div class="anexo-band">
+          <span>COMPOSICION SALARIAL:</span>
+          <span>Remunerativo: ${money(m.rem)}</span>
+          <span>No Remunerativo: ${money(m.nr)}</span>
+          <span>Descuentos: ${money(m.ded)}</span>
+        </div>
+        <div class="anexo-neto"><span>SUELDO NETO $</span><strong>${money(m.neto)}</strong></div>
+        <div class="anexo-main">
+          <div class="anexo-detail">
+            <div class="anexo-detail-title">Detalle de la composicion salarial</div>
+            <div class="anexo-cost-grid">
+              <div>
+                ${block('Total Costo Sindical', m.groups.sindical)}
+                ${block('Total Seguridad Social', m.groups.seguridad)}
+                ${block('Total Obra Social:', m.groups.obra)}
+              </div>
+              <div>
+                ${block('Total costo INSSJP:', m.groups.pami)}
+                ${block('Total costo ART:', m.groups.art, {label:'Empleador', amount:m.groups.art.empleador})}
+                ${block('Total Costo SCVO:', m.groups.scvo, {label:'Empleador', amount:m.groups.scvo.empleador})}
+              </div>
+            </div>
+            <div class="anexo-note">Nota: Seguridad social del empleador incluye SIPA, Fondo Nacional de Empleo y Asignaciones Familiares</div>
+          </div>
+          <div class="anexo-chart-card">
+            <div class="anexo-chart-title">Costo total empleador</div>
+            <div class="anexo-legend">${legend}</div>
+            <svg class="anexo-pie-svg" viewBox="0 0 160 160" aria-hidden="true">${svgSlices}</svg>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function adminSubtitle(tab, data){
+    const isFinal = tab === 'final';
+    const mes = isFinal ? (($('lf_egreso')?.value || '').slice(0,7) || data?.mes || '') : (data?.mes || $('mes')?.value || '');
+    const rama = isFinal ? ($('lf_outRama')?.textContent || data?.rama || $('rama')?.value || '') : ($('outRama')?.textContent || data?.rama || $('rama')?.value || '');
+    const agrup = isFinal ? ($('lf_outAgrup')?.textContent || data?.agrup || $('agrup')?.value || '') : ($('outAgrup')?.textContent || data?.agrup || $('agrup')?.value || '');
+    const cat = isFinal ? ($('lf_outCat')?.textContent || data?.categoria || $('categoria')?.value || '') : ($('outCat')?.textContent || data?.categoria || $('categoria')?.value || '');
+    const parts = [];
+    if(rama) parts.push(`Rama: ${rama}`);
+    if(agrup) parts.push(`Agrup: ${agrup}`);
+    if(cat) parts.push(`Cat: ${cat}`);
+    if(mes) parts.push(`Escala ${mes}`);
+    if(tab === 'sac') parts.push('Aguinaldo');
+    return parts.join(' · ');
+  }
+
+  function renderAdminPreview(tab, data){
+    const id = tab === 'final' ? 'adminPreviewFinal' : 'adminPreviewMensual';
+    const host = $(id);
+    if(!host) return;
+    if(!data || !useAdminAnexoFormat(tab)){
+      host.style.display = 'none';
+      host.innerHTML = '';
+      return;
+    }
+    const sheets = [buildAdminSheetHtml(data, adminSubtitle(tab, data))];
+    const sac = data?.recibo_sac;
+    if(tab === 'mensual' && sac && sac.totales){
+      sheets.push(buildAdminSheetHtml(sac, adminSubtitle('sac', sac)));
+    }
+    host.innerHTML = sheets.join('<div style="height:12px"></div>');
+    host.style.display = '';
+  }
 
   function cloneTableForPrint(tab){
     const sel = (tab === 'final')
@@ -4394,6 +4690,12 @@ const p = await fetchJSON(url.toString());
     const fechas = isFinal ? ` · Ingreso: ${fiFmt} · Egreso: ${feFmt}` : '';
     const subheader = `Rama: ${rama} · Agrup: ${agrup} · Cat: ${cat}${fechas} · ${escala}`;
     const tbl = cloneTableForPrint(tab);
+    const adminSource = isFinal ? window.__lastFinalCalc : window.__lastMensualCalc;
+    const adminData = isSac ? adminSource?.recibo_sac : adminSource;
+    if(useAdminAnexoFormat(tab) && adminData){
+      area.innerHTML = `<div class="sheet">${buildAdminSheetHtml(adminData, adminSubtitle(tab, adminData))}</div>`;
+      return;
+    }
     const company = getSelectedAdminCompany();
     const employee = getSelectedAdminEmployee();
     const companyBlock = buildPrintCompanyBlock(company);
@@ -5574,6 +5876,7 @@ function switchTab(tab){
 
       // Guardar para re-render si se necesita
       window.__lastFinalCalc = data;
+      renderAdminPreview('final', data);
 
       setText('diagFinal', 'Calculado.');
       trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
