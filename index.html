@@ -1199,6 +1199,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 .anexo-legend span{display:inline-flex;align-items:center;gap:2px}
 .anexo-legend i{display:inline-block;width:6px;height:6px}
 .anexo-pie-svg{display:block;width:154px;height:154px;margin:6px auto 0;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.anexo-brand-footer{text-align:center;font-size:13px;font-weight:800;margin:6px 0 8px;color:#111}
 .co-feature-fixed{font-size:13px;font-weight:800;color:#047857;background:#d1fae5;border-radius:999px;padding:8px 12px}
 #printArea .anexo-cost-sheet{width:190mm;max-width:none;border:.5mm solid #4b4b4b}
 #printArea .anexo-desc{font-size:8.5px;padding:1.2mm 1.5mm;border-bottom:.45mm solid #555}
@@ -1225,6 +1226,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 #printArea .anexo-chart-title{font-size:13px;margin-bottom:1mm}
 #printArea .anexo-legend{font-size:5.8px;gap:.8mm 1.3mm;margin-bottom:1mm}
 #printArea .anexo-pie-svg{width:34mm;height:34mm;margin-top:1mm}
+#printArea .anexo-brand-footer{font-size:9px;margin:1mm 0 1.5mm}
 </style>
 <!-- CO v97 patch (light listeners) -->
 <style>
@@ -4393,8 +4395,8 @@ const p = await fetchJSON(url.toString());
     const s = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
     if(/INSSJP|PAMI/.test(s)) return 'pami';
     if(/OBRA SOCIAL|OSECAC/.test(s)) return 'obra';
-    if(/FAECYS|SIND|INACAP|INCATUR|INCAGRO|ESTRELLA/.test(s)) return 'sindical';
-    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567|SEGURO VIDA ART\.?\s*97|CCT 130\/75/.test(s)) return 'scvo';
+    if(/FAECYS|SIND|INACAP|INCATUR|INCAGRO|ESTRELLA|SEGURO VIDA ART\.?\s*97|CCT 130\/75/.test(s)) return 'sindical';
+    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567/.test(s)) return 'scvo';
     if(/ART VARIABLE|FFEP|ART FIJO/.test(s)) return 'art';
     if(/JUBIL|SIPA|SEGURIDAD SOCIAL|FONDO NACIONAL|ASIGNACIONES|FNE/.test(s)) return 'seguridad';
     return 'seguridad';
@@ -4471,12 +4473,15 @@ const p = await fetchJSON(url.toString());
     const allItems = Array.isArray(data?.items) ? data.items : [];
     const haberesRows = renderConceptRows(allItems.filter(it => haberAmountOf(it)), haberAmountOf);
     const descuentosRows = renderConceptRows(allItems.filter(it => descuentoAmountOf(it)), descuentoAmountOf);
-    const block = (label, g, extra) => `
+    const block = (label, g, opts = {}) => {
+      const showTrabajador = opts.showTrabajador !== false;
+      return `
       <div class="anexo-cost-block">
         <div><strong>${escapeHtml(label)}</strong><strong>${money(total(g))}</strong></div>
         <div><span>Empleador</span><span>${money(g?.empleador || 0)}</span></div>
-        ${extra ? `<div><span>${escapeHtml(extra.label)}</span><span>${money(extra.amount || 0)}</span></div>` : `<div><span>Trabajador</span><span>${money(g?.trabajador || 0)}</span></div>`}
+        ${showTrabajador ? `<div><span>Trabajador</span><span>${money(g?.trabajador || 0)}</span></div>` : ''}
       </div>`;
+    };
     const chartValues = [
       { label:'Sueldo Neto', color:'#4f81bd', amount:m.neto },
       { label:'Seguridad Social', color:'#c0504d', amount:total(m.groups.seguridad) },
@@ -4545,8 +4550,8 @@ const p = await fetchJSON(url.toString());
               </div>
               <div>
                 ${block('Total costo INSSJP:', m.groups.pami)}
-                ${block('Total costo ART:', m.groups.art, {label:'Empleador', amount:m.groups.art.empleador})}
-                ${block('Total Costo SCVO:', m.groups.scvo, {label:'Empleador', amount:m.groups.scvo.empleador})}
+                ${block('Total costo ART:', m.groups.art, {showTrabajador:false})}
+                ${block('Total Costo SCVO:', m.groups.scvo)}
               </div>
             </div>
             <div class="anexo-note">Nota: Seguridad social del empleador incluye SIPA, Fondo Nacional de Empleo y Asignaciones Familiares</div>
@@ -4557,6 +4562,7 @@ const p = await fetchJSON(url.toString());
             <svg class="anexo-pie-svg" viewBox="0 0 160 160" aria-hidden="true">${svgSlices}</svg>
           </div>
         </div>
+        <div class="anexo-brand-footer">Calculadora de Comercio</div>
       </div>`;
   }
 
