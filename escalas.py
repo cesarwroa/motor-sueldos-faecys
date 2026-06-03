@@ -68,6 +68,41 @@ def _fmt_pct(x: float) -> str:
     return s
 
 
+def _fmt_unidad_num(x: Any) -> str:
+    """Formatea cantidades para la columna Unidad."""
+    try:
+        xf = float(x)
+    except Exception:
+        return ""
+    if abs(xf - round(xf)) < 1e-9:
+        return str(int(round(xf)))
+    return f"{xf:.2f}".rstrip("0").rstrip(".").replace(".", ",")
+
+
+def _fmt_unidad_pct(x: Any) -> str:
+    n = _fmt_unidad_num(x)
+    return f"{n}%" if n else ""
+
+
+def _fmt_unidad_anios(x: Any) -> str:
+    try:
+        xf = float(x or 0)
+    except Exception:
+        return ""
+    if xf <= 0:
+        return ""
+    n = _fmt_unidad_num(xf)
+    return f"{n} año" if abs(xf - 1.0) < 1e-9 else f"{n} años"
+
+
+def _unidad_pct_from_label(label: Any) -> str:
+    s = str(label or "")
+    m = re.search(r"\(([\d.,]+)\s*%\)", s)
+    if not m:
+        m = re.search(r"(?<![\d/])(\d+(?:[\.,]\d+)?)\s*%", s)
+    return f"{m.group(1)}%" if m else ""
+
+
 # ---------------------------
 # Utils
 # ---------------------------
@@ -532,11 +567,14 @@ def _calcular_contribuciones_empleador(
     bruto_trabajador: float = 0,
     basico_ref_fallback: float = 0,
 ) -> Dict[str, Any]:
-    def contrib_item(concepto: str, importe: float, base_num: float = 0.0) -> Dict[str, Any]:
+    def contrib_item(concepto: str, importe: float, base_num: float = 0.0, unidad: Any = "") -> Dict[str, Any]:
         out = {
             "concepto": concepto,
             "importe": float(round2(importe)),
         }
+        unidad_txt = str(unidad or "").strip() or _unidad_pct_from_label(concepto)
+        if unidad_txt:
+            out["unidad"] = unidad_txt
         if base_num:
             out["base"] = float(round2(base_num))
         return out
@@ -1518,11 +1556,26 @@ def calcular_payload(
     sac_ded_total = round2(sac_ded_pre + sac_embargo_monto)
     sac_neto = round2(sac_neto_pre - sac_embargo_monto)
 
-    def item(concepto: str, r: float = 0.0, n: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
+    def item(
+        concepto: str,
+        r: float = 0.0,
+        n: float = 0.0,
+        d: float = 0.0,
+        base_num: float = 0.0,
+        unidad: Any = "",
+    ) -> Dict[str, Any]:
         out = {"concepto": concepto, "r": float(r), "n": float(n), "d": float(d)}
+        unidad_txt = str(unidad or "").strip() or _unidad_pct_from_label(concepto)
+        if unidad_txt:
+            out["unidad"] = unidad_txt
         if base_num:
             out["base"] = float(base_num)
         return out
+
+    dias_basico_unidad = max(0, 30 - int(aus_dias or 0) - int(susp_d or 0))
+    unidad_dias_basico = _fmt_unidad_num(dias_basico_unidad)
+    unidad_antig = _fmt_unidad_anios(anios_antig)
+    unidad_presentismo = _fmt_unidad_pct(100.0 / 12.0)
 
     def append_aporte_items(
         target: List[Dict[str, Any]],
@@ -1540,68 +1593,68 @@ def calcular_payload(
         sind_fijo_val: float,
     ) -> None:
         if bool(jubilado):
-            target.append(item("Jubilación 11% (Jubilado)", d=jub_val, base_num=rem_base))
-            target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val))
-            target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val))
+            target.append(item("Jubilación 11% (Jubilado)", d=jub_val, base_num=rem_base, unidad=_fmt_unidad_pct(11)))
+            target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
+            target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
             if sind_val:
-                target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val))
+                target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(sind_pct)))
             if sind_fijo_val:
                 target.append(item("Sindicato Afiliación", d=sind_fijo_val))
             return
 
-        target.append(item("Jubilación 11%", d=jub_val, base_num=rem_base))
-        target.append(item("Ley 19.032 (PAMI) 3%", d=pami_val, base_num=rem_base))
+        target.append(item("Jubilación 11%", d=jub_val, base_num=rem_base, unidad=_fmt_unidad_pct(11)))
+        target.append(item("Ley 19.032 (PAMI) 3%", d=pami_val, base_num=rem_base, unidad=_fmt_unidad_pct(3)))
 
         if bool(osecac):
-            target.append(item("Obra Social 3%", d=os_val, base_num=os_base_val))
+            target.append(item("Obra Social 3%", d=os_val, base_num=os_base_val, unidad=_fmt_unidad_pct(3)))
             if osecac_fijo_val:
                 target.append(item("OSECAC $100", d=osecac_fijo_val))
         else:
-            target.append(item("Obra Social 3%", d=0.0, base_num=os_base_val))
+            target.append(item("Obra Social 3%", d=0.0, base_num=os_base_val, unidad=_fmt_unidad_pct(3)))
 
-        target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val))
-        target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val))
+        target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
+        target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
 
         if sind_val:
-            target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val))
+            target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(sind_pct)))
         if sind_fijo_val:
             target.append(item("Sindicato Afiliación", d=sind_fijo_val))
 
-    items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas)]
+    items: List[Dict[str, Any]] = [item("Básico", r=bas, base_num=bas, unidad=unidad_dias_basico)]
 
     if zona:
-        items.append(item("Zona desfavorable", r=zona, base_num=bas))
+        items.append(item("Zona desfavorable", r=zona, base_num=bas, unidad=_fmt_unidad_pct(zona_pct_f)))
 
     if antig:
-        items.append(item("Antigüedad", r=antig, base_num=base_ant))
+        items.append(item("Antigüedad", r=antig, base_num=base_ant, unidad=unidad_antig))
 
     # Horas extra / nocturnas (2 filas o 4 si hay NR)
     if hex50_rem:
-        items.append(item("Horas extra 50% (Rem)", r=hex50_rem, base_num=hora_rem))
+        items.append(item("Horas extra 50% (Rem)", r=hex50_rem, base_num=hora_rem, unidad=_fmt_unidad_num(hex50_h)))
     if hex50_nr:
-        items.append(item("Horas extra 50% (NR)", n=hex50_nr, base_num=hora_nr))
+        items.append(item("Horas extra 50% (NR)", n=hex50_nr, base_num=hora_nr, unidad=_fmt_unidad_num(hex50_h)))
     if hex100_rem:
-        items.append(item("Horas extra 100% (Rem)", r=hex100_rem, base_num=hora_rem))
+        items.append(item("Horas extra 100% (Rem)", r=hex100_rem, base_num=hora_rem, unidad=_fmt_unidad_num(hex100_h)))
     if hex100_nr:
-        items.append(item("Horas extra 100% (NR)", n=hex100_nr, base_num=hora_nr))
+        items.append(item("Horas extra 100% (NR)", n=hex100_nr, base_num=hora_nr, unidad=_fmt_unidad_num(hex100_h)))
     if noct_rem:
-        items.append(item("Horas nocturnas (Rem)", r=noct_rem, base_num=hora_rem))
+        items.append(item("Horas nocturnas (Rem)", r=noct_rem, base_num=hora_rem, unidad=_fmt_unidad_num(hs_noct_h)))
     if noct_nr:
-        items.append(item("Horas nocturnas (NR)", n=noct_nr, base_num=hora_nr))
+        items.append(item("Horas nocturnas (NR)", n=noct_nr, base_num=hora_nr, unidad=_fmt_unidad_num(hs_noct_h)))
 
     # Adicional por KM — 2 filas (<=100 / >100)
     if km_rem_le:
         if is_turismo and tur_cat:
-            items.append(item(f'Adicional por KM (Turismo - Operativo {tur_cat}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le))
+            items.append(item(f'Adicional por KM (Turismo - Operativo {tur_cat}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le, unidad=_fmt_unidad_num(km_le100)))
         else:
             tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
-            items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le))
+            items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) ≤100 km ({km_le100:g} km)', r=km_rem_le, base_num=km_base_le, unidad=_fmt_unidad_num(km_le100)))
     if km_rem_gt:
         if is_turismo and tur_cat:
-            items.append(item(f'Adicional por KM (Turismo - Operativo {tur_cat}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
+            items.append(item(f'Adicional por KM (Turismo - Operativo {tur_cat}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt, unidad=_fmt_unidad_num(km_gt100)))
         else:
             tipo_txt = 'Ayudante' if km_tipo_n in ('AY','AYUDANTE') else 'Chofer'
-            items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt))
+            items.append(item(f'Adicional por KM (Art. 36 - {tipo_txt}) >100 km ({km_gt100:g} km)', r=km_rem_gt, base_num=km_base_gt, unidad=_fmt_unidad_num(km_gt100)))
 
     # Manejo de Caja (Art. 30) — NR exento (se paga pero NO integra bases de aportes/presentismo)
     if caja_exento:
@@ -1614,6 +1667,7 @@ def calcular_payload(
             f"Manejo de Caja ({lbl_tipo}) {lbl_pct} - NR exento",
             n=caja_exento,
             base_num=caja_base,
+            unidad=_fmt_unidad_pct(caja_pct * 100.0) if caja_pct else "",
         ))
 
     # Armado de vidriera (REM)
@@ -1622,6 +1676,7 @@ def calcular_payload(
             "Armado de vidriera (Art. 23) 3,83%",
             r=vid_rem,
             base_num=vid_base,
+            unidad=_fmt_unidad_pct(3.83),
         ))
 
     # A cuenta futuros aumentos (REM)
@@ -1637,6 +1692,7 @@ def calcular_payload(
             "Presentismo",
             r=presentismo,
             base_num=base_pres,
+            unidad=unidad_presentismo,
         ))
 
     # Fúnebres: adicionales seleccionados (según maestro)
@@ -1656,12 +1712,14 @@ def calcular_payload(
             'Adicional por Título',
             r=titulo_rem,
             base_num=bas,
+            unidad=_fmt_unidad_pct(titulo_pct_f),
         ))
     if titulo_nr:
         items.append(item(
             'Adicional por Título (NR)',
             n=titulo_nr,
             base_num=nr_base_total,
+            unidad=_fmt_unidad_pct(titulo_pct_f),
         ))
 
     # Conexiones (Agua Potable): no se agrega fila, porque el selector modifica el básico y los NR.
@@ -1671,12 +1729,14 @@ def calcular_payload(
             f"Feriado no trabajado ({fer_no} día{'s' if fer_no != 1 else ''})",
             r=fer_no_rem,
             base_num=base_fer_rem,
+            unidad=_fmt_unidad_num(fer_no),
         ))
     if fer_si_rem:
         items.append(item(
             f"Feriado trabajado ({fer_si} día{'s' if fer_si != 1 else ''})",
             r=fer_si_rem,
             base_num=base_fer_rem,
+            unidad=_fmt_unidad_num(fer_si),
         ))
 
     # Vacaciones gozadas: plus por divisor 1/25 vs 1/30
@@ -1685,14 +1745,15 @@ def calcular_payload(
             f"Vacaciones gozadas (plus 1/25) ({vac_goz_dias} día{'s' if vac_goz_dias != 1 else ''})",
             r=vac_goz_rem,
             base_num=base_fer_rem,
+            unidad=_fmt_unidad_num(vac_goz_dias),
         ))
 
     labels = _nr_labels(base["rama"], base.get("mes") or mes)
 
     if nr:
-        items.append(item(labels.get("no_rem", "No Remunerativo"), n=nr))
+        items.append(item(labels.get("no_rem", "No Remunerativo"), n=nr, unidad=unidad_dias_basico))
     if sf:
-        items.append(item(labels.get("suma_fija", "Suma Fija (NR)"), n=sf))
+        items.append(item(labels.get("suma_fija", "Suma Fija (NR)"), n=sf, unidad=unidad_dias_basico))
 
     # Viáticos (NR sin aportes)
     if viaticos:
@@ -1703,13 +1764,14 @@ def calcular_payload(
 
     # Derivados sobre NR (desglosado como filas NR)
     if antig_nr:
-        items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total))
+        items.append(item("Antigüedad (NR)", n=antig_nr, base_num=nr_base_total, unidad=unidad_antig))
     # Presentismo sobre NR: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila.
     if presentismo_habil and presentismo_nr:
         items.append(item(
             "Presentismo (NR)",
             n=presentismo_nr,
             base_num=base_pres_nr,
+            unidad=unidad_presentismo,
         ))
 
     # Feriados (NR)
@@ -1718,12 +1780,14 @@ def calcular_payload(
             f"Feriado no trabajado (NR) ({fer_no} día{'s' if fer_no != 1 else ''})",
             n=fer_no_nr,
             base_num=base_fer_nr,
+            unidad=_fmt_unidad_num(fer_no),
         ))
     if fer_si_nr:
         items.append(item(
             f"Feriado trabajado (NR) ({fer_si} día{'s' if fer_si != 1 else ''})",
             n=fer_si_nr,
             base_num=base_fer_nr,
+            unidad=_fmt_unidad_num(fer_si),
         ))
 
     if vac_goz_dias and vac_goz_nr:
@@ -1731,6 +1795,7 @@ def calcular_payload(
             f"Vacaciones gozadas (NR) (plus 1/25) ({vac_goz_dias} día{'s' if vac_goz_dias != 1 else ''})",
             n=vac_goz_nr,
             base_num=base_fer_nr,
+            unidad=_fmt_unidad_num(vac_goz_dias),
         ))
 
     # Ausencias injustificadas (descuento) – reduce bases de aportes vía rem_aportes
@@ -1739,6 +1804,7 @@ def calcular_payload(
             f"Ausencias injustificadas ({aus_dias} día{'s' if aus_dias != 1 else ''})",
             d=aus_rem,
             base_num=base_dia_aus,
+            unidad=_fmt_unidad_num(aus_dias),
         ))
 
     # Suspensión / Licencia sin goce (descuento)
@@ -1747,6 +1813,7 @@ def calcular_payload(
             f"Licencia sin goce / suspensión ({susp_d} día{'s' if susp_d != 1 else ''})",
             d=susp_rem,
             base_num=base_dia_susp,
+            unidad=_fmt_unidad_num(susp_d),
         ))
 
     if faltante_desc:
@@ -1767,6 +1834,7 @@ def calcular_payload(
             "Seguro vida art. 97 CCT 130/75 (1/3)",
             d=seguro_vida_cct_trabajador,
             base_num=seguro_vida_cct_prima_monto,
+            unidad="1/3",
         ))
 
     if mensual_embargo_monto:
@@ -1798,6 +1866,7 @@ def calcular_payload(
             r=sac_rem_total,
             n=sac_nr_total,
             base_num=sac_row_base,
+            unidad=_fmt_unidad_pct(50 if mes_num in (6, 12) else ((mes_num if mes_num <= 6 else mes_num - 6) * 100.0 / 12.0)),
         ))
         if sac_embargo_monto:
             sac_items.append(item(
@@ -1820,11 +1889,14 @@ def calcular_payload(
             sind_fijo_val=sac_sind_fijo_monto,
         )
 
-    def contrib_item(concepto: str, importe: float, base_num: float = 0.0) -> Dict[str, Any]:
+    def contrib_item(concepto: str, importe: float, base_num: float = 0.0, unidad: Any = "") -> Dict[str, Any]:
         out = {
             "concepto": concepto,
             "importe": float(round2(importe)),
         }
+        unidad_txt = str(unidad or "").strip() or _unidad_pct_from_label(concepto)
+        if unidad_txt:
+            out["unidad"] = unidad_txt
         if base_num:
             out["base"] = float(round2(base_num))
         return out
@@ -1883,7 +1955,7 @@ def calcular_payload(
         contribuciones_empleador_items.append(contrib_item("Seguro de vida obligatorio Dec. 1567/74", scvo_monto))
 
     if aplica_costo_empleador and seguro_vida_cct_empleador:
-        contribuciones_empleador_items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_vida_cct_empleador, seguro_vida_cct_prima_monto))
+        contribuciones_empleador_items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_vida_cct_empleador, seguro_vida_cct_prima_monto, unidad="2/3"))
 
     rama_norm = _norm_fold(base.get("rama"))
     if aplica_costo_empleador:
@@ -2422,13 +2494,26 @@ def calcular_final_payload(
         ind_fall = round2(base_art245 * float(anios_245 or 0) * 0.5)
 
     # Armado de items
-    def item(concepto: str, r: float = 0.0, n: float = 0.0, i: float = 0.0, d: float = 0.0, base_num: float = 0.0) -> Dict[str, Any]:
+    def item(
+        concepto: str,
+        r: float = 0.0,
+        n: float = 0.0,
+        i: float = 0.0,
+        d: float = 0.0,
+        base_num: float = 0.0,
+        unidad: Any = "",
+    ) -> Dict[str, Any]:
         out = {"concepto": concepto, "r": float(r), "n": float(n), "i": float(i), "d": float(d)}
+        unidad_txt = str(unidad or "").strip() or _unidad_pct_from_label(concepto)
+        if unidad_txt:
+            out["unidad"] = unidad_txt
         if base_num:
             out["base"] = float(base_num)
         return out
 
     items: List[Dict[str, Any]] = []
+    unidad_antig_final = _fmt_unidad_anios(anios_antig)
+    unidad_presentismo_final = _fmt_unidad_pct(100.0 / 12.0)
 
     # Desglose de DÍAS TRABAJADOS (Básico / Antigüedad / Presentismo), manteniendo totales.
     pct_ant_final = _antig_pct_rama(rama, anios_antig)
@@ -2481,14 +2566,14 @@ def calcular_final_payload(
                 b_n = round2(b_n + p_n)
                 p_n = 0.0
 
-            items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
+            items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first, unidad=_fmt_unidad_num(dias)))
             # Base para auditoría:
             # - Antigüedad: se calcula sobre Básico (prorrateado)
             # - Presentismo: se calcula sobre (Básico + Antigüedad) (prorrateados)
             base_ant = round2(b_r + b_n)
             base_pre = round2(b_r + b_n + a_r + a_n)
-            items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n, base_num=base_ant))
-            items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n, base_num=base_pre))
+            items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n, base_num=base_ant, unidad=unidad_antig_final))
+            items.append(item(f"Presentismo ({ctx})", r=p_r, n=p_n, base_num=base_pre, unidad=unidad_presentismo_final))
             return
 
         # Sin presentismo: ajuste por redondeo contra (Básico + Antigüedad)
@@ -2507,9 +2592,9 @@ def calcular_final_payload(
             b_n = round2(max(0.0, b_n + a_n))
             a_n = 0.0
 
-        items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first))
+        items.append(item(label_base, r=b_r, n=b_n, base_num=base_num_first, unidad=_fmt_unidad_num(dias)))
         # Sin presentismo, la antigüedad sigue basándose en el Básico prorrateado.
-        items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n, base_num=round2(b_r + b_n)))
+        items.append(item(f"Antigüedad ({ctx})", r=a_r, n=a_n, base_num=round2(b_r + b_n), unidad=unidad_antig_final))
 
     if mes_completo:
         suf_dm = f"mes completo ({dim} días)"
@@ -2527,12 +2612,12 @@ def calcular_final_payload(
     )
 
     if vac_pago_total:
-        items.append(item(f"Vacaciones no gozadas (Indem.)", i=vac_pago_total, base_num=base_total))
+        items.append(item(f"Vacaciones no gozadas (Indem.)", i=vac_pago_total, base_num=base_total, unidad=_fmt_unidad_num(vac_no_goz)))
         if sac_vac_total:
-            items.append(item("SAC s/ Vacaciones no gozadas (Indem.)", i=sac_vac_total, base_num=vac_pago_total))
+            items.append(item("SAC s/ Vacaciones no gozadas (Indem.)", i=sac_vac_total, base_num=vac_pago_total, unidad=_fmt_unidad_pct(100.0 / 12.0)))
 
     if sac_prop_total:
-        items.append(item("SAC proporcional", r=sac_prop_r, n=sac_prop_n, base_num=base_total))
+        items.append(item("SAC proporcional", r=sac_prop_r, n=sac_prop_n, base_num=base_total, unidad=_fmt_unidad_num(dias_sem)))
 
     if integ_total:
         suf_int = f"{dias_int} día{'s' if dias_int != 1 else ''}"
@@ -2546,19 +2631,19 @@ def calcular_final_payload(
             incluir_presentismo=presentismo_habil_baja,
         )
         if sac_integ_total:
-            items.append(item("SAC s/ integración", r=sac_integ_r, n=sac_integ_n, base_num=integ_total))
+            items.append(item("SAC s/ integración", r=sac_integ_r, n=sac_integ_n, base_num=integ_total, unidad=_fmt_unidad_pct(100.0 / 12.0)))
 
 
     if prev_total:
-        items.append(item(f"Preaviso ({prev_dias} día{'s' if prev_dias != 1 else ''})", i=prev_total, base_num=base_total))
+        items.append(item(f"Preaviso ({prev_dias} día{'s' if prev_dias != 1 else ''})", i=prev_total, base_num=base_total, unidad=_fmt_unidad_num(prev_dias)))
         if sac_prev_total:
-            items.append(item("SAC s/ preaviso", i=sac_prev_total, base_num=prev_total))
+            items.append(item("SAC s/ preaviso", i=sac_prev_total, base_num=prev_total, unidad=_fmt_unidad_pct(100.0 / 12.0)))
 
     if ind_fall:
-        items.append(item("Indemnización por fallecimiento (Art. 248)", i=ind_fall, base_num=base_art245))
+        items.append(item("Indemnización por fallecimiento (Art. 248)", i=ind_fall, base_num=base_art245, unidad=_fmt_unidad_num(anios_245)))
 
     if ind_antig:
-        items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_art245))
+        items.append(item(f"Indemnización antigüedad (Art. 245) ({anios_245} año{'s' if anios_245 != 1 else ''})", i=ind_antig, base_num=base_art245, unidad=_fmt_unidad_num(anios_245)))
 
     # -----------------
     # Extras del mes de baja (mismos conceptos que en mensual, pero dentro de Liquidación Final)
@@ -2637,7 +2722,7 @@ def calcular_final_payload(
                     base_num = float(it.get("base"))
             except Exception:
                 base_num = 0.0
-            items.append(item(con, r=r, n=n, d=d, base_num=base_num))
+            items.append(item(con, r=r, n=n, d=d, base_num=base_num, unidad=it.get("unidad", "")))
     except Exception:
         # Si algo falla, no frenamos la liquidación final.
         pass
@@ -2767,7 +2852,7 @@ def calcular_final_payload(
             items.append(item("Sindicato Afiliación", d=sind_fijo_monto))
 
     if seguro_vida_cct_trabajador:
-        items.append(item("Seguro vida art. 97 CCT 130/75 (1/3)", d=seguro_vida_cct_trabajador, base_num=seguro_vida_cct_prima_monto))
+        items.append(item("Seguro vida art. 97 CCT 130/75 (1/3)", d=seguro_vida_cct_trabajador, base_num=seguro_vida_cct_prima_monto, unidad="1/3"))
 
     if embargo_monto:
         items.append(item("Embargo (desc.)", d=embargo_monto, base_num=neto_pre))
