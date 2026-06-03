@@ -4375,7 +4375,6 @@ const p = await fetchJSON(url.toString());
       items = parentItems.map(it => {
         const label = String(it?.concepto || it?.label || '');
         const labelKey = label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-        if(/SEGURO VIDA ART\.?\s*97|CCT 130\/75 EMPLEADOR/.test(labelKey)) return null;
         const base = num(it?.base_num ?? it?.base ?? 0);
         const importe = num(it?.importe ?? it?.monto ?? it?.total ?? 0);
         if(!base || !importe) return null;
@@ -4395,8 +4394,8 @@ const p = await fetchJSON(url.toString());
     const s = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
     if(/INSSJP|PAMI/.test(s)) return 'pami';
     if(/OBRA SOCIAL|OSECAC/.test(s)) return 'obra';
-    if(/FAECYS|SIND|INACAP|INCATUR|INCAGRO|ESTRELLA|SEGURO VIDA ART\.?\s*97|CCT 130\/75/.test(s)) return 'sindical';
-    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567/.test(s)) return 'scvo';
+    if(/SCVO|SEGURO DE VIDA OBLIGATORIO|DEC 1567|SEGURO VIDA ART\.?\s*97|CCT 130\/75/.test(s)) return 'scvo';
+    if(/FAECYS|SIND|INACAP|INCATUR|INCAGRO|ESTRELLA/.test(s)) return 'sindical';
     if(/ART VARIABLE|FFEP|ART FIJO/.test(s)) return 'art';
     if(/JUBIL|SIPA|SEGURIDAD SOCIAL|FONDO NACIONAL|ASIGNACIONES|FNE/.test(s)) return 'seguridad';
     return 'seguridad';
@@ -4551,7 +4550,7 @@ const p = await fetchJSON(url.toString());
               <div>
                 ${block('Total costo INSSJP:', m.groups.pami)}
                 ${block('Total costo ART:', m.groups.art, {showTrabajador:false})}
-                ${block('Total Costo SCVO:', m.groups.scvo, {showTrabajador:false})}
+                ${block('Total Costo SCVO:', m.groups.scvo)}
               </div>
             </div>
             <div class="anexo-note">Nota: Seguridad social del empleador incluye SIPA, Fondo Nacional de Empleo y Asignaciones Familiares</div>
