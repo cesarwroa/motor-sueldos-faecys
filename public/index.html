@@ -4435,6 +4435,10 @@ const p = await fetchJSON(url.toString());
       const key = adminGroupKey(it?.concepto || it?.label || '');
       if(groups[key]) groups[key].empleador += amount;
     });
+    if(data?.__parentCalc){
+      groups.scvo.empleador = 0;
+      groups.scvo.trabajador = 0;
+    }
     Object.keys(groups).forEach(k => {
       groups[k].empleador = Math.round(groups[k].empleador * 100) / 100;
       groups[k].trabajador = Math.round(groups[k].trabajador * 100) / 100;
