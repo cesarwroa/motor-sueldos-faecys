@@ -4375,11 +4375,12 @@ const p = await fetchJSON(url.toString());
       items = parentItems.map(it => {
         const label = String(it?.concepto || it?.label || '');
         const labelKey = label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+        const key = adminGroupKey(label);
         const base = num(it?.base_num ?? it?.base ?? 0);
         const importe = num(it?.importe ?? it?.monto ?? it?.total ?? 0);
+        if(key === 'scvo' && importe) return { ...it };
         if(!base || !importe) return null;
         const rate = importe / base;
-        const key = adminGroupKey(label);
         const nextBase = (key === 'obra') ? baseTotal : ((key === 'art') ? baseTotal : rem);
         if(!nextBase || !rate) return null;
         return { ...it, base_num: nextBase, importe: Math.round(nextBase * rate * 100) / 100 };
@@ -4422,6 +4423,12 @@ const p = await fetchJSON(url.toString());
       const key = adminGroupKey(it?.concepto || '');
       if(groups[key]) groups[key].trabajador += d;
     });
+    if(data?.__parentCalc && !groups.scvo.trabajador){
+      (Array.isArray(data.__parentCalc.items) ? data.__parentCalc.items : []).forEach(it => {
+        const d = num(it?.d || 0);
+        if(d && adminGroupKey(it?.concepto || '') === 'scvo') groups.scvo.trabajador += d;
+      });
+    }
     contrib.items.forEach(it => {
       const amount = num(it?.importe ?? it?.monto ?? it?.total ?? 0);
       if(!amount) return;
