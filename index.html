@@ -24,7 +24,7 @@
 *{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
 .container{max-width:1200px;margin:24px auto;padding:0 16px} .card{background:#fff;border:1px solid var(--grid);border-radius:16px;padding:16px}
 .grid{display:grid;gap:12px} .cols-4{grid-template-columns:repeat(4,minmax(0,1fr))} .cols-3{grid-template-columns:repeat(3,1fr)}
-/* CO: mejorar espacio en selector de CategorÃ­a y evitar que Mes tape texto */
+/* CO: mejorar espacio en selector de Categoría y evitar que Mes tape texto */
 #topSelectors{grid-template-columns:1.1fr 1.2fr 2.8fr .9fr;}
 #topSelectors.co-funebres{grid-template-columns:1.1fr 1.2fr 3.6fr .7fr;}
 #topSelectors > div:nth-child(4){justify-self:end;}
@@ -56,7 +56,7 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
   top:50%;
   transform:translateY(-50%) rotate(-10deg);
   padding:4px 10px;
-  /* MÃ¡s traslÃºcido para que se lea el texto de atrÃ¡s */
+  /* Más traslúcido para que se lea el texto de atrás */
   border:3px solid rgba(220,38,38,.45);
   color:rgba(220,38,38,.60);
   font-weight:900;
@@ -464,8 +464,8 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 .right{text-align:right}
 @media print{ .no-print{display:none!important} body{background:#fff} .card{box-shadow:none} .lf-base{display:none!important} }
 
-/* === FORCE FORMAT Â· MVP exacto + OnePage === */
-@page { size: A4; margin: 10mm; } /* Ã¡rea util 190mm x 277mm */
+/* === FORCE FORMAT · MVP exacto + OnePage === */
+@page { size: A4; margin: 10mm; } /* área util 190mm x 277mm */
 #printArea .sheet { position:relative; width:190mm; min-height:260mm; margin:0 auto; font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial; color:#0f172a; font-size:11px; }
 #printArea .title { font-size:14px; font-weight:700; margin:0 0 3mm 0; }
 #printArea .subheader { font-size:11px; color:#475569; margin:0 0 2mm 0; }
@@ -524,7 +524,7 @@ button{cursor:pointer} .readonly{background:#f8fafc;color:#0f172a;pointer-events
 tr.co-total-row > td { vertical-align: middle; }
 tr.co-total-row > td:first-child { font-weight: 700; }
 </style>
-<!-- Estilo responsivo especÃ­fico para el panel de licencias/ausencias en dispositivos pequeÃ±os -->
+<!-- Estilo responsivo específico para el panel de licencias/ausencias en dispositivos pequeños -->
 <style id="co-inline-responsive">
   @media (max-width: 768px) {
     /* Forzar una sola columna en el panel de licencias y ausencias */
@@ -541,7 +541,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 </style>
 <style>
-/* CO: Ocultar nÃºmeros hasta presionar Calcular */
+/* CO: Ocultar números hasta presionar Calcular */
 .co-masked{color:transparent !important; text-shadow:none !important;}
 </style>
 </head>
@@ -557,50 +557,50 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
 <div class="tab tab-disabled" id="tabFinal" onclick="switchTab('final')" role="button" aria-disabled="true" title="Acceso exclusivo para administrador">
-  LiquidaciÃ³n Final
-  <span class="co-stamp" aria-hidden="true">PRÃ“XIMAMENTE</span>
+  Liquidación Final
+  <span class="co-stamp" aria-hidden="true">PRÓXIMAMENTE</span>
 </div>
 </div>
 <div class="card no-print" id="adminSessionBox">
   <div class="co-admin-state">
     <span class="co-admin-pill">Modo administrador activo</span>
     <span class="co-admin-email" id="adminSessionEmail"></span>
-    <span class="co-admin-help" id="adminSessionHelp">LiquidaciÃ³n Final y funciones ampliadas habilitadas.</span>
+    <span class="co-admin-help" id="adminSessionHelp">Liquidación Final y funciones ampliadas habilitadas.</span>
   </div>
-  <button class="co-admin-logout" id="adminLogoutBtn" type="button">Cerrar sesiÃ³n admin</button>
+  <button class="co-admin-logout" id="adminLogoutBtn" type="button">Cerrar sesión admin</button>
 </div>
 <div class="card no-print co-admin-panel" id="adminFeaturePanel">
   <div class="co-admin-panel-head">
     <div>
-      <div class="badge">Panel de administraciÃ³n</div>
-      <h2 class="co-admin-panel-title">HabilitaciÃ³n de funciones</h2>
-      <p class="co-admin-panel-copy">Desde acÃ¡ podÃ©s definir si cada mÃ³dulo queda oculto, sÃ³lo para pruebas admin o pÃºblico para todas las empresas y usuarios.</p>
+      <div class="badge">Panel de administración</div>
+      <h2 class="co-admin-panel-title">Habilitación de funciones</h2>
+      <p class="co-admin-panel-copy">Desde acá podés definir si cada módulo queda oculto, sólo para pruebas admin o público para todas las empresas y usuarios.</p>
     </div>
   </div>
   <div id="adminFeatureRows"></div>
   <div class="co-admin-panel-actions">
-    <button id="adminSaveFeaturesBtn" type="button">Guardar configuraciÃ³n</button>
+    <button id="adminSaveFeaturesBtn" type="button">Guardar configuración</button>
     <span class="co-admin-inline-feedback" id="adminFeaturesFeedback"></span>
   </div>
-  <div class="note">Ãšltima actualizaciÃ³n: <span id="adminFeaturesMeta">Sin cambios guardados todavÃ­a.</span></div>
+  <div class="note">Última actualización: <span id="adminFeaturesMeta">Sin cambios guardados todavía.</span></div>
 </div>
 <div class="card no-print co-admin-panel" id="adminCompaniesPanel">
   <div class="co-admin-panel-head">
     <div>
       <div class="co-admin-kicker">Laboratorio admin</div>
       <h2 class="co-admin-panel-title">Empresas de prueba</h2>
-      <p class="co-admin-panel-copy">Este mÃ³dulo es para que vos cargues empresas de ensayo antes de abrir el registro real al pÃºblico.</p>
+      <p class="co-admin-panel-copy">Este módulo es para que vos cargues empresas de ensayo antes de abrir el registro real al público.</p>
     </div>
   </div>
   <div class="note">Empresa activa en recibos:
     <select id="adminReceiptCompanySelect" style="max-width:320px; margin-left:8px">
       <option value="">Sin seleccionar</option>
     </select>
-    <span id="adminReceiptCompanyHelp" style="margin-left:8px">ElegÃ­ quÃ© empresa querÃ©s usar para previsualizar recibos.</span>
+    <span id="adminReceiptCompanyHelp" style="margin-left:8px">Elegí qué empresa querés usar para previsualizar recibos.</span>
   </div>
   <div class="co-admin-grid">
     <div>
-      <label for="adminCompanyName">RazÃ³n social</label>
+      <label for="adminCompanyName">Razón social</label>
       <input id="adminCompanyName" type="text" placeholder="Ej. Estudio Comercio SRL"/>
     </div>
     <div>
@@ -624,12 +624,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       <input id="adminCompanyEmail" type="email" placeholder="empresa@dominio.com"/>
     </div>
     <div>
-      <label for="adminCompanyTelefono">TelÃ©fono</label>
+      <label for="adminCompanyTelefono">Teléfono</label>
       <input id="adminCompanyTelefono" type="text" placeholder="11 5555 5555"/>
     </div>
     <div>
-      <label for="adminCompanyActivity">Actividad / DescripciÃ³n</label>
-      <input id="adminCompanyActivity" type="text" placeholder="Ej. ComercializaciÃ³n mayorista"/>
+      <label for="adminCompanyActivity">Actividad / Descripción</label>
+      <input id="adminCompanyActivity" type="text" placeholder="Ej. Comercialización mayorista"/>
     </div>
     <div>
       <label for="adminCompanyLogoUrl">O pegar URL externa</label>
@@ -638,18 +638,18 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <div>
       <label for="adminCompanyLogoFile">Logo de la empresa</label>
       <input id="adminCompanyLogoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,.svg,image/*"/>
-      <div class="note" id="adminCompanyLogoUploadStatus" style="margin-top:6px">PodÃ©s subir PNG, JPG, WEBP, GIF o SVG de hasta 5 MB.</div>
+      <div class="note" id="adminCompanyLogoUploadStatus" style="margin-top:6px">Podés subir PNG, JPG, WEBP, GIF o SVG de hasta 5 MB.</div>
       <div id="adminCompanyLogoPreviewWrap" style="display:none; margin-top:8px; border:1px dashed #cbd5e1; border-radius:12px; padding:10px; background:#fff">
         <div style="font-size:12px; color:#475569; margin-bottom:6px">Vista previa del logo</div>
         <img id="adminCompanyLogoPreviewImg" alt="Vista previa del logo" style="max-width:180px; max-height:80px; object-fit:contain; display:block"/>
       </div>
     </div>
     <div>
-      <label for="adminCompanyStreet">DirecciÃ³n</label>
+      <label for="adminCompanyStreet">Dirección</label>
       <input id="adminCompanyStreet" type="text" placeholder="Calle o avenida"/>
     </div>
     <div>
-      <label for="adminCompanyNumber">NÃºmero</label>
+      <label for="adminCompanyNumber">Número</label>
       <input id="adminCompanyNumber" type="text" placeholder="1234"/>
     </div>
     <div>
@@ -669,7 +669,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       <input id="adminCompanyProvince" type="text" placeholder="Buenos Aires"/>
     </div>
     <div>
-      <label for="adminCompanyPostalCode">CÃ³digo postal</label>
+      <label for="adminCompanyPostalCode">Código postal</label>
       <input id="adminCompanyPostalCode" type="text" placeholder="1428"/>
     </div>
     <div class="co-admin-col-span">
@@ -682,7 +682,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <span class="co-admin-inline-feedback" id="adminCompaniesFeedback"></span>
   </div>
   <div class="note">Empresas cargadas: <span id="adminCompaniesCount">0</span></div>
-  <div id="adminCompaniesEmpty" class="co-admin-empty">TodavÃ­a no cargaste empresas de prueba.</div>
+  <div id="adminCompaniesEmpty" class="co-admin-empty">Todavía no cargaste empresas de prueba.</div>
   <table class="co-admin-table" id="adminCompaniesTable" style="display:none">
     <thead>
       <tr>
@@ -700,9 +700,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="card no-print co-admin-panel" id="adminEmployeesPanel">
   <div class="co-admin-panel-head">
     <div>
-      <div class="co-admin-kicker">NÃ³mina admin</div>
+      <div class="co-admin-kicker">Nómina admin</div>
       <h2 class="co-admin-panel-title">Empleados de prueba</h2>
-      <p class="co-admin-panel-copy">CargÃ¡ los datos del trabajador que despuÃ©s van a aparecer en el encabezado del recibo.</p>
+      <p class="co-admin-panel-copy">Cargá los datos del trabajador que después van a aparecer en el encabezado del recibo.</p>
     </div>
   </div>
   <div class="note">
@@ -710,7 +710,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <select id="adminReceiptEmployeeSelect" style="max-width:360px; margin-left:8px">
       <option value="">Sin seleccionar</option>
     </select>
-    <span id="adminReceiptEmployeeHelp" style="margin-left:8px">ElegÃ­ una empresa y cargÃ¡ empleados de prueba.</span>
+    <span id="adminReceiptEmployeeHelp" style="margin-left:8px">Elegí una empresa y cargá empleados de prueba.</span>
   </div>
   <div class="co-admin-grid">
     <div>
@@ -730,12 +730,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       <input id="adminEmployeeSalary" type="text" placeholder="1.099.977,00"/>
     </div>
     <div>
-      <label for="adminEmployeeCategory">CategorÃ­a</label>
+      <label for="adminEmployeeCategory">Categoría</label>
       <input id="adminEmployeeCategory" type="text" placeholder="ADMINISTRATIVO C"/>
     </div>
     <div>
       <label for="adminEmployeeTask">Tarea</label>
-      <input id="adminEmployeeTask" type="text" placeholder="AdministraciÃ³n"/>
+      <input id="adminEmployeeTask" type="text" placeholder="Administración"/>
     </div>
     <div>
       <label for="adminEmployeeStartDate">Ingreso</label>
@@ -751,18 +751,18 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     </div>
     <div>
       <label for="adminEmployeeHealth">Obra social</label>
-      <input id="adminEmployeeHealth" type="text" placeholder="OS Personal Asociado a la AsociaciÃ³n Mut"/>
+      <input id="adminEmployeeHealth" type="text" placeholder="OS Personal Asociado a la Asociación Mut"/>
     </div>
     <div>
-      <label for="adminEmployeeHealthPeriod">PerÃ­odo obra social</label>
+      <label for="adminEmployeeHealthPeriod">Período obra social</label>
       <input id="adminEmployeeHealthPeriod" type="text" placeholder="03/2026"/>
     </div>
     <div>
-      <label for="adminEmployeeDeposit">DepÃ³sito previsional</label>
+      <label for="adminEmployeeDeposit">Depósito previsional</label>
       <input id="adminEmployeeDeposit" type="text" placeholder="COMAFI S.A."/>
     </div>
     <div>
-      <label for="adminEmployeeDepositDate">Fecha depÃ³sito</label>
+      <label for="adminEmployeeDepositDate">Fecha depósito</label>
       <input id="adminEmployeeDepositDate" type="date"/>
     </div>
     <div>
@@ -779,14 +779,14 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <span class="co-admin-inline-feedback" id="adminEmployeesFeedback"></span>
   </div>
   <div class="note">Empleados cargados: <span id="adminEmployeesCount">0</span></div>
-  <div id="adminEmployeesEmpty" class="co-admin-empty">TodavÃ­a no cargaste empleados para la empresa activa.</div>
+  <div id="adminEmployeesEmpty" class="co-admin-empty">Todavía no cargaste empleados para la empresa activa.</div>
   <table class="co-admin-table" id="adminEmployeesTable" style="display:none">
     <thead>
       <tr>
         <th>Legajo</th>
         <th>Empleado</th>
         <th>CUIL</th>
-        <th>CategorÃ­a</th>
+        <th>Categoría</th>
         <th>Ingreso</th>
         <th>Actualizado</th>
       </tr>
@@ -798,15 +798,15 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="grid cols-4" id="topSelectors">
 <div><label>Rama</label><select id="rama"></select></div>
 <div id="agrupWrap"><label>Agrupamiento</label><select id="agrup"></select></div>
-<div><label>CategorÃ­a</label><select id="categoria"></select></div>
+<div><label>Categoría</label><select id="categoria"></select></div>
 <div><label>Mes</label><select id="mes"></select></div>
 </div>
-<div class="note" id="status">Cargando maestroâ€¦</div>
+<div class="note" id="status">Cargando maestro…</div>
 </div>
 <div class="card" id="paneMensual">
 <div class="grid cols-4" id="mensualMainFields">
 <div><label>Fecha de alta</label><input id="alta" type="date"/></div>
-<div><label>AÃ±os de antigÃ¼edad</label><input id="anios" min="0" type="number" value="0"/></div>
+<div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div>
 <div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div>
 </div>
 <div id="mensualExtrasHost">
@@ -814,9 +814,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <strong>Agua Potable:</strong> Conexiones
   <span style="margin-left:6px">Cantidad:</span>
   <input id="aguaConexiones" type="number" min="0" step="1" value="0" style="max-width:120px; margin-left:4px"/>
-  <span style="margin-left:8px">CategorÃ­a:</span>
+  <span style="margin-left:8px">Categoría:</span>
   <select id="aguaConexCat" style="max-width:180px; margin-left:4px">
-    <option value="">â€”</option>
+    <option value="">—</option>
     <option value="A">A (hasta 500)</option>
     <option value="B">B (+7% s/A)</option>
     <option value="C">C (+7% s/B)</option>
@@ -825,26 +825,26 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <div id="aguaConexInfo" style="margin-top:6px; color:#64748b"></div>
 </div>
 <div class="note" id="funBlock" style="display:none">
-  <strong>FÃºnebres:</strong> Adicionales mensuales
+  <strong>Fúnebres:</strong> Adicionales mensuales
   <div id="funList" class="grid cols-4" style="margin-top:6px"></div>
   <div id="funHint" style="margin-top:6px; color:#64748b"></div>
 </div>
 <details class="note" id="mensualExtrasRoot" style="margin-top:8px">
   <summary style="cursor:pointer; font-weight:800">Extras Del Mes</summary>
   <div style="margin-top:8px">
-<div class="grid cols-4" style="margin-top:8px"><div><label>BÃ¡sico (Rem) â€” auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> â€” auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> â€” auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div></div>
-<div class="grid cols-4" style="margin-top:8px"><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>CategorÃ­a:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km mÃ¡s de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por TÃ­tulo (Turismo)</label><select id="turTitulo"><option value="0">Sin tÃ­tulo</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>ViÃ¡ticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
+<div class="grid cols-4" style="margin-top:8px"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
 <option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
-</select></div><div><label>OSECAC</label><select id="osecac"><option value="true">SÃ­ (3% NR + $100)</option><option value="false">No</option></select></div></div>
-<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A Â· B 48% base Cajeros B (anual, /12) Â· NR exento.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
+</select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>Manejo de Caja (opcional)</label><div class="inline-row"><input id="manejoCaja" type="checkbox"/> <select id="cajero_tipo" style="max-width:120px"><option value="">Tipo</option><option value="A">A (12,25%)</option><option value="B">B (48%)</option><option value="C">C (12,25%)</option></select><span class="inline-hint">A/C 12,25% base Cajeros A · B 48% base Cajeros B (anual, /12) · NR exento.</span></div></div><div><label for="faltanteCajaInput">Faltante de caja (desc.)</label><input id="faltanteCajaInput" min="0" step="0.01" type="number" value="0"/></div><div><label>Horas extra 50% (cant.)</label><input id="hex50" min="0" step="0.25" type="number" value="0"/></div><div><label>Horas extra 100% (cant.)</label><input id="hex100" min="0" step="0.25" type="number" value="0"/></div></div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
 <div><label>Adelanto de sueldo (desc.)</label><input id="adelantoSueldo" min="0" step="0.01" type="number" value="0"/></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
-<div><label>Feriados no trabajados (dÃ­as)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
-<div><label>Feriados trabajados (dÃ­as)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
-<div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/>Â <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
+<div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
+<div><label>Feriados trabajados (días)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
+<div><label>Afiliado sindicato</label><div><input id="afiliado" type="checkbox"/> <select id="afiliado_selector" style="max-width:140px"><option value="NO">No afiliado</option><option value="1">Afiliado 1%</option><option value="2">Afiliado 2%</option><option value="3">Afiliado 3%</option><option value="4">Afiliado 4%</option></select> <span style="margin-left:6px">+ fijo</span> <input id="afiliado_fijo" min="0" step="0.01" style="max-width:100px" type="number" value="0"/> Afiliado</div></div>
 </div>
 <div class="note" id="licenciasBox" style="margin-top:8px">
 
@@ -853,16 +853,16 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <label>Jubilado</label>
 <div><input id="coJub" type="checkbox"/></div>
 </div>
-<div><label>Vacaciones gozadas (dÃ­as)</label><input id="coVacGoz" min="0" step="1" type="number" value="0"/></div>
-<div><label>Licencia con goce (dÃ­as)</label><input id="coLicCG" min="0" step="1" type="number" value="0"/></div>
-<div><label>Licencia sin goce / suspensiÃ³n (dÃ­as)</label><input id="coLicSG" min="0" step="1" type="number" value="0"/></div>
+<div><label>Vacaciones gozadas (días)</label><input id="coVacGoz" min="0" step="1" type="number" value="0"/></div>
+<div><label>Licencia con goce (días)</label><input id="coLicCG" min="0" step="1" type="number" value="0"/></div>
+<div><label>Licencia sin goce / suspensión (días)</label><input id="coLicSG" min="0" step="1" type="number" value="0"/></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
 <div>
-<label>Es suspensiÃ³n</label>
+<label>Es suspensión</label>
 <div><input id="coSuspension" type="checkbox"/></div>
 </div>
-<div><label>Ausencias injustificadas (dÃ­as)</label><input id="coAus" min="0" step="1" type="number" value="0"/></div>
+<div><label>Ausencias injustificadas (días)</label><input id="coAus" min="0" step="1" type="number" value="0"/></div>
 <div><label>Embargo (monto)</label><input id="coEmbargo" min="0" step="0.01" type="number" value="0"/></div>
 </div>
 </div>
@@ -903,7 +903,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div id="employeePreviewMensual"></div>
 
 
-<div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">â€“</span> Â· Agrup: <span id="outAgrup">â€“</span> Â· Cat: <span id="outCat">â€“</span> Â· <span id="outEscala"></span></div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="outRama">–</span> · Agrup: <span id="outAgrup">–</span> · Cat: <span id="outCat">–</span> · <span id="outEscala"></span></div>
 <div class="table-wrapper">
 <table class="table">
 <thead><tr><th>Concepto</th><th class="right col-base-num">Base</th><th class="right">Remunerativo</th><th class="right">No Remunerativo</th><th class="right">Descuentos</th></tr></thead>
@@ -967,12 +967,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 </div>
 
-</div><!-- FIX: cierre paneMensual para que LiquidaciÃ³n Final sea visible -->
+</div><!-- FIX: cierre paneMensual para que Liquidación Final sea visible -->
 <div class="card" id="paneFinal" style="display:none">
 <div class="grid cols-4">
 <div><label>Fecha de ingreso</label><input id="lf_ingreso" type="date"/></div>
 <div><label>Fecha de egreso</label><input id="lf_egreso" type="date"/><div class="note"><label><input id="lf_use_lastday" type="checkbox"/> Usar &uacute;ltimo d&iacute;a del mes seleccionado</label></div></div>
-<div><label>AÃ±os para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
+<div><label>Años para art. 245 (auto)</label><input class="readonly" disabled="" id="lf_anios" min="0" readonly="" type="number" value="0"/></div>
 <div id="lf_hsWrap"><label>Jornada</label>
   <input id="lf_hs" type="number" min="1" max="48" value="48" list="lf_hs_list"/>
   <datalist id="lf_hs_list">
@@ -1007,9 +1007,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <strong>Agua Potable:</strong> Conexiones
   <span style="margin-left:6px">Cantidad:</span>
   <input id="lf_aguaConexiones" type="number" min="0" step="1" value="0" style="max-width:120px; margin-left:4px"/>
-  <span style="margin-left:8px">CategorÃ­a:</span>
+  <span style="margin-left:8px">Categoría:</span>
   <select id="lf_aguaConexCat" style="max-width:180px; margin-left:4px">
-    <option value="">â€”</option>
+    <option value="">—</option>
     <option value="A">A (hasta 500)</option>
     <option value="B">B (+7% s/A)</option>
     <option value="C">C (+7% s/B)</option>
@@ -1019,7 +1019,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><div class="campo tipo-lf">
-<label for="lf_tipo">Tipo de liquidaciÃ³n</label>
+<label for="lf_tipo">Tipo de liquidación</label>
 <select id="lf_tipo">
 <option value="DESPIDO_SC">Despido sin causa</option>
 <option value="DESPIDO_CC">Despido con causa</option>
@@ -1027,15 +1027,15 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <option value="FALLECIMIENTO">Fallecimiento</option>
 </select>
 </div>
-<label>Preaviso</label><select id="lf_preaviso"><option value="0">Sin preaviso</option><option value="15">15 dÃ­as</option><option value="30">1 mes</option><option value="60">2 meses</option></select></div>
-<div><label>IntegraciÃ³n del mes</label><input checked="" id="lf_integracion" type="checkbox"/> Calcular automÃ¡tico</div>
+<label>Preaviso</label><select id="lf_preaviso"><option value="0">Sin preaviso</option><option value="15">15 días</option><option value="30">1 mes</option><option value="60">2 meses</option></select></div>
+<div><label>Integración del mes</label><input checked="" id="lf_integracion" type="checkbox"/> Calcular automático</div>
 <div><label>SAC sobre preaviso</label><input id="lf_sac_pre" type="checkbox"/></div>
-<div><label>SAC sobre integraciÃ³n</label><input checked="" id="lf_sac_int" type="checkbox"/></div>
+<div><label>SAC sobre integración</label><input checked="" id="lf_sac_int" type="checkbox"/></div>
 </div>
 <div class="grid cols-4" style="margin-top:8px">
-<div><label>DÃ­as trabajados del mes (auto)</label><input id="lf_dias_mes" class="readonly" disabled readonly max="31" min="0" type="number" value="0"/></div>
+<div><label>Días trabajados del mes (auto)</label><input id="lf_dias_mes" class="readonly" disabled readonly max="31" min="0" type="number" value="0"/></div>
 <div><label>Vacaciones anuales (auto/edi.)</label><input id="lf_vac_anuales" min="0" type="number" value="14"/></div>
-<div><label>Vacaciones no gozadas (dÃ­as)</label><input id="lf_vac_no_goz" min="0" step="0.01" type="number" value="0"/></div>
+<div><label>Vacaciones no gozadas (días)</label><input id="lf_vac_no_goz" min="0" step="0.01" type="number" value="0"/></div>
 <div><label>Dias computables vacaciones</label><input id="lf_vac_dias_anio" min="0" step="1" type="number" value="0"/></div>
 <div><label>NR incluidos en todas las bases</label><input checked="" disabled="" type="checkbox"/></div>
 </div>
@@ -1044,7 +1044,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   <div id="lfExtrasHost" style="margin-top:8px"></div>
 </details>
 
-<div class="note small">MEJOR SALARIO se sugiere automÃ¡ticamente con BÃ¡sico + NR + AntigÃ¼edad + Presentismo (editable).</div>
+<div class="note small">MEJOR SALARIO se sugiere automáticamente con Básico + NR + Antigüedad + Presentismo (editable).</div>
 <div class="note" id="lfEmployerCostBox" style="margin-top:8px">
   <strong>Contribuciones del empleador / Costo laboral</strong>
   <div id="lfEmployerCostNote" style="margin-top:4px;color:#64748b">Descuento art. 97 todos los meses si informas prima; contribuciones patronales desde mayo 2026.</div>
@@ -1062,15 +1062,15 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   </div>
 </div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-  <button onclick="calcularFinal()" type="button">Calcular liquidaciÃ³n final</button>
+  <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
   <button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button>
   <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label>
   <span id="diagFinal" style="color:#64748b"></span>
 </div>
-<div class="badge" style="margin-top:8px">LiquidaciÃ³n Final</div>
+<div class="badge" style="margin-top:8px">Liquidación Final</div>
 <div id="companyPreviewFinal"></div>
 <div id="employeePreviewFinal"></div>
-<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">â€“</span> Â· Agrup: <span id="lf_outAgrup">â€“</span> Â· Cat: <span id="lf_outCat">â€“</span> Â· Ingreso: <span id="lf_outIngreso">â€“</span> Â· Egreso: <span id="lf_outEgreso">â€“</span></div>
+<div style="margin:6px 0;color:#64748b">Rama: <span id="lf_outRama">–</span> · Agrup: <span id="lf_outAgrup">–</span> · Cat: <span id="lf_outCat">–</span> · Ingreso: <span id="lf_outIngreso">–</span> · Egreso: <span id="lf_outEgreso">–</span></div>
 <div class="table-wrapper">
 <table class="table">
 <thead><tr><th>Concepto</th><th class="right">Remunerativo</th><th class="right">No Remunerativo / Indemnizatorio</th><th class="right">Descuentos</th></tr></thead>
@@ -1121,9 +1121,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 #printArea .sheet.compact th,#printArea .sheet.compact td{padding:1.55mm 1.6mm}
 #printArea .sheet.compact .neto{font-size:12.4px}
 
-/* TÃ­tulo */
+/* Título */
 #printArea .title{text-align:center;font-weight:900;font-size:16px;margin-bottom:6mm}
-/* Tabla con columnas fijas y nÃºmeros tabulares */
+/* Tabla con columnas fijas y números tabulares */
 #printArea table{width:100%;border-collapse:collapse;table-layout:fixed}
 #printArea thead th{padding:2.2mm 2mm 2mm;border-bottom:.45mm solid #000;font-weight:800}
 #printArea th,#printArea td{padding:2mm;font-variant-numeric:tabular-nums}
@@ -1232,18 +1232,18 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </style>
 <!-- CO v97 patch (light listeners) -->
 <style>
-  /* Mejoras de layout para la columna de auditorÃ­a */
+  /* Mejoras de layout para la columna de auditoría */
   .co-audit-col{ white-space: normal !important; overflow-wrap: anywhere; }
   table{ table-layout: auto; }
 
 @media print{#co-audit-bar{display:none!important}}
 </style>
-<!-- CO patch v7: dedup de filas, fix ausencia rem-only /30, caÃ­da presentismo 2+, recalculo neto inmediato, alineaciÃ³n total -->
+<!-- CO patch v7: dedup de filas, fix ausencia rem-only /30, caída presentismo 2+, recalculo neto inmediato, alineación total -->
 <!-- co-base-rs-override-v1: fuerza misma base para FAECYS / Sindicato / Obra Social -->
-<!-- Ghost select cleaner: oculta selects vacÃ­os sin id que aparecen como duplicados de Mes -->
+<!-- Ghost select cleaner: oculta selects vacíos sin id que aparecen como duplicados de Mes -->
 <style>
     /* Responsive design for mobile devices */
-    /* For phones (â‰¤600px), stack grid columns and adjust form elements */
+    /* For phones (≤600px), stack grid columns and adjust form elements */
     @media (max-width: 600px) {
       /* Stack all grid layouts to a single column */
       .grid,
@@ -1278,17 +1278,17 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         min-width: 120px;
       }
 
-    /* Para el panel de licencias y ausencias (co-inline-panel) usar una sola columna en mÃ³viles
+    /* Para el panel de licencias y ausencias (co-inline-panel) usar una sola columna en móviles
        de modo que las casillas de Licencia paga, Licencia sin goce, Vacaciones gozadas,
        Ausencias injustificadas y Embargo se vean una debajo de otra.  Sin esta regla, el grid
-       mantiene tres columnas (160px mÃ­nimas) que no caben en pantallas angostas y provoca
+       mantiene tres columnas (160px mínimas) que no caben en pantallas angostas y provoca
        que algunos campos queden fuera de vista. */
     #co-inline-panel {
       grid-template-columns: 1fr !important;
     }
     /* El contenedor de embargo mantiene su propio grid interno sin cambios */
     }
-    /* On small tablets (601â€“900px), use two columns */
+    /* On small tablets (601–900px), use two columns */
     @media (min-width: 601px) and (max-width: 900px) {
       .cols-4 {
         grid-template-columns: repeat(2, 1fr) !important;
@@ -1311,7 +1311,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   const ADMIN_STORAGE_KEY = "co_admin_token";
   const ADMIN_HASH_KEY = "admin_token";
   const ADMIN_COMPANY_STORAGE_KEY = "co_admin_receipt_company_id";
-  const ADMIN_COMPANY_LOGO_HELP_TEXT = "PodÃ©s subir PNG, JPG, WEBP, GIF o SVG de hasta 5 MB.";
+  const ADMIN_COMPANY_LOGO_HELP_TEXT = "Podés subir PNG, JPG, WEBP, GIF o SVG de hasta 5 MB.";
 
   const $ = (id) => document.getElementById(id);
   const setText = (id, txt) => { const el=$(id); if(el) el.textContent = txt ?? ""; };
@@ -1458,7 +1458,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
   function formatFeatureUpdatedAt(value){
-    if(!value) return "Sin cambios guardados todavÃ­a.";
+    if(!value) return "Sin cambios guardados todavía.";
     const dt = new Date(value);
     if(Number.isNaN(dt.getTime())) return String(value);
     return dt.toLocaleString("es-AR");
@@ -1469,7 +1469,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const status = $("featureFinalStatus");
     if(!status) return;
     const isPublic = !!toggle?.checked;
-    status.textContent = isPublic ? "PÃºblica" : "Solo admin";
+    status.textContent = isPublic ? "Pública" : "Solo admin";
     status.classList.toggle("is-public", isPublic);
   }
 
@@ -1491,8 +1491,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     updateFeatureDraftStatus();
 
     const meta = window.__featureState?.updated_at
-      ? `${formatFeatureUpdatedAt(window.__featureState.updated_at)}${updatedBy ? ` Â· ${updatedBy}` : ""}`
-      : "Sin cambios guardados todavÃ­a.";
+      ? `${formatFeatureUpdatedAt(window.__featureState.updated_at)}${updatedBy ? ` · ${updatedBy}` : ""}`
+      : "Sin cambios guardados todavía.";
     setText("adminFeaturesMeta", meta);
   }
 
@@ -1538,7 +1538,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const feedback = $("adminFeaturesFeedback");
 
     if(saveBtn) saveBtn.disabled = true;
-    if(feedback) feedback.textContent = "Guardando configuraciÃ³n...";
+    if(feedback) feedback.textContent = "Guardando configuración...";
 
     try{
       const url = new URL("/admin/features", API_BASE);
@@ -1553,12 +1553,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         })
       });
       applyFeatureState(data || {});
-      if(feedback) feedback.textContent = "ConfiguraciÃ³n guardada.";
+      if(feedback) feedback.textContent = "Configuración guardada.";
       if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
     }catch(err){
       console.error(err);
       if(feedback){
-        const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo guardar la configuraciÃ³n.";
+        const msg = err && err.message ? String(err.message).replace(/^HTTP\s+\d+\s*/, "") : "No se pudo guardar la configuración.";
         feedback.textContent = msg;
       }
       await refreshAdminSession();
@@ -1584,14 +1584,14 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       finalTab.classList.toggle("tab-admin-ready", finalEnabled);
       finalTab.setAttribute("aria-disabled", finalEnabled ? "false" : "true");
       if(isAdmin){
-        finalTab.setAttribute("title", isPublicFinal ? "LiquidaciÃ³n Final pÃºblica habilitada" : "Funciones de administrador habilitadas");
+        finalTab.setAttribute("title", isPublicFinal ? "Liquidación Final pública habilitada" : "Funciones de administrador habilitadas");
       }else{
-        finalTab.setAttribute("title", finalEnabled ? "LiquidaciÃ³n Final habilitada para todo pÃºblico" : "Acceso exclusivo para administrador");
+        finalTab.setAttribute("title", finalEnabled ? "Liquidación Final habilitada para todo público" : "Acceso exclusivo para administrador");
       }
     }
 
     if(stamp){
-      stamp.textContent = "PRÃ“XIMAMENTE";
+      stamp.textContent = "PRÓXIMAMENTE";
       stamp.style.display = finalEnabled ? "none" : "";
     }
 
@@ -1599,8 +1599,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     setText("adminSessionEmail", isAdmin ? (window.__adminSession?.email || "Administrador") : "");
     if(help){
       help.textContent = isPublicFinal
-        ? "LiquidaciÃ³n Final pÃºblica habilitada. El panel admin sigue disponible para mÃ¡s funciones."
-        : "LiquidaciÃ³n Final y funciones ampliadas habilitadas.";
+        ? "Liquidación Final pública habilitada. El panel admin sigue disponible para más funciones."
+        : "Liquidación Final y funciones ampliadas habilitadas.";
     }
     renderAdminFeaturePanel();
   }
@@ -1716,7 +1716,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     updateFeatureDraftStatus();
 
     const meta = window.__featureState?.updated_at
-      ? `${formatFeatureUpdatedAt(window.__featureState.updated_at)}${updatedBy ? ` Â· ${updatedBy}` : ""}`
+      ? `${formatFeatureUpdatedAt(window.__featureState.updated_at)}${updatedBy ? ` · ${updatedBy}` : ""}`
       : "Sin cambios guardados todavia.";
     setText("adminFeaturesMeta", meta);
   }
@@ -1820,7 +1820,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 
   function buildEmployeePreviewHtml(employee){
     if(!employee){
-      return `<div class="co-company-preview-empty">ElegÃ­ un empleado de prueba para ver cÃ³mo queda el bloque del trabajador.</div>`;
+      return `<div class="co-company-preview-empty">Elegí un empleado de prueba para ver cómo queda el bloque del trabajador.</div>`;
     }
     const leftLines = [
       employee.legajo ? `Legajo: ${employee.legajo}` : "",
@@ -1829,12 +1829,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       employee.sueldo_jornal ? `Sueldo / Jornal: ${employee.sueldo_jornal}` : ""
     ].filter(Boolean);
     const rightLines = [
-      employee.categoria ? `CategorÃ­a: ${employee.categoria}` : "",
+      employee.categoria ? `Categoría: ${employee.categoria}` : "",
       employee.tarea ? `Tarea: ${employee.tarea}` : "",
       employee.obra_social ? `Obra social: ${employee.obra_social}` : "",
-      employee.obra_social_periodo ? `PerÃ­odo: ${employee.obra_social_periodo}` : "",
-      employee.deposito_previsional ? `DepÃ³sito previsional: ${employee.deposito_previsional}` : "",
-      employee.deposito_previsional_fecha ? `Fecha depÃ³sito: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
+      employee.obra_social_periodo ? `Período: ${employee.obra_social_periodo}` : "",
+      employee.deposito_previsional ? `Depósito previsional: ${employee.deposito_previsional}` : "",
+      employee.deposito_previsional_fecha ? `Fecha depósito: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
     ].filter(Boolean);
     return `
       <div class="co-employee-preview">
@@ -1862,10 +1862,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       help.textContent = !isAdmin
         ? ""
         : (!company
-          ? "ElegÃ­ una empresa para cargar empleados."
+          ? "Elegí una empresa para cargar empleados."
           : (employee
             ? `Empleado activo en recibos: ${employee.apellido_nombre || "Empleado de prueba"}`
-            : "ElegÃ­ quÃ© empleado querÃ©s usar para previsualizar recibos."));
+            : "Elegí qué empleado querés usar para previsualizar recibos."));
     }
   }
 
@@ -1903,12 +1903,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       const tr = document.createElement("tr");
       const contact = [item?.email || "", item?.telefono || ""].filter(Boolean).join(" / ");
       const values = [
-        item?.razon_social || "â€”",
-        item?.cuit || "â€”",
-        item?.rama || "â€”",
+        item?.razon_social || "—",
+        item?.cuit || "—",
+        item?.rama || "—",
         item?.estado || "prueba",
-        contact || "â€”",
-        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "â€”"
+        contact || "—",
+        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "—"
       ];
       values.forEach((value) => {
         const td = document.createElement("td");
@@ -2306,25 +2306,25 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const extras = [
       company.direccion_piso ? `Piso ${company.direccion_piso}` : "",
       company.direccion_depto ? `Depto ${company.direccion_depto}` : ""
-    ].filter(Boolean).join(" Â· ");
-    return [street, extras].filter(Boolean).join(" Â· ");
+    ].filter(Boolean).join(" · ");
+    return [street, extras].filter(Boolean).join(" · ");
   }
 
   function buildCompanyLocationLine(company){
     if(!company) return "";
-    return [company.localidad, company.provincia, company.codigo_postal].filter(Boolean).join(" Â· ");
+    return [company.localidad, company.provincia, company.codigo_postal].filter(Boolean).join(" · ");
   }
 
   function buildCompanyPreviewHtml(company){
     if(!company){
-      return `<div class="co-company-preview-empty">ElegÃ­ una empresa de prueba para ver cÃ³mo queda el encabezado del recibo.</div>`;
+      return `<div class="co-company-preview-empty">Elegí una empresa de prueba para ver cómo queda el encabezado del recibo.</div>`;
     }
     const logo = company.logo_url
       ? `<div class="co-company-preview-logo"><img src="${escapeHtml(company.logo_url)}" alt="Logo empresa"/></div>`
       : "";
     const address = buildCompanyAddressLine(company);
     const location = buildCompanyLocationLine(company);
-    const contact = [company.email, company.telefono].filter(Boolean).join(" Â· ");
+    const contact = [company.email, company.telefono].filter(Boolean).join(" · ");
     return `
       <div class="co-company-preview">
         <div class="co-company-preview-body">
@@ -2357,7 +2357,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
         ? ""
         : (company
           ? `Empresa activa en recibos: ${company.razon_social || "Empresa de prueba"}`
-          : "ElegÃ­ quÃ© empresa querÃ©s usar para previsualizar recibos.");
+          : "Elegí qué empresa querés usar para previsualizar recibos.");
     }
   }
 
@@ -2416,12 +2416,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       const tr = document.createElement("tr");
       const address = [buildCompanyAddressLine(item), buildCompanyLocationLine(item)].filter(Boolean).join(" / ");
       const values = [
-        item?.razon_social || "â€”",
-        item?.cuit || "â€”",
-        address || "â€”",
+        item?.razon_social || "—",
+        item?.cuit || "—",
+        address || "—",
         item?.estado || "prueba",
-        item?.actividad || "â€”",
-        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "â€”"
+        item?.actividad || "—",
+        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "—"
       ];
       values.forEach((value) => {
         const td = document.createElement("td");
@@ -2516,12 +2516,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     items.forEach((item) => {
       const tr = document.createElement("tr");
       const values = [
-        item?.legajo || "â€”",
-        item?.apellido_nombre || "â€”",
-        item?.cuil || "â€”",
-        item?.categoria || "â€”",
-        item?.fecha_ingreso ? formatAdminDate(item.fecha_ingreso) : "â€”",
-        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "â€”"
+        item?.legajo || "—",
+        item?.apellido_nombre || "—",
+        item?.cuil || "—",
+        item?.categoria || "—",
+        item?.fecha_ingreso ? formatAdminDate(item.fecha_ingreso) : "—",
+        item?.updated_at ? formatFeatureUpdatedAt(item.updated_at) : "—"
       ];
       values.forEach((value) => {
         const td = document.createElement("td");
@@ -2551,7 +2551,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       renderAdminEmployeesPanel();
       return data;
     }catch(err){
-      console.warn("No se pudo cargar la nÃ³mina de empleados.", err);
+      console.warn("No se pudo cargar la nómina de empleados.", err);
       renderAdminEmployeesPanel();
       return null;
     }
@@ -2601,7 +2601,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const feedback = $("adminEmployeesFeedback");
     const saveBtn = $("adminSaveEmployeeBtn");
     if(!company){
-      if(feedback) feedback.textContent = "Primero elegÃ­ una empresa activa.";
+      if(feedback) feedback.textContent = "Primero elegí una empresa activa.";
       return;
     }
     const payload = {
@@ -2623,7 +2623,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     };
 
     if(!payload.apellido_nombre){
-      if(feedback) feedback.textContent = "CompletÃ¡ el apellido y nombre del empleado.";
+      if(feedback) feedback.textContent = "Completá el apellido y nombre del empleado.";
       $("adminEmployeeName")?.focus();
       return;
     }
@@ -2815,12 +2815,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       employee.sueldo_jornal ? `Sueldo / Jornal: ${employee.sueldo_jornal}` : ""
     ].filter(Boolean);
     const right = [
-      employee.categoria ? `CategorÃ­a: ${employee.categoria}` : "",
+      employee.categoria ? `Categoría: ${employee.categoria}` : "",
       employee.tarea ? `Tarea: ${employee.tarea}` : "",
       employee.fecha_ingreso ? `Ingreso: ${formatAdminDate(employee.fecha_ingreso)}` : "",
       employee.obra_social ? `Obra social: ${employee.obra_social}` : "",
-      employee.obra_social_periodo ? `PerÃ­odo: ${employee.obra_social_periodo}` : "",
-      employee.deposito_previsional ? `DepÃ³sito previsional: ${employee.deposito_previsional}` : "",
+      employee.obra_social_periodo ? `Período: ${employee.obra_social_periodo}` : "",
+      employee.deposito_previsional ? `Depósito previsional: ${employee.deposito_previsional}` : "",
       employee.deposito_previsional_fecha ? `Fecha: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
     ].filter(Boolean);
     return `
@@ -2863,19 +2863,19 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       employee.legajo ? `Legajo ${employee.legajo}` : "",
       employee.apellido_nombre || "",
       employee.cuil ? `CUIL ${employee.cuil}` : ""
-    ].filter(Boolean).join(" Â· ");
+    ].filter(Boolean).join(" · ");
     const second = [
       employee.sueldo_jornal ? `Sueldo / Jornal: ${employee.sueldo_jornal}` : "",
-      employee.categoria ? `CategorÃ­a: ${employee.categoria}` : "",
+      employee.categoria ? `Categoría: ${employee.categoria}` : "",
       employee.tarea ? `Tarea: ${employee.tarea}` : "",
       employee.fecha_ingreso ? `Ingreso: ${formatAdminDate(employee.fecha_ingreso)}` : ""
-    ].filter(Boolean).join(" Â· ");
+    ].filter(Boolean).join(" · ");
     const third = [
       employee.obra_social ? `Obra social: ${employee.obra_social}` : "",
-      employee.obra_social_periodo ? `PerÃ­odo: ${employee.obra_social_periodo}` : "",
-      employee.deposito_previsional ? `DepÃ³sito previsional: ${employee.deposito_previsional}` : "",
+      employee.obra_social_periodo ? `Período: ${employee.obra_social_periodo}` : "",
+      employee.deposito_previsional ? `Depósito previsional: ${employee.deposito_previsional}` : "",
       employee.deposito_previsional_fecha ? `Fecha: ${formatAdminDate(employee.deposito_previsional_fecha)}` : ""
-    ].filter(Boolean).join(" Â· ");
+    ].filter(Boolean).join(" · ");
     return `
       <div class="co-receipt-company" style="margin-top:2mm">
         ${first ? `<div class="co-receipt-company-line"><strong>${escapeHtml(first)}</strong></div>` : ""}
@@ -2927,9 +2927,9 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const isFinal = (tab === "final");
     const isSac = (tab === "sac");
     const titulo = isFinal ? "Liquidacion Final" : (isSac ? "Recibo SAC" : "Recibo Mensual");
-    const rama = (isFinal ? $("lf_outRama")?.textContent : $("outRama")?.textContent) || $("rama")?.value || "â€”";
-    const agrup = (isFinal ? $("lf_outAgrup")?.textContent : $("outAgrup")?.textContent) || $("agrup")?.value || "â€”";
-    const cat  = (isFinal ? $("lf_outCat")?.textContent : $("outCat")?.textContent) || $("categoria")?.value || "â€”";
+    const rama = (isFinal ? $("lf_outRama")?.textContent : $("outRama")?.textContent) || $("rama")?.value || "—";
+    const agrup = (isFinal ? $("lf_outAgrup")?.textContent : $("outAgrup")?.textContent) || $("agrup")?.value || "—";
+    const cat  = (isFinal ? $("lf_outCat")?.textContent : $("outCat")?.textContent) || $("categoria")?.value || "—";
     const escala = (!isFinal
       ? ($("outEscala")?.textContent || "")
       : (`Escala ${(($("lf_egreso")?.value || "").slice(0,7)) || ($("mes")?.value || "")}`)
@@ -2937,7 +2937,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const extra = isSac ? (($("sacSubtitle")?.textContent || "").toString().trim()) : "";
     const fiFmt = isFinal ? fmtDateISO($("lf_ingreso")?.value || "") : "";
     const feFmt = isFinal ? fmtDateISO($("lf_egreso")?.value || "") : "";
-    const fechas = isFinal ? ` Â· Ingreso: ${escapeHtml(fiFmt)} Â· Egreso: ${escapeHtml(feFmt)}` : "";
+    const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : "";
     const tbl = cloneTableForPrint(tab);
     const adminSource = isFinal ? window.__lastFinalCalc : window.__lastMensualCalc;
     const adminData = isSac && adminSource?.recibo_sac ? { ...adminSource.recibo_sac, __parentCalc: adminSource } : adminSource;
@@ -2950,16 +2950,16 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     const companyBlock = buildPrintCompanyBlock(company);
     const employeeBlock = buildPrintEmployeeBlock(employee);
     const tableHtml = tbl ? tbl.outerHTML : '';
-    const emptyMessage = 'No hay datos para imprimir. Primero presionÃ¡ â€œCalcularâ€.';
+    const emptyMessage = 'No hay datos para imprimir. Primero presioná “Calcular”.';
 
     if(!tbl){
       area.innerHTML = `
         <div class="sheet">
           ${companyBlock}
           <div class="title">${escapeHtml(titulo)}</div>
-          <div class="subheader">Rama: ${escapeHtml(rama)} Â· Agrup: ${escapeHtml(agrup)} Â· Cat: ${escapeHtml(cat)}${fechas} Â· ${escapeHtml(escala)}</div>
+          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
           ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ""}
-          <div style="margin-top:10mm">No hay datos para imprimir. Primero presionÃ¡ â€œCalcularâ€.</div>
+          <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
         </div>`;
       return;
     }
@@ -2968,7 +2968,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       <div class="sheet">
         ${companyBlock}
         <div class="title">${escapeHtml(titulo)}</div>
-        <div class="subheader">Rama: ${escapeHtml(rama)} Â· Agrup: ${escapeHtml(agrup)} Â· Cat: ${escapeHtml(cat)}${fechas} Â· ${escapeHtml(escala)}</div>
+        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
         ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ""}
         ${tbl.outerHTML}
       </div>`;
@@ -3018,7 +3018,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
   }
 
-  // ===== ImpresiÃ³n / PDF: nombre sugerido del archivo =====
+  // ===== Impresión / PDF: nombre sugerido del archivo =====
   // Al usar window.print(), Chrome suele sugerir como nombre del PDF el document.title.
   let __coTitleBeforePrint = null;
 
@@ -3088,12 +3088,12 @@ function toggleManejoCajaUI(){
   }
 }
 
-  function fillSelect(sel, items, placeholder="â€”"){
+  function fillSelect(sel, items, placeholder="—"){
     if(!sel) return;
     const cur = sel.value;
     sel.innerHTML = "";
 
-    // Placeholder: value vacÃ­o para no chocar con valores reales como "â€”"
+    // Placeholder: value vacío para no chocar con valores reales como "—"
     const opt0 = document.createElement("option");
     opt0.value = "";
     opt0.textContent = placeholder;
@@ -3106,7 +3106,7 @@ function toggleManejoCajaUI(){
       sel.appendChild(o);
     });
 
-    // Mantener selecciÃ³n si existe; si no, seleccionar el primer Ã­tem real
+    // Mantener selección si existe; si no, seleccionar el primer ítem real
     if(items && items.length){
       if(items.includes(cur)) sel.value = cur;
       else sel.value = items[0];
@@ -3141,24 +3141,24 @@ function toggleManejoCajaUI(){
     const yesOpt = Array.from(sel.options || []).find(opt => String(opt.value).toLowerCase() === "true");
     if(!yesOpt) return;
     yesOpt.textContent = aplicaOsecacFijoUI($("rama")?.value || "", $("mes")?.value || "")
-      ? "SÃ­ (3% NR + $100)"
-      : "SÃ­ (3% NR)";
+      ? "Sí (3% NR + $100)"
+      : "Sí (3% NR)";
   }
 
-  // Etiquetas cortas para los adicionales de FÃºnebres (solo visual)
+  // Etiquetas cortas para los adicionales de Fúnebres (solo visual)
   function prettifyFunLabel(raw){
     const s = (raw ?? "").toString().trim();
     if(!s) return "";
 
     const up = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     // Mapeo a los nombres cortos usados en el modelo
-    // IMPORTANTE: en el PDF, el Inciso 2 dice "no incluido en inciso 1", por eso se evalÃºa primero "NO INCLUIDO".
+    // IMPORTANTE: en el PDF, el Inciso 2 dice "no incluido en inciso 1", por eso se evalúa primero "NO INCLUIDO".
     if(up.includes("NO INCLUIDO")) return "Resto del personal";
-    if(up.includes("TODO EL PERSONAL") || up.includes("ADICIONAL GENERAL") || (up.includes("INCISO 1") && !up.includes("NO INCLUIDO"))) return "ManipulaciÃ³n de cadÃ¡veres";
+    if(up.includes("TODO EL PERSONAL") || up.includes("ADICIONAL GENERAL") || (up.includes("INCISO 1") && !up.includes("NO INCLUIDO"))) return "Manipulación de cadáveres";
     if(up.includes("CHOFER") || up.includes("FURGONERO")) return "Chofer/Furgonero";
     if(up.includes("INDUMENTARIA")) return "Indumentaria";
 
-    // Fallback genÃ©rico
+    // Fallback genérico
     return s.replace(/^Adicional\s+/i, "").replace(/\s*\([^)]*\)\s*/g, " ").trim();
   }
 
@@ -3221,18 +3221,18 @@ function toggleManejoCajaUI(){
 
   function isFunebresRama(r){
     const rr = normRama(r);
-    return rr === 'FUNEBRES' || rr === 'FÃšNEBRES' || rr === 'FUNEBRES '; // tolerante
+    return rr === 'FUNEBRES' || rr === 'FÚNEBRES' || rr === 'FUNEBRES '; // tolerante
   }
 
 
-  // FÃºnebres: letras A/B/C/D por categorÃ­a (segÃºn escala)
+  // Fúnebres: letras A/B/C/D por categoría (según escala)
   const FUNEBRES_CAT_LETRAS = {
-    "MAESTRANZA â€“ PEÃ“N": "A",
-    "AUXILIAR â€“ PERSONAL SALAS VELATORIAS": "A",
-    "AUXILIAR â€“ CAPILLERO â€“ SOLDADOR â€“ LUSTRADOR â€“ SASTRE": "B",
-    "AUXILIAR â€“ CHOFER â€“ FURGONERO â€“ AMBULANCIERO": "B",
-    "MAESTRANZA â€“ AYUDANTE â€“ CAMILLERO â€“ SERENO": "B",
-    "MAESTRANZA â€“ PORTERO": "C",
+    "MAESTRANZA – PEÓN": "A",
+    "AUXILIAR – PERSONAL SALAS VELATORIAS": "A",
+    "AUXILIAR – CAPILLERO – SOLDADOR – LUSTRADOR – SASTRE": "B",
+    "AUXILIAR – CHOFER – FURGONERO – AMBULANCIERO": "B",
+    "MAESTRANZA – AYUDANTE – CAMILLERO – SERENO": "B",
+    "MAESTRANZA – PORTERO": "C",
     "ADMINISTRATIVO": "D"
   };
 
@@ -3262,7 +3262,7 @@ function toggleManejoCajaUI(){
     sel.innerHTML = "";
     const ph = document.createElement("option");
     ph.value = "";
-    ph.textContent = placeholder || "CategorÃ­a";
+    ph.textContent = placeholder || "Categoría";
     ph.disabled = true;
     ph.selected = true;
     sel.appendChild(ph);
@@ -3278,7 +3278,7 @@ function toggleManejoCajaUI(){
       seen.add(base);
     });
 
-    // restaurar selecciÃ³n si existe, si no usar primero
+    // restaurar selección si existe, si no usar primero
     if(cur && seen.has(cur)){
       sel.value = cur;
     }else{
@@ -3336,20 +3336,20 @@ function toggleManejoCajaUI(){
         const meta = (tipo === 'monto' && monto) ? `($ ${money(monto).replace('$','').trim()})` : (pct ? `(${pct}%)` : '');
         const prettyLabel = prettifyFunLabel(label);
 
-        // Evitar repetir el nombre del adicional en la segunda lÃ­nea (p.ej. Inciso 1/2)
+        // Evitar repetir el nombre del adicional en la segunda línea (p.ej. Inciso 1/2)
         let obsShort = (obs || "").toString().trim();
         if(obsShort){
-          // Si la observaciÃ³n trae "Inciso X", mostramos solo eso
+          // Si la observación trae "Inciso X", mostramos solo eso
           const m = obsShort.match(/inciso\s*\d+[^)]*/i);
           if(m) obsShort = m[0].trim();
 
-          // Quitar duplicaciÃ³n del label (si viene "ManipulaciÃ³n de cadÃ¡veres ...")
+          // Quitar duplicación del label (si viene "Manipulación de cadáveres ...")
           const escRe = (s) => (s || "").toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const re = new RegExp('^' + escRe(prettyLabel) + '\\s*', 'i');
           obsShort = obsShort.replace(re, '').trim();
 
-          // Limpiar separadores y parÃ©ntesis
-          obsShort = obsShort.replace(/^[\(\-:\sâ€“â€”]+/, '').replace(/[\)\s]+$/, '').trim();
+          // Limpiar separadores y paréntesis
+          obsShort = obsShort.replace(/^[\(\-:\s–—]+/, '').replace(/[\)\s]+$/, '').trim();
         }
 
         txt.innerHTML =
@@ -3361,14 +3361,14 @@ function toggleManejoCajaUI(){
         box.appendChild(wrap);
       }
 
-      setText('funHint', 'MarcÃ¡ los adicionales que correspondan.');
+      setText('funHint', 'Marcá los adicionales que correspondan.');
     }catch(err){
       console.error(err);
-      setText('funHint', 'No se pudieron cargar los adicionales de FÃºnebres.');
+      setText('funHint', 'No se pudieron cargar los adicionales de Fúnebres.');
     }
   }
 
-  // Agua Potable: conexiones (cantidad -> categorÃ­a y %)
+  // Agua Potable: conexiones (cantidad -> categoría y %)
   async function updateAguaConexInfo(){
     try{
       const rama = $('rama')?.value || '';
@@ -3418,7 +3418,7 @@ function toggleManejoCajaUI(){
       }
 
       const qtyTxt = qty > 0 ? ` (${qty})` : '';
-      const txt = cat ? `Adicional por conexiones${qtyTxt} â€“ CategorÃ­a ${cat}: +${pct.toFixed(2)}%` : '';
+      const txt = cat ? `Adicional por conexiones${qtyTxt} – Categoría ${cat}: +${pct.toFixed(2)}%` : '';
       setText('aguaConexInfo', txt);
       setText('lf_aguaConexInfo', txt);
     }catch(err){
@@ -3509,23 +3509,23 @@ function applyBranchUI(){
     try{ updateEmployerCostBranchUI(); }catch(_){ }
     try{ updateEmployerCostNote(); }catch(_){ }
 
-    // CO: en FÃºnebres, dar mÃ¡s espacio a CategorÃ­a y correr Mes a la derecha
+    // CO: en Fúnebres, dar más espacio a Categoría y correr Mes a la derecha
     const topSel = document.getElementById('topSelectors');
     if(topSel){ topSel.classList.toggle('co-funebres', !!showFun); }
 
-    // CALL CENTER: ocultar jornada (la trae la categorÃ­a) y sincronizar hs
+    // CALL CENTER: ocultar jornada (la trae la categoría) y sincronizar hs
     const hsWrap = $('hsWrap');
     if(hsWrap) hsWrap.style.display = showCall ? 'none' : '';
     if($('hs')) $('hs').disabled = !!showCall;
     if(showCall){ try{ syncCallJornadaFromCategoria(); }catch{} }
 
-    // FÃšNEBRES: ocultar agrupamiento y forzar valor "â€”"
+    // FÚNEBRES: ocultar agrupamiento y forzar valor "—"
     const agrupWrap = $("agrupWrap");
     const agrupSel = $("agrup");
     if(agrupWrap) agrupWrap.style.display = showFun ? "none" : "";
     if(agrupSel){
       agrupSel.disabled = !!showFun;
-      if(showFun) agrupSel.value = "â€”";
+      if(showFun) agrupSel.value = "—";
     }
 
     const aguaBlock = $('aguaBlock');
@@ -3580,11 +3580,11 @@ function applyBranchUI(){
       loadFunebresAdicionales();
     }
 
-    // selector de KM: cambia segÃºn rama (Turismo vs resto)
+    // selector de KM: cambia según rama (Turismo vs resto)
     try{ updateKmUI(); }catch{}
 
-    // En LiquidaciÃ³n Final: abrir automÃ¡ticamente el panel de extras cuando la rama
-    // tiene opciones propias visibles dentro de ese panel (Turismo / FÃºnebres / Agua).
+    // En Liquidación Final: abrir automáticamente el panel de extras cuando la rama
+    // tiene opciones propias visibles dentro de ese panel (Turismo / Fúnebres / Agua).
     try{
       if(window.__activeTab === 'final'){
         const det = $('lf_extras_details');
@@ -3615,7 +3615,7 @@ function applyBranchUI(){
 
     sel.innerHTML = opts.map(o => `<option value="${escapeHtml(o.v)}">${escapeHtml(o.t)}</option>`).join('');
 
-    // AutoselecciÃ³n (si aplica)
+    // Autoselección (si aplica)
     let want = '';
     const cat = ($('categoria')?.value || '').toUpperCase();
     if(isTur){
@@ -3632,12 +3632,12 @@ function applyBranchUI(){
   }
 
   async function loadMeta(){
-    setText("status", "Cargando maestroâ€¦");
+    setText("status", "Cargando maestro…");
     META = await fetchJSON(`${API_BASE}/meta`);
     // META esperado: {ramas:{}, meses:{}, ...} o {ramas:[...], meses:[...]}
     const ramas = Array.isArray(META.ramas) ? META.ramas : Object.keys(META.ramas||{}).filter(k => META.ramas[k]);
     const mesesRaw = Array.isArray(META.meses) ? META.meses : Object.keys(META.meses||{}).filter(k => META.meses[k]);
-    // normalizar meses vÃ¡lidos AAAA-MM y ordenar
+    // normalizar meses válidos AAAA-MM y ordenar
     ALL_MESES = (mesesRaw||[]).filter(m => /^\d{4}-\d{2}$/.test(m)).sort();
 
     fillSelect($("rama"), ramas, "Rama");
@@ -3654,8 +3654,8 @@ function applyBranchUI(){
   }
 
   function getAgrupsForRama(rama){
-    // FÃšNEBRES no usa agrupamiento (evita errores por combinaciones inexistentes)
-    if(isFunebresRama(rama)) return ["â€”"];
+    // FÚNEBRES no usa agrupamiento (evita errores por combinaciones inexistentes)
+    if(isFunebresRama(rama)) return ["—"];
     const r = (META && META.agrupamientos) ? META.agrupamientos : (META && META.agrups) ? META.agrups : null;
     if(r && r[rama]) return r[rama];
     // fallback: si no viene mapeo, usar GENERAL
@@ -3679,15 +3679,15 @@ function applyBranchUI(){
 
     const isFun = isFunebresRama(rama);
 
-    const agrups = isFun ? ["â€”"] : getAgrupsForRama(rama);
-    fillSelect($("agrup"), agrups, isFun ? "â€”" : "Agrupamiento");
-    if(isFun) $("agrup").value = "â€”";
+    const agrups = isFun ? ["—"] : getAgrupsForRama(rama);
+    fillSelect($("agrup"), agrups, isFun ? "—" : "Agrupamiento");
+    if(isFun) $("agrup").value = "—";
     else if(agrups.includes("GENERAL")) $("agrup").value = "GENERAL";
 
     const agrup = $("agrup")?.value || "";
     const cats = getCatsFor(rama, agrup);
-    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "CategorÃ­a");
-      else fillSelect($("categoria"), cats, "CategorÃ­a");
+    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
+      else fillSelect($("categoria"), cats, "Categoría");
     // seleccionar la primera real si hay
     if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
@@ -3704,13 +3704,13 @@ function applyBranchUI(){
     let agrup = $("agrup")?.value || "";
     if(!META || !rama){ return; }
     if(isFunebresRama(rama)){
-      agrup = "â€”";
-      if($("agrup")) $("agrup").value = "â€”";
+      agrup = "—";
+      if($("agrup")) $("agrup").value = "—";
     }
     if(!agrup){ return; }
     const cats = getCatsFor(rama, agrup);
-    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "CategorÃ­a");
-      else fillSelect($("categoria"), cats, "CategorÃ­a");
+    if(isFunebresRama(rama)) fillFunebresCategoriaSelect($("categoria"), cats, "Categoría");
+      else fillSelect($("categoria"), cats, "Categoría");
     if(!isFunebresRama(rama) && cats.length) $("categoria").value = cats[0];
     try{ syncCallJornadaFromCategoria(); }catch{}
     updateCallCenterUI();
@@ -3724,7 +3724,7 @@ function applyBranchUI(){
     if(raw === "true" || raw === "1") return true;
     if(raw === "false" || raw === "0") return false;
     // tu select usa "si"/"no" o texto "Si (3% NR + $100)"
-    return raw.includes("si") || raw.includes("sÃ­");
+    return raw.includes("si") || raw.includes("sí");
   }
 
   function parseAfiliadoBool(){
@@ -3736,7 +3736,7 @@ function applyBranchUI(){
     const fijo = num($("afiliado_fijo")?.value || 0);
 
     // Se considera afiliado si:
-    // - el checkbox estÃ¡ marcado, o
+    // - el checkbox está marcado, o
     // - el selector no es "NO", o
     // - hay monto fijo > 0
     return cbOn || (selUp && selUp !== "NO") || fijo > 0;
@@ -3753,7 +3753,7 @@ function applyBranchUI(){
   }
 
   function parseSindFijo(){
-    // Monto fijo opcional de afiliaciÃ³n sindical (cuando corresponde)
+    // Monto fijo opcional de afiliación sindical (cuando corresponde)
     return num($("afiliado_fijo")?.value || 0) || 0;
   }
 
@@ -3774,7 +3774,7 @@ function applyBranchUI(){
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("jornada", String(jornada));
-      // Agua Potable: conexiones (cantidad y/o categorÃ­a)
+      // Agua Potable: conexiones (cantidad y/o categoría)
       const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
       if(isAgua){
         const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
@@ -3803,14 +3803,14 @@ const p = await fetchJSON(url.toString());
       setText("outCat", getSelText("categoria") || categoria);
       setText("outEscala", `Escala ${mes}`);
 
-      // FÃºnebres: refrescar lista de adicionales al cambiar mes/categorÃ­a
+      // Fúnebres: refrescar lista de adicionales al cambiar mes/categoría
       if(isFunebresRama(rama)){
         try{ await loadFunebresAdicionales(); }catch{}
       }
 
       setText("status", "Listo.");
 
-      // Sugerir MEJOR SALARIO para LiquidaciÃ³n Final (no pisa si es manual)
+      // Sugerir MEJOR SALARIO para Liquidación Final (no pisa si es manual)
       try{ if(window.lf_autofill_mejor) await window.lf_autofill_mejor(); }catch(_){ }
 
     }catch(err){
@@ -4032,7 +4032,7 @@ const p = await fetchJSON(url.toString());
     }
     const aplicado = t.aplicado ? "Tope aplicado" : "No supera el tope";
     setText("lfTopeIndemnizatorio",
-      `Promedio bÃ¡sico + NR + presentismo: ${money(t.promedio_base || 0)} Â· Tope mensual: ${money(t.tope_mensual || 0)} Â· Base informada: ${money(t.base_original || 0)} Â· Base usada art. 245: ${money(t.base_aplicada || 0)} Â· ${aplicado}.`);
+      `Promedio básico + NR + presentismo: ${money(t.promedio_base || 0)} · Tope mensual: ${money(t.tope_mensual || 0)} · Base informada: ${money(t.base_original || 0)} · Base usada art. 245: ${money(t.base_aplicada || 0)} · ${aplicado}.`);
   }
 
   function resetSacReceipt(){
@@ -4043,8 +4043,8 @@ const p = await fetchJSON(url.toString());
     if(pane) pane.style.display = "none";
   }
 
-  // Arma la URL del cÃ¡lculo mensual con los valores actuales del formulario.
-  // Se usa tambiÃ©n para completar el MEJOR SALARIO en LiquidaciÃ³n Final.
+  // Arma la URL del cálculo mensual con los valores actuales del formulario.
+  // Se usa también para completar el MEJOR SALARIO en Liquidación Final.
   function buildMensualURL(){
     const rama = $("rama")?.value || "";
     const mes = $("mes")?.value || "";
@@ -4087,7 +4087,7 @@ const p = await fetchJSON(url.toString());
     // Agua potable
     const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
     const conexiones = Math.max(0, parseInt(document.getElementById("aguaConexiones")?.value || "0", 10) || 0);
-    // FÃºnebres
+    // Fúnebres
     const fun_adics = getFunebresAdics();
 
     const url = new URL("/calcular", location.origin);
@@ -4131,7 +4131,7 @@ const p = await fetchJSON(url.toString());
     return url;
   }
 
-  // Mensual: autocalcular aÃ±os de antigÃ¼edad desde "Fecha de alta" (editable)
+  // Mensual: autocalcular años de antigüedad desde "Fecha de alta" (editable)
   function _mAutoAntigFromAlta(opts){
     try{
       opts = opts || {};
@@ -4159,7 +4159,7 @@ const p = await fetchJSON(url.toString());
       const mes = $("mes")?.value || "";
       const agrup = $("agrup")?.value || "";
       const categoria = $("categoria")?.value || "";
-      if([rama,mes,agrup,categoria].some(v => !v)){ alert("ElegÃ­ Rama/Agrup/CategorÃ­a/Mes."); return; }
+      if([rama,mes,agrup,categoria].some(v => !v)){ alert("Elegí Rama/Agrup/Categoría/Mes."); return; }
 
       const jornada = getEffectiveJornada();
       try{ _mAutoAntigFromAlta(); }catch(_){ }
@@ -4170,7 +4170,7 @@ const p = await fetchJSON(url.toString());
       const fer_trab    = Math.max(0, parseInt($("ferTrab")?.value || "0", 10) || 0);
       const vac_goz     = Math.max(0, parseInt($("coVacGoz")?.value || "0", 10) || 0);
       const aus_inj     = Math.max(0, parseInt($("coAus")?.value || "0", 10) || 0);
-      // Etapa 8: Jubilado / SuspensiÃ³n (dÃ­as) / Embargo
+      // Etapa 8: Jubilado / Suspensión (días) / Embargo
       const jubilado = !!($("coJub")?.checked);
       const susp_dias = Math.max(0, parseInt($("coLicSG")?.value || "0", 10) || 0);
       const embargo = Math.max(0, parseMoneyText($("coEmbargo")?.value || ""));
@@ -4184,7 +4184,7 @@ const p = await fetchJSON(url.toString());
       const km_menos100 = Math.max(0, parseInt($("kmMenos100")?.value || "0", 10) || 0);
       const km_mas100 = Math.max(0, parseInt($("kmMas100")?.value || "0", 10) || 0);
 
-      // Etapa 5/6: A cuenta (REM) / ViÃ¡ticos (NR sin aportes)
+      // Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
       const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
       const viaticos_nr = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
       const manejo_caja = !!($('manejoCaja')?.checked);
@@ -4202,7 +4202,7 @@ const p = await fetchJSON(url.toString());
       const titulo_pct = (normRama(rama) === "TURISMO") ? (num($("turTitulo")?.value || 0) || 0) : 0;
       const conex_cat = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE")
         ? String($("aguaConexCat")?.value || "").trim()
-        : "";      // FÃºnebres: adicionales seleccionados (ids)
+        : "";      // Fúnebres: adicionales seleccionados (ids)
       const conexiones = 0;
       const fun_adics = (isFunebresRama(rama))
         ? Array.from(document.querySelectorAll('#funList input[type="checkbox"]:checked'))
@@ -4216,7 +4216,7 @@ const p = await fetchJSON(url.toString());
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("mes", mes);
       url.searchParams.set("jornada", String(jornada));
-      // Agua Potable: conexiones (cantidad y/o categorÃ­a)
+      // Agua Potable: conexiones (cantidad y/o categoría)
       const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
       if(isAgua){
         const conex_cat = (document.getElementById("aguaConexCat")?.value || "").trim();
@@ -4261,11 +4261,11 @@ const p = await fetchJSON(url.toString());
 
       const data = await fetchJSON(url.toString());
 
-      // Guardar el Ãºltimo cÃ¡lculo mensual para reutilizar en LiquidaciÃ³n Final (MEJOR SALARIO)
+      // Guardar el último cálculo mensual para reutilizar en Liquidación Final (MEJOR SALARIO)
       window.__lastMensualCalc = data;
       window.__lastMensualKey = [rama, agrup, categoria, mes, jornada, anios_antig, osecac, afiliado, sind_pct, sind_fijo, titulo_pct, zona_pct].join("|");
 
-      // Guardar Ãºltimo mensual para usar en LiquidaciÃ³n Final (MEJOR SALARIO)
+      // Guardar último mensual para usar en Liquidación Final (MEJOR SALARIO)
       try{
         const rem = num(data?.totales?.rem);
         const nr = num(data?.totales?.nr);
@@ -4279,7 +4279,7 @@ const p = await fetchJSON(url.toString());
           jornada,
           totales: { rem, nr, total: rem + nr }
         };
-        // Si estoy en la pestaÃ±a Final, refrescar MEJOR SALARIO automÃ¡ticamente
+        // Si estoy en la pestaña Final, refrescar MEJOR SALARIO automáticamente
         if(document.querySelector('button.tab.active')?.getAttribute('data-tab') === 'final'){
           if($('lf_mrmnh')) $('lf_mrmnh').value = (rem+nr).toFixed(2);
         }
@@ -4319,7 +4319,7 @@ const p = await fetchJSON(url.toString());
       }));
     }catch(err){
       console.error(err);
-      alert("Error al calcular (API). RevisÃ¡ conexiÃ³n o datos.");
+      alert("Error al calcular (API). Revisá conexión o datos.");
       setText("status", "Error al calcular.");
       trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
         tipo_calculo: "mensual"
@@ -4328,7 +4328,7 @@ const p = await fetchJSON(url.toString());
   }
 
   // =====================
-  // Etapa 3: ImpresiÃ³n / PDF (evita hoja en blanco)
+  // Etapa 3: Impresión / PDF (evita hoja en blanco)
   // =====================
   function escapeHtml(s){
     return (s ?? "").toString()
@@ -4340,7 +4340,7 @@ const p = await fetchJSON(url.toString());
   }
 
   function fmtDateISO(iso){
-    if(!iso) return 'â€“';
+    if(!iso) return '–';
     const parts = String(iso).split('-');
     if(parts.length !== 3) return String(iso);
     const [y,m,d] = parts;
@@ -4590,7 +4590,7 @@ const p = await fetchJSON(url.toString());
     if(cat) parts.push(`Cat: ${cat}`);
     if(mes) parts.push(`Escala ${mes}`);
     if(tab === 'sac') parts.push('Aguinaldo');
-    return parts.join(' Â· ');
+    return parts.join(' · ');
   }
 
   function renderAdminPreview(tab, data){
@@ -4635,7 +4635,7 @@ const p = await fetchJSON(url.toString());
       });
     }
 
-    // En print siempre queremos tabla â€œlimpiaâ€
+    // En print siempre queremos tabla “limpia”
     tbl.classList.remove('table');
     tbl.classList.add('print-table');
 
@@ -4695,12 +4695,12 @@ const p = await fetchJSON(url.toString());
 
     const isFinal = (tab === 'final');
     const isSac = (tab === 'sac');
-    const titulo = isFinal ? 'LiquidaciÃ³n Final' : (isSac ? 'Recibo SAC' : 'Recibo Mensual');
+    const titulo = isFinal ? 'Liquidación Final' : (isSac ? 'Recibo SAC' : 'Recibo Mensual');
 
     // Header: usar los spans ya armados (fallback a selects)
-    const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || 'â€”';
-    const agrup = (isFinal ? $('lf_outAgrup')?.textContent : $('outAgrup')?.textContent) || $('agrup')?.value || 'â€”';
-    const cat  = (isFinal ? $('lf_outCat')?.textContent : $('outCat')?.textContent) || $('categoria')?.value || 'â€”';
+    const rama = (isFinal ? $('lf_outRama')?.textContent : $('outRama')?.textContent) || $('rama')?.value || '—';
+    const agrup = (isFinal ? $('lf_outAgrup')?.textContent : $('outAgrup')?.textContent) || $('agrup')?.value || '—';
+    const cat  = (isFinal ? $('lf_outCat')?.textContent : $('outCat')?.textContent) || $('categoria')?.value || '—';
     const escala = (!isFinal
       ? ($('outEscala')?.textContent || '')
       : (`Escala ${(($('lf_egreso')?.value || '').slice(0,7)) || ($('mes')?.value || '')}`)
@@ -4709,7 +4709,7 @@ const p = await fetchJSON(url.toString());
 
     const fiFmt = isFinal ? fmtDateISO($('lf_ingreso')?.value || '') : '';
     const feFmt = isFinal ? fmtDateISO($('lf_egreso')?.value || '') : '';
-    const fechas = isFinal ? ` Â· Ingreso: ${escapeHtml(fiFmt)} Â· Egreso: ${escapeHtml(feFmt)}` : '';
+    const fechas = isFinal ? ` · Ingreso: ${escapeHtml(fiFmt)} · Egreso: ${escapeHtml(feFmt)}` : '';
 
     const tbl = cloneTableForPrint(tab);
 
@@ -4717,9 +4717,9 @@ const p = await fetchJSON(url.toString());
       area.innerHTML = `
         <div class="sheet">
           <div class="title">${escapeHtml(titulo)}</div>
-          <div class="subheader">Rama: ${escapeHtml(rama)} Â· Agrup: ${escapeHtml(agrup)} Â· Cat: ${escapeHtml(cat)}${fechas} Â· ${escapeHtml(escala)}</div>
+          <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
           ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
-          <div style="margin-top:10mm">No hay datos para imprimir. Primero presionÃ¡ â€œCalcularâ€.</div>
+          <div style="margin-top:10mm">No hay datos para imprimir. Primero presioná “Calcular”.</div>
         </div>`;
       return;
     }
@@ -4728,7 +4728,7 @@ const p = await fetchJSON(url.toString());
     area.innerHTML = `
       <div class="sheet">
         <div class="title">${escapeHtml(titulo)}</div>
-        <div class="subheader">Rama: ${escapeHtml(rama)} Â· Agrup: ${escapeHtml(agrup)} Â· Cat: ${escapeHtml(cat)}${fechas} Â· ${escapeHtml(escala)}</div>
+        <div class="subheader">Rama: ${escapeHtml(rama)} · Agrup: ${escapeHtml(agrup)} · Cat: ${escapeHtml(cat)}${fechas} · ${escapeHtml(escala)}</div>
         ${extra ? `<div class="subheader">${escapeHtml(extra)}</div>` : ''}
         ${tbl.outerHTML}
       </div>`;
@@ -4751,8 +4751,8 @@ const p = await fetchJSON(url.toString());
     const extra = isSac ? (($('sacSubtitle')?.textContent || '').toString().trim()) : '';
     const fiFmt = isFinal ? fmtDateISO($('lf_ingreso')?.value || '') : '';
     const feFmt = isFinal ? fmtDateISO($('lf_egreso')?.value || '') : '';
-    const fechas = isFinal ? ` Â· Ingreso: ${fiFmt} Â· Egreso: ${feFmt}` : '';
-    const subheader = `Rama: ${rama} Â· Agrup: ${agrup} Â· Cat: ${cat}${fechas} Â· ${escala}`;
+    const fechas = isFinal ? ` · Ingreso: ${fiFmt} · Egreso: ${feFmt}` : '';
+    const subheader = `Rama: ${rama} · Agrup: ${agrup} · Cat: ${cat}${fechas} · ${escala}`;
     const tbl = cloneTableForPrint(tab);
     const adminSource = isFinal ? window.__lastFinalCalc : window.__lastMensualCalc;
     const adminData = isSac && adminSource?.recibo_sac ? { ...adminSource.recibo_sac, __parentCalc: adminSource } : adminSource;
@@ -4837,16 +4837,16 @@ const p = await fetchJSON(url.toString());
       }));
       buildPrintAreaEnhanced(t);
 
-      // Forzar reflow para que el navegador â€œveaâ€ el contenido
+      // Forzar reflow para que el navegador “vea” el contenido
       const area = $('printArea');
       if(area) void area.offsetHeight;
 
       
-// Ajuste automÃ¡tico de impresiÃ³n:
-// - Si entra en A4 con mÃ¡rgenes: A4 normal
+// Ajuste automático de impresión:
+// - Si entra en A4 con márgenes: A4 normal
 // - Si sobra poquito: A4 + zoom (reduce apenas)
 // - Si no entra: Oficio/Legal
-// - Si aun asÃ­ no entra: Legal + zoom
+// - Si aun así no entra: Legal + zoom
 try{
   const iso = document.getElementById('printIsolation');
   const area = $('printArea');
@@ -4933,15 +4933,15 @@ try{
     area.style.visibility = prev.visibility;
   }
 }catch(_){ }
-// Nombre sugerido al â€œGuardar como PDFâ€ (Chrome usa document.title)
+// Nombre sugerido al “Guardar como PDF” (Chrome usa document.title)
       __coTitleBeforePrint = document.title;
       document.title = buildPrintFilename(t);
 
-      // Dejar un tick para que pinte antes de abrir el diÃ¡logo
+      // Dejar un tick para que pinte antes de abrir el diálogo
       setTimeout(() => window.print(), 60);
     }catch(err){
       console.error(err);
-      alert('No se pudo preparar la impresiÃ³n. RevisÃ¡ consola.');
+      alert('No se pudo preparar la impresión. Revisá consola.');
     }
   }
 
@@ -4990,7 +4990,7 @@ function wire(){
 
     
 
-    // AntigÃ¼edad (Mensual): auto por Fecha de alta, pero editable
+    // Antigüedad (Mensual): auto por Fecha de alta, pero editable
     const __anEl = $("anios");
     $("alta")?.addEventListener("change", () => {
       try{ if(__anEl) delete __anEl.dataset.manual; }catch(_){ }
@@ -5007,7 +5007,7 @@ function wire(){
         }
       }catch(_){ }
     });
-// Agua: conexiones (sincroniza Mensual â†” Final)
+// Agua: conexiones (sincroniza Mensual ↔ Final)
     const _syncAguaConex = (fromId, toId) => {
       try{
         const a = $(fromId);
@@ -5049,7 +5049,7 @@ function wire(){
     $("manejoCaja")?.addEventListener('change', toggleManejoCajaUI);
     toggleManejoCajaUI();
 
-    // LiquidaciÃ³n final: autocompletar aÃ±os/vacaciones/dÃ­as y sugerir MEJOR SALARIO
+    // Liquidación final: autocompletar años/vacaciones/días y sugerir MEJOR SALARIO
     ['lf_ingreso','lf_egreso','lf_hs','lf_tipo','lf_preaviso','lf_integracion','lf_use_lastday','lf_vac_anuales','lf_vac_dias_anio','lf_vac_no_goz','lfRegimenContribuciones','lfArtPct','lfArtFijo','lfSeguroVidaCctPrima'].forEach(id => {
       $(id)?.addEventListener('change', () => {
         if(id === 'lf_hs'){
@@ -5075,7 +5075,7 @@ function wire(){
       });
     });
 
-    // MEJOR SALARIO: si el usuario edita, no pisar mÃ¡s automÃ¡ticamente
+    // MEJOR SALARIO: si el usuario edita, no pisar más automáticamente
     const mrm = $('lf_mrmnh');
     if(mrm){
       mrm.addEventListener('input', () => {
@@ -5090,7 +5090,7 @@ function wire(){
       });
     }
 
-    // Vacaciones no gozadas (LF): si el usuario edita, no autocompletar mÃ¡s
+    // Vacaciones no gozadas (LF): si el usuario edita, no autocompletar más
     const vacNG = $('lf_vac_no_goz');
     if(vacNG){
       vacNG.addEventListener('input', () => {
@@ -5139,7 +5139,7 @@ function wire(){
 
     $("featureFinalPublicToggle")?.addEventListener("change", () => {
       updateFeatureDraftStatus();
-      setText("adminFeaturesFeedback", "TenÃ©s cambios sin guardar.");
+      setText("adminFeaturesFeedback", "Tenés cambios sin guardar.");
     });
     $("adminSaveFeaturesBtn")?.addEventListener("click", () => {
       saveAdminFeatures();
@@ -5189,7 +5189,7 @@ function wire(){
       try{
         await saveActiveAdminCompany(nextId);
         await refreshAdminEmployees();
-        if(feedback) feedback.textContent = nextId ? "Empresa activa guardada." : "SelecciÃ³n de empresa activa limpiada.";
+        if(feedback) feedback.textContent = nextId ? "Empresa activa guardada." : "Selección de empresa activa limpiada.";
       }catch(err){
         console.error(err);
         if(feedback){
@@ -5209,7 +5209,7 @@ function wire(){
       if(feedback) feedback.textContent = "Guardando empleado activo...";
       try{
         await saveActiveAdminEmployee(nextId);
-        if(feedback) feedback.textContent = nextId ? "Empleado activo guardado." : "SelecciÃ³n de empleado activa limpiada.";
+        if(feedback) feedback.textContent = nextId ? "Empleado activo guardado." : "Selección de empleado activa limpiada.";
       }catch(err){
         console.error(err);
         if(feedback){
@@ -5226,7 +5226,7 @@ function wire(){
 
 
   // =====================
-  // Etapa 9: Tabs + LiquidaciÃ³n Final
+  // Etapa 9: Tabs + Liquidación Final
   // =====================
   function ensureExtrasAnchors(){
   if(window.__extrasAnchorsReady) return;
@@ -5306,7 +5306,7 @@ function switchTab(tab){
       pFinal.style.display = 'none';
     }
 
-    // UX: asegurar reinserciÃ³n de extras y volver arriba al cambiar de pestaÃ±a
+    // UX: asegurar reinserción de extras y volver arriba al cambiar de pestaña
     try{ mountExtrasForTab(tab); }catch(_){ }
     try{ requestAnimationFrame(() => { try{ window.scrollTo({top:0,left:0,behavior:'auto'}); }catch(__){ try{ window.scrollTo(0,0); }catch(___){} } }); }catch(_){ try{ window.scrollTo(0,0); }catch(__){} }
   }
@@ -5387,7 +5387,7 @@ function switchTab(tab){
     }catch(_){ }
     try{ updateFinalEmployerCostNote(); }catch(_){ }
     try{ updateFinalEmployerCostBranchUI(); }catch(_){ }
-    // DÃ­as trabajados del mes: automÃ¡tico (1 al dÃ­a de egreso)
+    // Días trabajados del mes: automático (1 al día de egreso)
     // IMPORTANTE: evitar corrimientos por timezone (no usar new Date('YYYY-MM-DD')).
     try{
       const el = $('lf_dias_mes');
@@ -5417,13 +5417,13 @@ function switchTab(tab){
       // 2% anual acumulativo
       return Math.pow(1.02, Math.max(0, anios)) - 1;
     }
-    // resto: 1% por aÃ±o (no acumulativo)
+    // resto: 1% por año (no acumulativo)
     return 0.01 * Math.max(0, anios);
   }
 
-  // MEJOR SALARIO (LiquidaciÃ³n Final)
-  // Se sugiere con: BÃ¡sico + NR (var+SF) + AntigÃ¼edad + Presentismo,
-  // tomando categorÃ­a + mes de la baja (YYYY-MM) + jornada.
+  // MEJOR SALARIO (Liquidación Final)
+  // Se sugiere con: Básico + NR (var+SF) + Antigüedad + Presentismo,
+  // tomando categoría + mes de la baja (YYYY-MM) + jornada.
   async function _lfFetchMejorFromAPI(){
     const rama = $('rama')?.value || '';
     const agrup = $('agrup')?.value || '';
@@ -5472,7 +5472,7 @@ function switchTab(tab){
     url.searchParams.set('km_menos100', '0');
     url.searchParams.set('km_mas100', '0');
 
-    // Agua Potable: conexiones (cantidad y/o categorÃ­a)
+    // Agua Potable: conexiones (cantidad y/o categoría)
     try{
       const r = normRama(rama);
       if(r.startsWith('AGUA')){
@@ -5499,9 +5499,9 @@ function switchTab(tab){
       return 0;
     };
 
-    const antigRem = find('AntigÃ¼edad', 'r');
+    const antigRem = find('Antigüedad', 'r');
     const presRem  = find('Presentismo', 'r');
-    const antigNr  = find('AntigÃ¼edad (NR)', 'n');
+    const antigNr  = find('Antigüedad (NR)', 'n');
     const presNr   = find('Presentismo (NR)', 'n');
 
     const mejorRem = bas + antigRem + presRem;
@@ -5511,7 +5511,7 @@ function switchTab(tab){
     return { total, mejorRem, mejorNr, mes: mes_baja, jornada };
   }
 
-  // Fallback (si falla la API): aproximaciÃ³n con bases cargadas
+  // Fallback (si falla la API): aproximación con bases cargadas
   function _lfCalcMejorFallback(){
     const rama = $('rama')?.value || '';
     const anios = num($('lf_anios')?.value || 0) || 0;
@@ -5572,8 +5572,8 @@ function switchTab(tab){
     inp.value = s.total.toFixed(2);
     window.__lf_mejor = { rem: s.mejorRem, nr: s.mejorNr, total: s.total };
     window.__lf_mejor_ratio = { rem: (s.mejorRem / s.total), nr: (s.mejorNr / s.total) };
-    const mesTxt = s.mes || mes_baja || 'â€”';
-    setText('diagFinal', `MEJOR SALARIO sugerido (Mes baja ${mesTxt} Â· Jornada ${jornada}hs) â€” editable.`);
+    const mesTxt = s.mes || mes_baja || '—';
+    setText('diagFinal', `MEJOR SALARIO sugerido (Mes baja ${mesTxt} · Jornada ${jornada}hs) — editable.`);
   };
 
   function _mapTipoFinal(ui){
@@ -5627,7 +5627,7 @@ function switchTab(tab){
       const agrup = $('agrup')?.value || '';
       const categoria = $('categoria')?.value || '';
       if(!rama || !agrup || !categoria){
-        alert('ElegÃ­ Rama/Agrup/CategorÃ­a.');
+        alert('Elegí Rama/Agrup/Categoría.');
         return;
       }
 
@@ -5635,7 +5635,7 @@ function switchTab(tab){
       let fe = _ensureLfEgresoDefault();
 
       if(!fi || !fe){
-        alert('CompletÃ¡ Fecha de Alta (Ingreso) y Fecha de Baja (Egreso).');
+        alert('Completá Fecha de Alta (Ingreso) y Fecha de Baja (Egreso).');
         return;
       }
 
@@ -5768,14 +5768,14 @@ function switchTab(tab){
       });
       appendFinalEmployerCostParams(qs);
 
-      // FÃºnebres: mÃºltiples adicionales
+      // Fúnebres: múltiples adicionales
       try{
         for(const id of fun_adics){
           if(id) qs.append('fun_adic', id);
         }
       }catch(_){ }
 
-      // FÃºnebres: mÃºltiples ids
+      // Fúnebres: múltiples ids
       try{
         for(const id of fun_adics){
           if(id) qs.append('fun_adic', id);
@@ -5800,7 +5800,7 @@ function switchTab(tab){
       };
 
       const raw = (data.items || []).map((it, idx) => ({
-        concepto: String(it?.concepto || '').trim() || 'â€”',
+        concepto: String(it?.concepto || '').trim() || '—',
         base: (it?.base!=null && it.base!=='') ? String(it.base) : '',
         r: Number(it?.r || 0) || 0,
         n: Number(it?.n || 0) || 0,
@@ -5809,15 +5809,15 @@ function switchTab(tab){
         seq: idx
       }));
 
-      // 1) Unificar IntegraciÃ³n mes despido en 2 filas (Rem / NR)
-      const reInt = /IntegraciÃ³n mes despido\s*\((\d+)\s*d[iÃ­]as?\)/i;
+      // 1) Unificar Integración mes despido en 2 filas (Rem / NR)
+      const reInt = /Integración mes despido\s*\((\d+)\s*d[ií]as?\)/i;
       let intDays = null;
       let intSeq = null;
       let intRem = 0, intNR = 0;
       const rawKeep = [];
       for(const it of raw){
         const c = it.concepto;
-        if(c.includes('IntegraciÃ³n mes despido') || c.includes('(IntegraciÃ³n mes despido')){
+        if(c.includes('Integración mes despido') || c.includes('(Integración mes despido')){
           const m = c.match(reInt);
           if(m && intDays==null) intDays = Number(m[1]);
           if(intSeq==null) intSeq = it.seq;
@@ -5832,8 +5832,8 @@ function switchTab(tab){
         const baseRem = intDays ? (intRem * 30 / intDays) : 0;
         const baseNR  = intDays ? (intNR  * 30 / intDays) : 0;
         const s = (intSeq!=null) ? intSeq : -1;
-        merged.push({ concepto:`IntegraciÃ³n mes despido (${intDays} dÃ­as) â€” Remunerativo`, base: baseNum(baseRem), r:intRem, n:0, i:0, d:0, seq:s + 0.01 });
-        merged.push({ concepto:`IntegraciÃ³n mes despido (${intDays} dÃ­as) â€” No Remunerativo`, base: baseNum(baseNR), r:0, n:intNR, i:0, d:0, seq:s + 0.02 });
+        merged.push({ concepto:`Integración mes despido (${intDays} días) — Remunerativo`, base: baseNum(baseRem), r:intRem, n:0, i:0, d:0, seq:s + 0.01 });
+        merged.push({ concepto:`Integración mes despido (${intDays} días) — No Remunerativo`, base: baseNum(baseNR), r:0, n:intNR, i:0, d:0, seq:s + 0.02 });
       }
 
       // 2) Desglosar filas mixtas (si existieran) y clasificar para ordenar
@@ -5842,15 +5842,15 @@ function switchTab(tab){
         rows.push({ concepto, base: base || '', r, n, i, d, kind, seq });
       };
 
-      const mkLabelNR = (c) => c.includes('â€” BÃ¡sico') ? c.replace('â€” BÃ¡sico','â€” No Remunerativo') : c;
+      const mkLabelNR = (c) => c.includes('— Básico') ? c.replace('— Básico','— No Remunerativo') : c;
       const mkLabelIND = (c) => (/indem/i.test(c) || /indemn/i.test(c)) ? c : (c + ' (Indem.)');
 
       // Etiquetas claras para conceptos que se repiten (Rem/NR)
       const tagRemNR = (c, kind) => {
         const k = (kind || '').toUpperCase();
         if(/\(Rem\)|\(NR\)/i.test(c)) return c;
-        if(/â€”\s*Remunerativo|â€”\s*No\s*Remunerativo/i.test(c)) return c;
-        if(/^AntigÃ¼edad\b/i.test(c)) return c.replace(/^AntigÃ¼edad\b/i, `AntigÃ¼edad (${k==='REM'?'Rem':'NR'})`);
+        if(/—\s*Remunerativo|—\s*No\s*Remunerativo/i.test(c)) return c;
+        if(/^Antigüedad\b/i.test(c)) return c.replace(/^Antigüedad\b/i, `Antigüedad (${k==='REM'?'Rem':'NR'})`);
         if(/^Presentismo\b/i.test(c)) return c.replace(/^Presentismo\b/i, `Presentismo (${k==='REM'?'Rem':'NR'})`);
         return c;
       };
@@ -5865,7 +5865,7 @@ function switchTab(tab){
         const hasI = Math.abs(i) > 1e-6;
         const hasD = Math.abs(d) > 1e-6;
 
-        // En LF preferimos mostrar base en cada fila (Ver base), asÃ­ no quedan conceptos sin base.
+        // En LF preferimos mostrar base en cada fila (Ver base), así no quedan conceptos sin base.
         if(hasR){
           pushRow(tagRemNR(c, 'REM'), base, r, 0, 0, 0, 'REM', it.seq);
         }
@@ -5950,7 +5950,7 @@ function switchTab(tab){
 
     }catch(err){
       console.error(err);
-      alert('Error al calcular LiquidaciÃ³n Final (API).');
+      alert('Error al calcular Liquidación Final (API).');
       setText('diagFinal', 'Error al calcular.');
       trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
         tipo_calculo: "liquidacion_final"
