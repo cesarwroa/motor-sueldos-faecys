@@ -10,7 +10,7 @@ import time
 import uuid
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
@@ -40,9 +40,13 @@ app.add_middleware(
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "cesarwroa@gmail.com").strip().lower()
-ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "Dni27941408")
-ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-change-me")
+PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
+PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
+ADMIN_INDEX_FILE = BASE_DIR / "index.html"
+NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
+ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "").strip().lower()
+ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "")
+ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "")
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
 ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
@@ -139,6 +143,18 @@ def _build_admin_company_asset_url(asset_name: str) -> str:
     return f"/admin/company-assets/{asset_name}"
 
 
+def _admin_auth_configured() -> bool:
+    return bool(ADMIN_LOGIN_EMAIL and ADMIN_LOGIN_PASSWORD and ADMIN_ACCESS_SECRET)
+
+
+def _require_admin_auth_configured() -> None:
+    if not _admin_auth_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Credenciales de administrador no configuradas.",
+        )
+
+
 def _b64url_encode(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
@@ -149,6 +165,7 @@ def _b64url_decode(raw: str) -> bytes:
 
 
 def _sign_admin_token(payload: Dict[str, Any]) -> str:
+    _require_admin_auth_configured()
     payload_raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
     payload_b64 = _b64url_encode(payload_raw)
     signature = hmac.new(
@@ -171,6 +188,7 @@ def _issue_admin_token(email: str) -> str:
 
 
 def _read_admin_token(token: str) -> Dict[str, Any]:
+    _require_admin_auth_configured()
     try:
         payload_b64, signature_b64 = token.split(".", 1)
     except ValueError as exc:
@@ -570,15 +588,45 @@ def _resolve_active_admin_employee_id(
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
-    p = BASE_DIR / "index.html"
-    if p.exists():
-        return FileResponse(p)
+    for path in (PUBLIC_INDEX_FILE, PUBLIC_STATIC_INDEX_FILE):
+        if path.exists():
+            return FileResponse(path)
 
-    p2 = BASE_DIR / "static" / "index.html"
-    if p2.exists():
-        return FileResponse(p2)
+    return HTMLResponse(
+        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"robots\" content=\"noindex,nofollow\">"
+        "<title>Calculadora de Comercio</title></head>"
+        "<body>Calculadora publica no disponible.</body></html>",
+        status_code=503,
+        headers=NOINDEX_HEADERS,
+    )
 
-    return {"ok": True, "error": "index.html no encontrado"}
+
+@app.get("/admin/app", include_in_schema=False)
+def admin_app(admin_token: str = Query(default="")):
+    token = str(admin_token or "").strip()
+    if not token:
+        return HTMLResponse(
+            "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">"
+            "<meta name=\"robots\" content=\"noindex,nofollow,noarchive\">"
+            "<title>Acceso requerido</title></head>"
+            "<body>Acceso requerido.</body></html>",
+            status_code=401,
+            headers=NOINDEX_HEADERS,
+        )
+
+    _read_admin_token(token)
+    if ADMIN_INDEX_FILE.exists():
+        return FileResponse(ADMIN_INDEX_FILE, headers=NOINDEX_HEADERS)
+
+    return HTMLResponse(
+        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"robots\" content=\"noindex,nofollow,noarchive\">"
+        "<title>App no disponible</title></head>"
+        "<body>App de administracion no disponible.</body></html>",
+        status_code=503,
+        headers=NOINDEX_HEADERS,
+    )
 
 # ========= HEALTH =========
 @app.get("/health")
@@ -588,6 +636,7 @@ def health():
 
 @app.post("/admin/login")
 def admin_login(payload: AdminLoginRequest):
+    _require_admin_auth_configured()
     email = payload.email.strip().lower()
     password = payload.password
 
