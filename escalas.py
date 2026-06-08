@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 escalas.py (sin pandas)
 Lee el maestro Excel con openpyxl y expone helpers para:
@@ -730,6 +730,7 @@ def calcular_payload(
     categoria: str,
     mes: str,
     jornada: float = 48,
+    basico_manual: float = 0,
     anios_antig: float = 0,
     osecac: bool = True,
     afiliado: bool = False,
@@ -825,6 +826,10 @@ def calcular_payload(
             bas_base *= fac
             nr_base *= fac
             sf_base *= fac
+
+    basico_manual_val = _positive_float(basico_manual)
+    if basico_manual_val > 0:
+        bas_base = basico_manual_val
 
     bas = bas_base * factor
     nr = nr_base * factor
@@ -2953,3 +2958,4 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
         "no_rem": "Incr. NR. Acu. Dic 25",
         "suma_fija": "Recomp. NR. Acu. 25",
     }
+

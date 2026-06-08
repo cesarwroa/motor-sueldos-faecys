@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 from datetime import datetime, timezone
 import hashlib
 import hmac
@@ -989,6 +989,7 @@ def calcular(
     categoria: str,
     mes: str,
     jornada: float = 48.0,
+    basico_manual: float = 0,
     anios_antig: float = 0,
     osecac: bool = True,
     afiliado: bool = False,
@@ -1043,6 +1044,7 @@ def calcular(
         categoria=categoria,
         mes=mes,
         jornada=jornada,
+        basico_manual=basico_manual,
         anios_antig=anios_antig,
         osecac=osecac,
         afiliado=afiliado,
@@ -1229,3 +1231,4 @@ def regla_cajero(tipo: str):
 @app.get("/regla-km")
 def regla_km(categoria: str, km: float):
     return get_regla_km(categoria, km)
+
