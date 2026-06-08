@@ -1,4 +1,4 @@
-
+﻿
 <!DOCTYPE html>
 
 <html lang="es">
@@ -807,6 +807,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div>
 <div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div>
 </div>
+<div class="grid cols-4" id="mensualScaleFields" style="margin-top:8px">
+<div><label>Básico (Rem)</label><input id="basico" min="0" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">Incr. NR. Acu. Abr 26</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Recomp. Acu. Abr 26</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div id="mensualExtrasHost">
 <div class="note" id="aguaBlock" style="display:none">
   <strong>Agua Potable:</strong> Conexiones
@@ -830,7 +832,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <details class="note" id="mensualExtrasRoot" style="margin-top:8px">
   <summary style="cursor:pointer; font-weight:800">Extras Del Mes</summary>
   <div style="margin-top:8px">
-<div class="grid cols-4" style="margin-top:8px"><div><label>Básico (Rem) — auto</label><input class="readonly" disabled="" id="basico" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">No Rem (variable)</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Suma Fija (NR)</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px"><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div></div>
 <div class="grid cols-4" style="margin-top:8px"><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
 <option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
 </select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
@@ -3772,6 +3774,7 @@ function applyBranchUI(){
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("jornada", String(jornada));
+      url.searchParams.set("basico_manual", String(Math.max(0, num($("basico")?.value || 0) || 0)));
       // Agua Potable: conexiones (cantidad y/o categoría)
       const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
       if(isAgua){
@@ -3783,7 +3786,10 @@ function applyBranchUI(){
 const p = await fetchJSON(url.toString());
       if(!p || p.ok === false) throw new Error((p && p.status) ? p.status : "payload error");
 
-      setVal("basico", (p.basico_base ?? p.basico ?? 0));
+      const basicoEl = $("basico");
+      if(basicoEl && !basicoEl.dataset.manual){
+        setVal("basico", (p.basico_base ?? p.basico ?? 0));
+      }
       setVal("nrVar", (p.no_rem_base ?? p.no_rem ?? 0));
       setVal("nrSF", (p.suma_fija_base ?? p.suma_fija ?? 0));
       const nrTot = num(p.no_rem_base ?? p.no_rem ?? 0) + num(p.suma_fija_base ?? p.suma_fija ?? 0);
@@ -4094,6 +4100,7 @@ const p = await fetchJSON(url.toString());
     url.searchParams.set("agrup", agrup);
     url.searchParams.set("categoria", categoria);
     url.searchParams.set("jornada", String(jornada));
+      url.searchParams.set("basico_manual", String(Math.max(0, num($("basico")?.value || 0) || 0)));
     url.searchParams.set("anios_antig", String(anios_antig));
     url.searchParams.set("osecac", osecac ? "true" : "false");
     url.searchParams.set("afiliado", afiliado ? "true" : "false");
@@ -4214,6 +4221,7 @@ const p = await fetchJSON(url.toString());
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("mes", mes);
       url.searchParams.set("jornada", String(jornada));
+      url.searchParams.set("basico_manual", String(Math.max(0, num($("basico")?.value || 0) || 0)));
       // Agua Potable: conexiones (cantidad y/o categoría)
       const isAgua = (normRama(rama) === "AGUA POTABLE" || normRama(rama) === "AGUA" || normRama(rama) === "AGUAPOTABLE");
       if(isAgua){
@@ -4985,6 +4993,12 @@ function wire(){
 
     $("mes")?.addEventListener("change", () => { try{ _mAutoAntigFromAlta(); }catch(_){ } syncOsecacOptionText(); updateEmployerCostNote(); refreshPayload(); });
     $("hs")?.addEventListener("change", () => { try{ updateWarnJornada23(); }catch(_){ } refreshPayload(); });
+    $("basico")?.addEventListener("input", () => {
+      const el = $("basico");
+      if(!el) return;
+      if((el.value || "").toString().trim() === "") delete el.dataset.manual;
+      else el.dataset.manual = "1";
+    });
 
     
 
@@ -5978,3 +5992,4 @@ function switchTab(tab){
 })();
 </script></body>
 </html>
+
