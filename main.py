@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 from datetime import datetime, timezone
 import hashlib
 import hmac
@@ -192,7 +192,7 @@ def _read_admin_token(token: str) -> Dict[str, Any]:
     try:
         payload_b64, signature_b64 = token.split(".", 1)
     except ValueError as exc:
-        raise HTTPException(status_code=401, detail="Token admin inválido.") from exc
+        raise HTTPException(status_code=401, detail="Token admin invÃ¡lido.") from exc
 
     expected_signature = hmac.new(
         ADMIN_ACCESS_SECRET.encode("utf-8"),
@@ -202,19 +202,19 @@ def _read_admin_token(token: str) -> Dict[str, Any]:
     actual_signature = _b64url_decode(signature_b64)
 
     if not hmac.compare_digest(expected_signature, actual_signature):
-        raise HTTPException(status_code=401, detail="Firma de sesión inválida.")
+        raise HTTPException(status_code=401, detail="Firma de sesiÃ³n invÃ¡lida.")
 
     try:
         payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
     except (ValueError, json.JSONDecodeError) as exc:
-        raise HTTPException(status_code=401, detail="No se pudo leer la sesión admin.") from exc
+        raise HTTPException(status_code=401, detail="No se pudo leer la sesiÃ³n admin.") from exc
 
     exp = int(payload.get("exp") or 0)
     if exp <= int(time.time()):
-        raise HTTPException(status_code=401, detail="La sesión admin venció.")
+        raise HTTPException(status_code=401, detail="La sesiÃ³n admin venciÃ³.")
 
     if str(payload.get("role") or "").lower() != "admin":
-        raise HTTPException(status_code=401, detail="La sesión no tiene permisos de administrador.")
+        raise HTTPException(status_code=401, detail="La sesiÃ³n no tiene permisos de administrador.")
 
     return payload
 
@@ -224,7 +224,7 @@ def _extract_admin_token(authorization: Optional[str]) -> str:
         raise HTTPException(status_code=401, detail="Falta el token admin.")
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
-        raise HTTPException(status_code=401, detail="Formato de autorización inválido.")
+        raise HTTPException(status_code=401, detail="Formato de autorizaciÃ³n invÃ¡lido.")
     return token.strip()
 
 
@@ -352,7 +352,7 @@ def _require_admin_feature_access(authorization: Optional[str], feature_name: st
     admin_payload = _require_admin_session(authorization)
     access = _get_feature_access(feature_name)
     if access not in {"admin_only", "public"}:
-        raise HTTPException(status_code=403, detail="La función todavía no está habilitada en el panel.")
+        raise HTTPException(status_code=403, detail="La funciÃ³n todavÃ­a no estÃ¡ habilitada en el panel.")
     return admin_payload
 
 
@@ -585,7 +585,7 @@ def _resolve_active_admin_employee_id(
         return str(company_employees[0].get("id") or "").strip()
     return ""
 
-# ========= HOME → HTML =========
+# ========= HOME â†’ HTML =========
 @app.get("/", include_in_schema=False)
 def home():
     for path in (PUBLIC_INDEX_FILE, PUBLIC_STATIC_INDEX_FILE):
@@ -644,7 +644,7 @@ def admin_login(payload: AdminLoginRequest):
     valid_password = hmac.compare_digest(password, ADMIN_LOGIN_PASSWORD)
 
     if not (valid_email and valid_password):
-        raise HTTPException(status_code=401, detail="Credenciales de administrador inválidas.")
+        raise HTTPException(status_code=401, detail="Credenciales de administrador invÃ¡lidas.")
 
     return {
         "ok": True,
@@ -706,7 +706,7 @@ def update_admin_features(payload: AdminFeaturesUpdate, authorization: Optional[
     try:
         saved = _write_feature_store(store)
     except OSError as exc:
-        raise HTTPException(status_code=500, detail="No se pudo guardar la configuraciÃ³n del panel.") from exc
+        raise HTTPException(status_code=500, detail="No se pudo guardar la configuraciÃƒÂ³n del panel.") from exc
     return _admin_feature_payload(saved)
 
 
@@ -732,7 +732,7 @@ def create_admin_company(payload: AdminCompanyCreate, authorization: Optional[st
     admin_email = str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower()
     razon_social = payload.razon_social.strip()
     if not razon_social:
-        raise HTTPException(status_code=400, detail="La razón social es obligatoria.")
+        raise HTTPException(status_code=400, detail="La razÃ³n social es obligatoria.")
 
     companies = _read_admin_companies()
     now = _feature_timestamp()
@@ -855,7 +855,7 @@ def create_admin_employee(payload: AdminEmployeeCreate, authorization: Optional[
     apellido_nombre = payload.apellido_nombre.strip()
 
     if not company_id:
-        raise HTTPException(status_code=400, detail="Seleccioná una empresa para cargar el empleado.")
+        raise HTTPException(status_code=400, detail="SeleccionÃ¡ una empresa para cargar el empleado.")
     if not any(str(item.get("id") or "") == company_id for item in _read_admin_companies()):
         raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
     if not apellido_nombre:
@@ -914,7 +914,7 @@ def set_active_admin_employee(payload: AdminEmployeeActiveUpdate, authorization:
     employee_id = payload.employee_id.strip()
 
     if not company_id:
-        raise HTTPException(status_code=400, detail="Seleccioná una empresa para elegir empleado.")
+        raise HTTPException(status_code=400, detail="SeleccionÃ¡ una empresa para elegir empleado.")
     if not any(str(item.get("id") or "") == company_id for item in _read_admin_companies()):
         raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
 
@@ -1016,8 +1016,8 @@ def meta():
 def payload(
     rama: str,
     mes: str,
-    agrup: str = "—",
-    categoria: str = "—",
+    agrup: str = "â€”",
+    categoria: str = "â€”",
     conex_cat: str = "",
     conexiones: int = 0,
 ):
@@ -1038,6 +1038,7 @@ def calcular(
     categoria: str,
     mes: str,
     jornada: float = 48.0,
+    basico_manual: float = 0,
     anios_antig: float = 0,
     osecac: bool = True,
     afiliado: bool = False,
@@ -1060,7 +1061,7 @@ def calcular(
     km_tipo: str = "",
     km_menos100: float = 0,
     km_mas100: float = 0,
-    # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
+    # Etapa 5/6: A cuenta (REM) / ViÃ¡ticos (NR sin aportes)
     a_cuenta_rem: float = 0,
     viaticos_nr: float = 0,
 
@@ -1074,7 +1075,7 @@ def calcular(
     # Agua potable: selector A/B/C/D. Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
-    # Fúnebres: ids de adicionales seleccionados (coma-separados)
+    # FÃºnebres: ids de adicionales seleccionados (coma-separados)
     fun_adic: Optional[List[str]] = Query(None),
     # Ley 27.802 / art. 140 LCT: conceptos a cargo del empleador (desde 2026-05)
     regimen_contribuciones: str = "inciso_b",
@@ -1092,6 +1093,7 @@ def calcular(
         categoria=categoria,
         mes=mes,
         jornada=jornada,
+        basico_manual=basico_manual,
         anios_antig=anios_antig,
         osecac=osecac,
         afiliado=afiliado,
@@ -1135,7 +1137,7 @@ def calcular(
 
 
 
-# ========= CALCULAR FINAL (liquidación final) =========
+# ========= CALCULAR FINAL (liquidaciÃ³n final) =========
 @app.get("/calcular-final")
 def calcular_final(
     rama: str,
@@ -1149,7 +1151,7 @@ def calcular_final(
     mejor_rem: float = 0,
     mejor_nr: float = 0,
     mejor_total: float = 0,
-    # Parámetros
+    # ParÃ¡metros
     dias_mes: int = 0,
     vac_anuales: int = 14,
     vac_dias_computables: float = 0.0,
@@ -1278,3 +1280,5 @@ def regla_cajero(tipo: str):
 @app.get("/regla-km")
 def regla_km(categoria: str, km: float):
     return get_regla_km(categoria, km)
+
+
