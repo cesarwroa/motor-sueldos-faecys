@@ -1038,7 +1038,13 @@ def calcular_payload(
 
     # -------- Cálculos núcleo --------
     # Remunerativos
-    pct_ant = float(anios_antig or 0.0) * 0.01
+    def _pct_antiguedad(_rama: str, _anios: float) -> float:
+        anios = max(0, int(float(_anios or 0.0)))
+        if norm_rama(_rama) in ("AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
+            return (pow(1.02, anios) - 1.0) if anios else 0.0
+        return float(_anios or 0.0) * 0.01
+
+    pct_ant = _pct_antiguedad(rama, anios_antig)
 
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     def _fpos(x) -> float:
