@@ -792,6 +792,34 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <tbody id="adminEmployeesTbody"></tbody>
   </table>
 </div>
+<div class="card no-print co-admin-panel" id="adminLeadsPanel">
+  <div class="co-admin-panel-head">
+    <div>
+      <div class="co-admin-kicker">Consultas comerciales</div>
+      <h2 class="co-admin-panel-title">Empresas interesadas</h2>
+      <p class="co-admin-panel-copy">Datos recibidos desde el formulario de la web para evaluar pruebas, demos o alta comercial.</p>
+    </div>
+  </div>
+  <div class="co-admin-panel-actions">
+    <button id="adminRefreshLeadsBtn" type="button">Actualizar consultas</button>
+    <span class="co-admin-inline-feedback" id="adminLeadsFeedback"></span>
+  </div>
+  <div class="note">Consultas recibidas: <span id="adminLeadsCount">0</span></div>
+  <div id="adminLeadsEmpty" class="co-admin-empty">Todavía no hay consultas comerciales guardadas.</div>
+  <table class="co-admin-table" id="adminLeadsTable" style="display:none">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Nombre</th>
+        <th>Empresa</th>
+        <th>Teléfono</th>
+        <th>Empleados</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody id="adminLeadsTbody"></tbody>
+  </table>
+</div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
 <div><label>Rama</label><select id="rama"></select></div>
@@ -1350,6 +1378,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   window.__adminActiveCompanyId = "";
   window.__adminEmployees = [];
   window.__adminActiveEmployeeId = "";
+  window.__adminLeads = [];
   const DEFAULT_FEATURE_ACCESS = Object.freeze({
     liquidacion_final: "public",
     registro_empresas: "admin_only",
@@ -1419,6 +1448,16 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 
   function consumeAdminTokenFromHash(){
     try{
+      const searchParams = new URLSearchParams(window.location.search || "");
+      const queryToken = (searchParams.get(ADMIN_HASH_KEY) || "").trim();
+      if(queryToken){
+        searchParams.delete(ADMIN_HASH_KEY);
+        const nextSearch = searchParams.toString();
+        const nextUrl = `${window.location.pathname}${nextSearch ? "?" + nextSearch : ""}${window.location.hash || ""}`;
+        window.history.replaceState(null, "", nextUrl);
+        return queryToken;
+      }
+
       const rawHash = (window.location.hash || "").replace(/^#/, "");
       if(!rawHash) return "";
       const params = new URLSearchParams(rawHash.startsWith("?") ? rawHash.slice(1) : rawHash);
@@ -2229,6 +2268,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     renderAdminFeaturePanel();
     renderAdminCompaniesPanel();
     renderAdminEmployeesPanel();
+    renderAdminLeadsPanel();
   }
 
   function clearAdminSession(){
@@ -2238,6 +2278,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     window.__adminActiveCompanyId = "";
     window.__adminEmployees = [];
     window.__adminActiveEmployeeId = "";
+    window.__adminLeads = [];
     setStoredAdminToken("");
     syncAdminUI();
     if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
@@ -2262,6 +2303,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       window.__adminSession = data || null;
       syncAdminUI();
       await refreshAdminCompanies();
+      await refreshAdminLeads();
       return data;
     }catch(err){
       console.warn("No se pudo validar la sesion admin.", err);
@@ -2557,6 +2599,77 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
   }
 
+  function renderAdminLeadsPanel(){
+    const panel = $("adminLeadsPanel");
+    const isVisible = !!window.__adminAccess;
+    const empty = $("adminLeadsEmpty");
+    const table = $("adminLeadsTable");
+    const tbody = $("adminLeadsTbody");
+    const refreshBtn = $("adminRefreshLeadsBtn");
+    const items = Array.isArray(window.__adminLeads) ? window.__adminLeads : [];
+
+    if(panel) panel.style.display = isVisible ? "block" : "none";
+    if(refreshBtn) refreshBtn.disabled = !isVisible;
+    setText("adminLeadsCount", isVisible ? String(items.length) : "0");
+
+    if(!tbody || !table || !empty){
+      return;
+    }
+
+    tbody.innerHTML = "";
+    if(!isVisible || !items.length){
+      table.style.display = "none";
+      empty.style.display = "block";
+      return;
+    }
+
+    empty.style.display = "none";
+    table.style.display = "";
+    items.forEach((item) => {
+      const tr = document.createElement("tr");
+      const values = [
+        item?.created_at ? formatFeatureUpdatedAt(item.created_at) : "-",
+        item?.nombre || "-",
+        item?.empresa || "-",
+        item?.telefono || "-",
+        item?.empleados || "-",
+        item?.email || "-"
+      ];
+      values.forEach((value) => {
+        const td = document.createElement("td");
+        td.textContent = String(value ?? "");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function refreshAdminLeads(){
+    if(!window.__adminAccess){
+      window.__adminLeads = [];
+      renderAdminLeadsPanel();
+      return null;
+    }
+
+    const feedback = $("adminLeadsFeedback");
+    if(feedback) feedback.textContent = "Actualizando consultas...";
+    try{
+      const url = new URL("/admin/leads", API_BASE);
+      const data = await fetchJSON(url.toString(), {
+        headers: getAdminAuthHeaders()
+      });
+      window.__adminLeads = Array.isArray(data?.items) ? data.items : [];
+      renderAdminLeadsPanel();
+      if(feedback) feedback.textContent = "Consultas actualizadas.";
+      return data;
+    }catch(err){
+      console.warn("No se pudieron cargar las consultas comerciales.", err);
+      renderAdminLeadsPanel();
+      if(feedback) feedback.textContent = "No se pudieron cargar las consultas.";
+      return null;
+    }
+  }
+
   async function saveActiveAdminEmployee(employeeId){
     const company = getSelectedAdminCompany();
     if(!isFeatureEnabledForAdmin("registro_empresas") || !company) return null;
@@ -2775,6 +2888,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     renderAdminFeaturePanel();
     renderAdminCompaniesPanel();
     renderAdminEmployeesPanel();
+    renderAdminLeadsPanel();
   }
 
   function buildPrintCompanyBlock(company){
@@ -5212,6 +5326,9 @@ function wire(){
     });
     $("adminSaveEmployeeBtn")?.addEventListener("click", () => {
       saveAdminEmployee();
+    });
+    $("adminRefreshLeadsBtn")?.addEventListener("click", () => {
+      refreshAdminLeads();
     });
     $("adminReceiptEmployeeSelect")?.addEventListener("change", async (ev) => {
       const feedback = $("adminEmployeesFeedback");

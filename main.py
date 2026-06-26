@@ -10,7 +10,7 @@ import time
 import uuid
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
@@ -49,9 +49,14 @@ ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
 ADMIN_COMPANY_STATE_FILE = BASE_DIR / "data" / "admin_company_state.json"
 ADMIN_EMPLOYEES_FILE = BASE_DIR / "data" / "admin_employees.json"
 ADMIN_EMPLOYEE_STATE_FILE = BASE_DIR / "data" / "admin_employee_state.json"
+ADMIN_LEADS_FILE = BASE_DIR / "data" / "admin_leads.json"
 ADMIN_COMPANY_ASSETS_DIR = BASE_DIR / "data" / "admin_company_assets"
 ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
+PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
+PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
+ADMIN_INDEX_FILE = BASE_DIR / "index.html"
+NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
 FEATURE_PUBLIC_MAP = {
     "liquidacion_final": "liquidacion_final_publica",
@@ -128,6 +133,16 @@ class AdminEmployeeCreate(BaseModel):
 class AdminEmployeeActiveUpdate(BaseModel):
     company_id: str
     employee_id: str = ""
+
+
+class PublicLeadCreate(BaseModel):
+    nombre: str
+    email: str
+    empresa: str
+    telefono: str = ""
+    empleados: str = ""
+    motivo: str = "Consulta empresa / nomina"
+    mensaje: str = ""
 
 
 def _sanitize_admin_asset_stem(value: str) -> str:
@@ -287,6 +302,47 @@ def _write_feature_store(store: Dict[str, Any]) -> Dict[str, Any]:
 
 def _feature_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _clean_lead_text(value: Any, max_len: int = 300) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    return text[:max_len]
+
+
+def _read_admin_leads() -> List[Dict[str, Any]]:
+    if not ADMIN_LEADS_FILE.exists():
+        return []
+
+    try:
+        raw = json.loads(ADMIN_LEADS_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        raw = []
+
+    if not isinstance(raw, list):
+        return []
+
+    leads: List[Dict[str, Any]] = []
+    for item in raw:
+        if isinstance(item, dict):
+            leads.append({
+                "id": _clean_lead_text(item.get("id"), 80),
+                "created_at": _clean_lead_text(item.get("created_at"), 80),
+                "nombre": _clean_lead_text(item.get("nombre"), 160),
+                "email": _clean_lead_text(item.get("email"), 220),
+                "empresa": _clean_lead_text(item.get("empresa"), 180),
+                "telefono": _clean_lead_text(item.get("telefono"), 80),
+                "empleados": _clean_lead_text(item.get("empleados"), 80),
+                "motivo": _clean_lead_text(item.get("motivo"), 220),
+                "mensaje": _clean_lead_text(item.get("mensaje"), 500),
+            })
+    return leads
+
+
+def _write_admin_leads(leads: List[Dict[str, Any]]) -> None:
+    ADMIN_LEADS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = ADMIN_LEADS_FILE.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(leads[-2000:], ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(ADMIN_LEADS_FILE)
 
 
 def _public_feature_payload(store: Dict[str, Any]) -> Dict[str, Any]:
@@ -570,20 +626,64 @@ def _resolve_active_admin_employee_id(
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
-    p = BASE_DIR / "index.html"
-    if p.exists():
-        return FileResponse(p)
+    if PUBLIC_INDEX_FILE.exists():
+        return FileResponse(PUBLIC_INDEX_FILE, headers=NOINDEX_HEADERS)
 
-    p2 = BASE_DIR / "static" / "index.html"
-    if p2.exists():
-        return FileResponse(p2)
+    if PUBLIC_STATIC_INDEX_FILE.exists():
+        return FileResponse(PUBLIC_STATIC_INDEX_FILE, headers=NOINDEX_HEADERS)
+
+    if ADMIN_INDEX_FILE.exists():
+        return FileResponse(ADMIN_INDEX_FILE, headers=NOINDEX_HEADERS)
 
     return {"ok": True, "error": "index.html no encontrado"}
+
+
+@app.get("/admin/app", include_in_schema=False)
+def admin_app(admin_token: str = Query(default="")):
+    if admin_token:
+        _read_admin_token(admin_token)
+    if ADMIN_INDEX_FILE.exists():
+        return FileResponse(ADMIN_INDEX_FILE, headers=NOINDEX_HEADERS)
+    return HTMLResponse("<h1>Panel administrador no encontrado</h1>", status_code=404, headers=NOINDEX_HEADERS)
 
 # ========= HEALTH =========
 @app.get("/health")
 def health():
     return {"ok": True, "servicio": "motor-sueldos-faecys"}
+
+
+@app.post("/leads")
+def create_public_lead(payload: PublicLeadCreate):
+    nombre = _clean_lead_text(payload.nombre, 160)
+    email = _clean_lead_text(payload.email, 220)
+    empresa = _clean_lead_text(payload.empresa, 180)
+    telefono = _clean_lead_text(payload.telefono, 80)
+    empleados = _clean_lead_text(payload.empleados, 80)
+    motivo = _clean_lead_text(payload.motivo, 220) or "Consulta empresa / nomina"
+    mensaje = _clean_lead_text(payload.mensaje, 500)
+
+    if not nombre:
+        raise HTTPException(status_code=400, detail="El nombre es obligatorio.")
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="El email es obligatorio.")
+    if not empresa:
+        raise HTTPException(status_code=400, detail="La empresa es obligatoria.")
+
+    lead = {
+        "id": uuid.uuid4().hex[:12],
+        "created_at": _feature_timestamp(),
+        "nombre": nombre,
+        "email": email,
+        "empresa": empresa,
+        "telefono": telefono,
+        "empleados": empleados,
+        "motivo": motivo,
+        "mensaje": mensaje,
+    }
+    leads = _read_admin_leads()
+    leads.append(lead)
+    _write_admin_leads(leads)
+    return {"ok": True, "id": lead["id"]}
 
 
 @app.post("/admin/login")
@@ -629,6 +729,17 @@ def admin_features(authorization: Optional[str] = Header(default=None)):
     _require_admin_session(authorization)
     store = _read_feature_store()
     return _admin_feature_payload(store)
+
+
+@app.get("/admin/leads")
+def admin_leads(authorization: Optional[str] = Header(default=None)):
+    _require_admin_session(authorization)
+    leads = sorted(_read_admin_leads(), key=lambda item: item.get("created_at") or "", reverse=True)
+    return {
+        "ok": True,
+        "count": len(leads),
+        "items": leads,
+    }
 
 
 @app.put("/admin/features")
