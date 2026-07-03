@@ -626,11 +626,11 @@ def _resolve_active_admin_employee_id(
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
-    if PUBLIC_INDEX_FILE.exists():
-        return FileResponse(PUBLIC_INDEX_FILE, headers=NOINDEX_HEADERS)
-
     if PUBLIC_STATIC_INDEX_FILE.exists():
         return FileResponse(PUBLIC_STATIC_INDEX_FILE, headers=NOINDEX_HEADERS)
+
+    if PUBLIC_INDEX_FILE.exists():
+        return FileResponse(PUBLIC_INDEX_FILE, headers=NOINDEX_HEADERS)
 
     if ADMIN_INDEX_FILE.exists():
         return FileResponse(ADMIN_INDEX_FILE, headers=NOINDEX_HEADERS)
