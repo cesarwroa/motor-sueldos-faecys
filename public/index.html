@@ -792,6 +792,64 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     <tbody id="adminEmployeesTbody"></tbody>
   </table>
 </div>
+<div class="card no-print co-admin-panel" id="adminPayrollPanel" style="display:none">
+  <div class="co-admin-panel-head">
+    <div>
+      <div class="co-admin-kicker">Piloto profesional</div>
+      <h2 class="co-admin-panel-title">Nómina, historial y preparación ARCA</h2>
+      <p class="co-admin-panel-copy">Guardá la liquidación mensual del empleado activo, imprimí todos los recibos del período y parametrizá conceptos para Libro de Sueldos Digital.</p>
+    </div>
+  </div>
+  <details class="note" id="adminDbAccountBox" open>
+    <summary style="cursor:pointer;font-weight:800">Conexión segura con la base de Hostinger</summary>
+    <div class="co-admin-grid" style="margin-top:12px">
+      <div><label for="adminDbName">Nombre</label><input id="adminDbName" type="text" placeholder="Administrador" autocomplete="name"/></div>
+      <div><label for="adminDbEmail">Email</label><input id="adminDbEmail" type="email" placeholder="correo@dominio.com" autocomplete="username"/></div>
+      <div><label for="adminDbPassword">Contraseña</label><input id="adminDbPassword" type="password" placeholder="Mínimo 10 caracteres" autocomplete="current-password"/></div>
+    </div>
+    <div class="co-admin-panel-actions">
+      <button id="adminDbLoginBtn" type="button">Ingresar a Hostinger</button>
+      <button id="adminDbRegisterBtn" type="button" class="secondary">Crear cuenta piloto</button>
+      <button id="adminDbMigrateBtn" type="button" class="secondary" disabled>Migrar empresa y empleados activos</button>
+      <button id="adminDbLogoutBtn" type="button" class="secondary" style="display:none">Desconectar</button>
+    </div>
+    <div id="adminDbStatus">Base lista. Iniciá sesión para guardar la nómina en Hostinger.</div>
+  </details>
+  <div class="co-admin-grid">
+    <div>
+      <label for="adminPayrollPeriod">Período</label>
+      <input id="adminPayrollPeriod" type="month"/>
+    </div>
+    <div class="co-admin-col-span">
+      <label>Acciones de nómina</label>
+      <div class="co-admin-panel-actions" style="margin-top:0">
+        <button id="adminSavePayrollBtn" type="button">Guardar cálculo mensual actual</button>
+        <button id="adminRefreshPayrollBtn" type="button" class="secondary">Actualizar historial</button>
+        <button id="adminPrintPayrollBtn" type="button" class="secondary">Imprimir recibos del período</button>
+        <button id="adminValidateArcaBtn" type="button" class="secondary">Validar preparación ARCA</button>
+      </div>
+    </div>
+  </div>
+  <div class="note" id="adminPayrollFeedback">Elegí una empresa y un empleado activos.</div>
+  <div class="note">Liquidaciones guardadas: <span id="adminPayrollCount">0</span></div>
+  <div id="adminPayrollEmpty" class="co-admin-empty">Todavía no hay liquidaciones guardadas para este período.</div>
+  <table class="co-admin-table" id="adminPayrollTable" style="display:none">
+    <thead><tr><th>Empleado</th><th>Período</th><th>Remunerativo</th><th>No remunerativo</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead>
+    <tbody id="adminPayrollTbody"></tbody>
+  </table>
+  <details class="note" style="margin-top:14px">
+    <summary style="cursor:pointer;font-weight:800">Parametrización de conceptos ARCA</summary>
+    <div class="co-admin-grid" style="margin-top:12px">
+      <div><label for="adminArcaConcept">Concepto del recibo</label><input id="adminArcaConcept" type="text" placeholder="Ej. Sueldo básico"/></div>
+      <div><label for="adminArcaEmployerCode">Código empleador</label><input id="adminArcaEmployerCode" type="text" maxlength="10" placeholder="SUELDO"/></div>
+      <div><label for="adminArcaCode">Código ARCA</label><input id="adminArcaCode" type="text" maxlength="6" placeholder="110000"/></div>
+      <div><label for="adminArcaUnit">Unidad</label><select id="adminArcaUnit"><option value="$">Importe ($)</option><option value="%">Porcentaje (%)</option><option value="H">Horas</option><option value="D">Días</option></select></div>
+    </div>
+    <div class="co-admin-panel-actions"><button id="adminSaveArcaMappingBtn" type="button">Guardar parametrización</button><span id="adminArcaFeedback" class="co-admin-inline-feedback"></span></div>
+    <table class="co-admin-table" id="adminArcaMappingsTable" style="display:none"><thead><tr><th>Concepto</th><th>Código empleador</th><th>Código ARCA</th><th>Unidad</th></tr></thead><tbody id="adminArcaMappingsTbody"></tbody></table>
+  </details>
+  <div id="adminArcaValidation" class="note" style="margin-top:12px">La descarga TXT permanecerá bloqueada hasta completar todas las validaciones del diseño oficial ARCA.</div>
+</div>
 <div class="card">
 <div class="grid cols-4" id="topSelectors">
 <div><label>Rama</label><select id="rama"></select></div>
@@ -1350,13 +1408,20 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   window.__adminActiveCompanyId = "";
   window.__adminEmployees = [];
   window.__adminActiveEmployeeId = "";
+  window.__adminPayrollHistory = [];
+  window.__adminArcaMappings = [];
+  window.__professionalDbSession = null;
+  const PROFESSIONAL_DB_API = "https://calculadoradecomercio.com.ar/api/";
+  const PROFESSIONAL_DB_TOKEN_KEY = "co_professional_db_token_v1";
+  const PROFESSIONAL_DB_COMPANY_KEY = "co_professional_db_company_v1";
   const DEFAULT_FEATURE_ACCESS = Object.freeze({
     liquidacion_final: "public",
     registro_empresas: "admin_only",
     anexo_costo_empleador: "public",
     portal_empresa: "admin_only",
     firma_digital: "admin_only",
-    portal_empleado: "admin_only"
+    portal_empleado: "admin_only",
+    gestion_nomina: "admin_only"
   });
   const DEFAULT_PUBLIC_FEATURES = Object.freeze({
     liquidacion_final_publica: true
@@ -1393,6 +1458,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       key: "portal_empleado",
       label: "Portal empleado",
       description: "Prepara el acceso futuro del empleado para consultar y firmar recibos cuando lo abras."
+    },
+    {
+      key: "gestion_nomina",
+      label: "Gestion profesional de nomina y ARCA",
+      description: "Habilita el piloto admin de historial, recibos por periodo y parametrizacion para Libro de Sueldos Digital."
     }
   ]);
   window.__featureState = {
@@ -2191,6 +2261,414 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
   }
 
+  function professionalDbToken(){
+    try{ return String(localStorage.getItem(PROFESSIONAL_DB_TOKEN_KEY) || "").trim(); }catch(_){ return ""; }
+  }
+
+  function professionalDbCompanyId(){
+    try{ return String(localStorage.getItem(PROFESSIONAL_DB_COMPANY_KEY) || "").trim(); }catch(_){ return ""; }
+  }
+
+  function setProfessionalDbAuth(token, companyId=""){
+    try{
+      if(token) localStorage.setItem(PROFESSIONAL_DB_TOKEN_KEY, token); else localStorage.removeItem(PROFESSIONAL_DB_TOKEN_KEY);
+      if(companyId) localStorage.setItem(PROFESSIONAL_DB_COMPANY_KEY, companyId); else if(!token) localStorage.removeItem(PROFESSIONAL_DB_COMPANY_KEY);
+    }catch(_){ }
+  }
+
+  async function professionalDbFetch(action, { method="GET", body=null, auth=true, params={} }={}){
+    const url = new URL(PROFESSIONAL_DB_API);
+    url.searchParams.set("action", action);
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if(value !== undefined && value !== null && String(value) !== "") url.searchParams.set(key, String(value));
+    });
+    const headers = { "Content-Type":"application/json" };
+    if(auth){
+      const token = professionalDbToken();
+      if(!token) throw new Error("Iniciá sesión en Hostinger.");
+      headers.Authorization = `Bearer ${token}`;
+    }
+    return fetchJSON(url.toString(), { method, headers, ...(body ? { body:JSON.stringify(body) } : {}) });
+  }
+
+  function renderProfessionalDbState(){
+    const session = window.__professionalDbSession;
+    const connected = !!session?.user;
+    if($("adminDbLoginBtn")) $("adminDbLoginBtn").style.display = connected ? "none" : "";
+    if($("adminDbRegisterBtn")) $("adminDbRegisterBtn").style.display = connected ? "none" : "";
+    if($("adminDbLogoutBtn")) $("adminDbLogoutBtn").style.display = connected ? "" : "none";
+    if($("adminDbMigrateBtn")) $("adminDbMigrateBtn").disabled = !connected || !getSelectedAdminCompany();
+    const companyId = professionalDbCompanyId();
+    setText("adminDbStatus", connected
+      ? `Conectado como ${session.user.email}. ${companyId ? "Empresa vinculada; el historial se guarda en Hostinger." : "Falta migrar o vincular la empresa activa."}`
+      : "Base lista. Iniciá sesión para guardar la nómina en Hostinger.");
+  }
+
+  async function refreshProfessionalDbSession(){
+    if(!professionalDbToken()){
+      window.__professionalDbSession = null;
+      renderProfessionalDbState();
+      return null;
+    }
+    try{
+      const data = await professionalDbFetch("me");
+      window.__professionalDbSession = data;
+      const currentId = professionalDbCompanyId();
+      if(!currentId && Array.isArray(data?.companies) && data.companies.length === 1){
+        setProfessionalDbAuth(professionalDbToken(), String(data.companies[0].id || ""));
+      }
+      renderProfessionalDbState();
+      return data;
+    }catch(err){
+      console.warn("Sesión Hostinger inválida.", err);
+      setProfessionalDbAuth("");
+      window.__professionalDbSession = null;
+      renderProfessionalDbState();
+      return null;
+    }
+  }
+
+  async function loginProfessionalDb(){
+    const email = String($("adminDbEmail")?.value || "").trim();
+    const password = String($("adminDbPassword")?.value || "");
+    setText("adminDbStatus", "Conectando con Hostinger...");
+    try{
+      const data = await professionalDbFetch("login", { method:"POST", auth:false, body:{ email, password } });
+      setProfessionalDbAuth(String(data?.token || ""));
+      if($("adminDbPassword")) $("adminDbPassword").value = "";
+      await refreshProfessionalDbSession();
+      await refreshAdminPayroll();
+    }catch(err){
+      console.error(err);
+      setText("adminDbStatus", err?.message || "No se pudo iniciar sesión.");
+    }
+  }
+
+  async function registerProfessionalDb(){
+    const company = getSelectedAdminCompany();
+    if(!company){ setText("adminDbStatus", "Primero seleccioná una empresa activa."); return; }
+    const body = {
+      name: String($("adminDbName")?.value || "Administrador").trim(),
+      email: String($("adminDbEmail")?.value || "").trim(),
+      password: String($("adminDbPassword")?.value || ""),
+      company_name: String(company.razon_social || "").trim(),
+      cuit: String(company.cuit || "").trim()
+    };
+    setText("adminDbStatus", "Creando cuenta piloto...");
+    try{
+      await professionalDbFetch("register", { method:"POST", auth:false, body });
+      await loginProfessionalDb();
+    }catch(err){
+      console.error(err);
+      const msg = String(err?.message || "No se pudo crear la cuenta.");
+      setText("adminDbStatus", msg.includes("REGISTRATION_DISABLED") || msg.includes("no esta habilitado")
+        ? "El registro está protegido. Activá temporalmente registration_enabled en config.php para crear la primera cuenta."
+        : msg);
+    }
+  }
+
+  function logoutProfessionalDb(){
+    professionalDbFetch("logout", { method:"POST" }).catch(() => {});
+    setProfessionalDbAuth("");
+    window.__professionalDbSession = null;
+    window.__adminPayrollHistory = [];
+    window.__adminArcaMappings = [];
+    renderProfessionalDbState();
+    renderAdminPayrollPanel();
+  }
+
+  async function migrateProfessionalCompany(){
+    const company = getSelectedAdminCompany();
+    if(!company || !window.__professionalDbSession?.user) return;
+    setText("adminDbStatus", "Migrando empresa y empleados...");
+    try{
+      let remoteCompanyId = professionalDbCompanyId();
+      const companies = Array.isArray(window.__professionalDbSession.companies) ? window.__professionalDbSession.companies : [];
+      if(!remoteCompanyId){
+        const cuit = String(company.cuit || "").replace(/\D/g, "");
+        const match = companies.find((item) => String(item.cuit || "").replace(/\D/g, "") === cuit && cuit);
+        if(match) remoteCompanyId = String(match.id || "");
+      }
+      if(!remoteCompanyId){
+        const created = await professionalDbFetch("companies", { method:"POST", body:{
+          legal_name: company.razon_social || "Empresa", cuit: company.cuit || "", email: company.email || "", phone: company.telefono || "",
+          address:{ calle:company.direccion_calle || "", numero:company.direccion_numero || "", localidad:company.localidad || "", provincia:company.provincia || "" },
+          settings:{ rama:company.rama || "", actividad:company.actividad || "" }
+        }});
+        remoteCompanyId = String(created?.id || "");
+      }
+      setProfessionalDbAuth(professionalDbToken(), remoteCompanyId);
+      for(const employee of (window.__adminEmployees || [])){
+        await professionalDbFetch("employees", { method:"POST", body:{
+          id:String(employee.id || ""), company_id:remoteCompanyId, file_number:employee.legajo || "", full_name:employee.apellido_nombre || "",
+          cuil:employee.cuil || "", category:employee.categoria || "", task_name:employee.tarea || "", start_date:employee.fecha_ingreso || "",
+          status:employee.estado === "pausado" ? "paused" : "active", profile:employee, arca_profile:{}
+        }});
+      }
+      await refreshProfessionalDbSession();
+      await refreshAdminPayroll();
+      setText("adminDbStatus", `Migración completa: ${(window.__adminEmployees || []).length} empleados vinculados.`);
+    }catch(err){
+      console.error(err);
+      setText("adminDbStatus", err?.message || "No se pudo completar la migración.");
+    }
+  }
+
+  function adminPayrollPeriodValue(){
+    const raw = String($("adminPayrollPeriod")?.value || $("mes")?.value || "").trim();
+    return raw.replace(/\D/g, "").slice(0, 6);
+  }
+
+  function ensureAdminPayrollPeriod(){
+    const input = $("adminPayrollPeriod");
+    if(!input || input.value) return;
+    const raw = String($("mes")?.value || "").trim();
+    if(/^\d{4}-\d{2}$/.test(raw)) input.value = raw;
+    else{
+      const now = new Date();
+      input.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    }
+  }
+
+  function renderAdminPayrollHistory(){
+    const items = Array.isArray(window.__adminPayrollHistory) ? window.__adminPayrollHistory : [];
+    const tbody = $("adminPayrollTbody");
+    const table = $("adminPayrollTable");
+    const empty = $("adminPayrollEmpty");
+    setText("adminPayrollCount", String(items.length));
+    if(table) table.style.display = items.length ? "table" : "none";
+    if(empty) empty.style.display = items.length ? "none" : "block";
+    if(!tbody) return;
+    tbody.innerHTML = items.map((item) => {
+      const t = item.resumen || {};
+      return `<tr>
+        <td>${escapeHtml(item.employee_name || "Empleado")}</td>
+        <td>${escapeHtml(item.periodo || "")}</td>
+        <td>${money(t.rem || 0)}</td><td>${money(t.nr || 0)}</td><td>${money(t.ded || 0)}</td><td><strong>${money(t.neto || 0)}</strong></td>
+        <td><button type="button" class="secondary" onclick="deleteAdminPayroll('${escapeHtml(item.id || "")}')">Eliminar</button></td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderAdminArcaMappings(){
+    const items = Array.isArray(window.__adminArcaMappings) ? window.__adminArcaMappings : [];
+    const table = $("adminArcaMappingsTable");
+    const tbody = $("adminArcaMappingsTbody");
+    if(table) table.style.display = items.length ? "table" : "none";
+    if(tbody) tbody.innerHTML = items.map((item) => `<tr><td>${escapeHtml(item.concepto || "")}</td><td>${escapeHtml(item.codigo_empleador || "")}</td><td>${escapeHtml(item.codigo_arca || "")}</td><td>${escapeHtml(item.unidad || "$")}</td></tr>`).join("");
+  }
+
+  function renderAdminPayrollPanel(){
+    const enabled = isFeatureEnabledForAdmin("gestion_nomina");
+    const panel = $("adminPayrollPanel");
+    if(panel) panel.style.display = enabled ? "block" : "none";
+    if(!enabled) return;
+    ensureAdminPayrollPeriod();
+    const hasCompany = !!getSelectedAdminCompany();
+    const hasEmployee = !!getSelectedAdminEmployee();
+    if($("adminSavePayrollBtn")) $("adminSavePayrollBtn").disabled = !(hasCompany && hasEmployee && window.__lastMensualCalc);
+    if($("adminPrintPayrollBtn")) $("adminPrintPayrollBtn").disabled = !window.__adminPayrollHistory?.length;
+    setText("adminPayrollFeedback", !hasCompany ? "Elegí una empresa activa." : (!hasEmployee ? "Elegí un empleado activo." : (window.__lastMensualCalc ? "Podés guardar el último cálculo mensual mostrado." : "Realizá un cálculo mensual para guardarlo.")));
+    renderAdminPayrollHistory();
+    renderAdminArcaMappings();
+    renderProfessionalDbState();
+  }
+
+  async function refreshAdminPayroll(){
+    if(!isFeatureEnabledForAdmin("gestion_nomina")) return;
+    const company = getSelectedAdminCompany();
+    if(!company){
+      window.__adminPayrollHistory = [];
+      window.__adminArcaMappings = [];
+      renderAdminPayrollPanel();
+      return;
+    }
+    const period = adminPayrollPeriodValue();
+    try{
+      const remoteCompanyId = professionalDbCompanyId();
+      if(professionalDbToken() && remoteCompanyId){
+        const [history, mappings] = await Promise.all([
+          professionalDbFetch("payrolls", { params:{ company_id:remoteCompanyId, period } }),
+          professionalDbFetch("arca-mappings", { params:{ company_id:remoteCompanyId } })
+        ]);
+        window.__adminPayrollHistory = (Array.isArray(history?.items) ? history.items : []).map((item) => ({
+          id:item.id, company_id:item.company_id, employee_id:item.employee_id, employee_name:item.full_name, employee_cuil:item.cuil,
+          periodo:item.period, tipo:item.payroll_type, resultado:item.result || {}, resumen:{
+            rem:Number(item.remunerative || 0), nr:Number(item.non_remunerative || 0), ded:Number(item.deductions || 0), neto:Number(item.net_amount || 0)
+          }
+        }));
+        window.__adminArcaMappings = (Array.isArray(mappings?.items) ? mappings.items : []).map((item) => ({
+          id:item.id, company_id:item.company_id, concepto:item.concept_name, codigo_empleador:item.employer_code, codigo_arca:item.arca_code, unidad:item.unit_code
+        }));
+        renderAdminPayrollPanel();
+        return;
+      }
+      const historyUrl = new URL("/admin/payroll-history", API_BASE);
+      historyUrl.searchParams.set("company_id", String(company.id || ""));
+      if(period) historyUrl.searchParams.set("periodo", period);
+      const mappingUrl = new URL("/admin/arca/mappings", API_BASE);
+      mappingUrl.searchParams.set("company_id", String(company.id || ""));
+      const [history, mappings] = await Promise.all([
+        fetchJSON(historyUrl.toString(), { headers: getAdminAuthHeaders() }),
+        fetchJSON(mappingUrl.toString(), { headers: getAdminAuthHeaders() })
+      ]);
+      window.__adminPayrollHistory = Array.isArray(history?.items) ? history.items : [];
+      window.__adminArcaMappings = Array.isArray(mappings?.items) ? mappings.items : [];
+      renderAdminPayrollPanel();
+    }catch(err){
+      console.error(err);
+      setText("adminPayrollFeedback", "No se pudo cargar el historial profesional.");
+    }
+  }
+
+  async function saveCurrentAdminPayroll(){
+    const company = getSelectedAdminCompany();
+    const employee = getSelectedAdminEmployee();
+    const result = window.__lastMensualCalc;
+    if(!company || !employee || !result) return;
+    const period = adminPayrollPeriodValue();
+    if(!/^\d{6}$/.test(period)){
+      setText("adminPayrollFeedback", "Elegí un período válido.");
+      return;
+    }
+    setText("adminPayrollFeedback", "Guardando liquidación...");
+    try{
+      const remoteCompanyId = professionalDbCompanyId();
+      if(professionalDbToken() && remoteCompanyId){
+        await professionalDbFetch("payrolls", { method:"POST", body:{
+          company_id:remoteCompanyId, employee_id:String(employee.id || ""), period, payroll_type:"monthly",
+          inputs:currentAnalyticsContext({ jornada:String($("hs")?.value || "") }), result
+        }});
+        await refreshAdminPayroll();
+        setText("adminPayrollFeedback", "Liquidación guardada en la base de Hostinger.");
+        return;
+      }
+      const url = new URL("/admin/payroll-history", API_BASE);
+      await fetchJSON(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAdminAuthHeaders() },
+        body: JSON.stringify({
+          company_id: String(company.id || ""), employee_id: String(employee.id || ""), periodo: period, tipo: "mensual",
+          inputs: currentAnalyticsContext({ jornada: String($("hs")?.value || "") }), resultado: result
+        })
+      });
+      await refreshAdminPayroll();
+      setText("adminPayrollFeedback", "Liquidación guardada en el historial.");
+    }catch(err){
+      console.error(err);
+      setText("adminPayrollFeedback", err?.message || "No se pudo guardar la liquidación.");
+    }
+  }
+
+  async function deleteAdminPayroll(recordId){
+    if(!recordId) return;
+    try{
+      if(professionalDbToken() && professionalDbCompanyId()){
+        await professionalDbFetch("payrolls", { method:"DELETE", params:{ id:recordId } });
+        await refreshAdminPayroll();
+        setText("adminPayrollFeedback", "Liquidación eliminada de Hostinger.");
+        return;
+      }
+      const url = new URL(`/admin/payroll-history/${encodeURIComponent(recordId)}`, API_BASE);
+      await fetchJSON(url.toString(), { method: "DELETE", headers: getAdminAuthHeaders() });
+      await refreshAdminPayroll();
+      setText("adminPayrollFeedback", "Liquidación eliminada del historial.");
+    }catch(err){
+      console.error(err);
+      setText("adminPayrollFeedback", "No se pudo eliminar la liquidación.");
+    }
+  }
+  window.deleteAdminPayroll = deleteAdminPayroll;
+
+  function payrollReceiptTable(result){
+    const items = Array.isArray(result?.items) ? result.items : [];
+    const rows = items.map((item) => `<tr><td>${escapeHtml(item.concepto || "")}</td><td>${money(item.r || 0)}</td><td>${money(item.n || 0)}</td><td>${money(item.d || 0)}</td></tr>`).join("");
+    const t = result?.totales || {};
+    return `<table><thead><tr><th>Concepto</th><th>Rem.</th><th>No rem.</th><th>Descuento</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th>Totales</th><th>${money(t.rem || 0)}</th><th>${money(t.nr || 0)}</th><th>${money(t.ded || 0)}</th></tr><tr><th colspan="3">Neto</th><th>${money(t.neto || 0)}</th></tr></tfoot></table>`;
+  }
+
+  function printAdminPayrollPeriod(){
+    const area = $("printArea");
+    const company = getSelectedAdminCompany();
+    const items = window.__adminPayrollHistory || [];
+    if(!area || !company || !items.length) return;
+    area.innerHTML = items.map((history, index) => {
+      const employee = (window.__adminEmployees || []).find((item) => String(item.id || "") === String(history.employee_id || "")) || { apellido_nombre: history.employee_name, cuil: history.employee_cuil };
+      return `<div style="${index ? "page-break-before:always;" : ""}">${buildReceiptCopyHtml({
+        copyLabel: "RECIBO", copyRole: "Liquidación mensual", signatureLabel: "Firma del trabajador", ackLabel: "Recibí conforme",
+        note: "Recibo generado desde el historial de nómina.", company, employee, title: "Recibo Mensual", subheader: `Período ${history.periodo || ""}`,
+        extra: "", tableHtml: payrollReceiptTable(history.resultado || {}), emptyMessage: "Sin detalle"
+      })}</div>`;
+    }).join("");
+    document.body.classList.add("co-printing");
+    window.print();
+    setTimeout(() => document.body.classList.remove("co-printing"), 300);
+  }
+
+  async function saveAdminArcaMapping(){
+    const company = getSelectedAdminCompany();
+    if(!company) return;
+    const payload = {
+      company_id: String(company.id || ""), concepto: String($("adminArcaConcept")?.value || "").trim(),
+      codigo_empleador: String($("adminArcaEmployerCode")?.value || "").trim(), codigo_arca: String($("adminArcaCode")?.value || "").trim(),
+      unidad: String($("adminArcaUnit")?.value || "$")
+    };
+    try{
+      const remoteCompanyId = professionalDbCompanyId();
+      if(professionalDbToken() && remoteCompanyId){
+        await professionalDbFetch("arca-mappings", { method:"POST", body:{
+          company_id:remoteCompanyId, concept_name:payload.concepto, employer_code:payload.codigo_empleador,
+          arca_code:payload.codigo_arca, unit_code:payload.unidad
+        }});
+        setVal("adminArcaConcept", ""); setVal("adminArcaEmployerCode", ""); setVal("adminArcaCode", "");
+        await refreshAdminPayroll();
+        setText("adminArcaFeedback", "Parametrización guardada en Hostinger.");
+        return;
+      }
+      const url = new URL("/admin/arca/mappings", API_BASE);
+      await fetchJSON(url.toString(), { method:"POST", headers:{ "Content-Type":"application/json", ...getAdminAuthHeaders() }, body:JSON.stringify(payload) });
+      setVal("adminArcaConcept", ""); setVal("adminArcaEmployerCode", ""); setVal("adminArcaCode", "");
+      await refreshAdminPayroll();
+      setText("adminArcaFeedback", "Parametrización guardada.");
+    }catch(err){
+      console.error(err); setText("adminArcaFeedback", err?.message || "No se pudo guardar la parametrización.");
+    }
+  }
+
+  async function validateAdminArca(){
+    const company = getSelectedAdminCompany();
+    if(!company) return;
+    try{
+      if(professionalDbToken() && professionalDbCompanyId()){
+        const errors = [];
+        const companyCuit = String(company.cuit || "").replace(/\D/g, "");
+        if(companyCuit.length !== 11) errors.push("La empresa necesita un CUIT válido de 11 dígitos.");
+        if(!(window.__adminPayrollHistory || []).length) errors.push("No hay liquidaciones guardadas para el período.");
+        const mappingNames = new Set((window.__adminArcaMappings || []).map((item) => String(item.concepto || "").trim().toLowerCase()));
+        const missing = new Set();
+        for(const history of (window.__adminPayrollHistory || [])){
+          const cuil = String(history.employee_cuil || "").replace(/\D/g, "");
+          if(cuil.length !== 11) errors.push(`${history.employee_name || "Empleado"}: CUIL inválido.`);
+          for(const item of (history.resultado?.items || [])){
+            const name = String(item?.concepto || "").trim();
+            const amount = Number(item?.r || 0) + Number(item?.n || 0) + Number(item?.d || 0);
+            if(name && amount && !mappingNames.has(name.toLowerCase())) missing.add(name);
+          }
+        }
+        if(missing.size) errors.push(`Faltan parametrizar ${missing.size} conceptos para ARCA.`);
+        $("adminArcaValidation").innerHTML = `<strong>Validación sobre Hostinger</strong><div>${window.__adminPayrollHistory.length} liquidaciones revisadas.</div>${errors.length ? `<ul>${errors.map(escapeHtml).map((x) => `<li>${x}</li>`).join("")}</ul>` : "<div>CUIT, CUIL, período y conceptos básicos completos.</div>"}${missing.size ? `<div><strong>Conceptos pendientes:</strong><ul>${Array.from(missing).map(escapeHtml).map((x) => `<li>${x}</li>`).join("")}</ul></div>` : ""}<div>El TXT permanece bloqueado hasta completar datos F.931.</div>`;
+        return;
+      }
+      const url = new URL("/admin/arca/validate", API_BASE);
+      url.searchParams.set("company_id", String(company.id || ""));
+      url.searchParams.set("periodo", adminPayrollPeriodValue());
+      const data = await fetchJSON(url.toString(), { headers:getAdminAuthHeaders() });
+      const errors = (data.errors || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      const missing = (data.missing_concepts || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      $("adminArcaValidation").innerHTML = `<strong>${data.ready_for_txt ? "Listo para TXT" : "Validación piloto"}</strong><div>${data.liquidaciones || 0} liquidaciones revisadas.</div>${errors ? `<ul>${errors}</ul>` : ""}${missing ? `<div><strong>Conceptos pendientes:</strong><ul>${missing}</ul></div>` : ""}<div>El TXT permanece bloqueado hasta completar datos F.931.</div>`;
+    }catch(err){ console.error(err); setText("adminArcaValidation", "No se pudo ejecutar la validación ARCA."); }
+  }
+
   function syncAdminUI(){
     const isAdmin = !!window.__adminAccess;
     const finalEnabled = canUseFinal();
@@ -2229,6 +2707,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     renderAdminFeaturePanel();
     renderAdminCompaniesPanel();
     renderAdminEmployeesPanel();
+    renderAdminPayrollPanel();
   }
 
   function clearAdminSession(){
@@ -2238,6 +2717,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     window.__adminActiveCompanyId = "";
     window.__adminEmployees = [];
     window.__adminActiveEmployeeId = "";
+    window.__adminPayrollHistory = [];
+    window.__adminArcaMappings = [];
     setStoredAdminToken("");
     syncAdminUI();
     if(window.__activeTab === "final" && !canUseFinal()) switchTab("mensual");
@@ -2262,6 +2743,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
       window.__adminSession = data || null;
       syncAdminUI();
       await refreshAdminCompanies();
+      await refreshProfessionalDbSession();
+      await refreshAdminPayroll();
       return data;
     }catch(err){
       console.warn("No se pudo validar la sesion admin.", err);
@@ -2775,6 +3258,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     renderAdminFeaturePanel();
     renderAdminCompaniesPanel();
     renderAdminEmployeesPanel();
+    renderAdminPayrollPanel();
   }
 
   function buildPrintCompanyBlock(company){
@@ -4317,7 +4801,8 @@ const p = await fetchJSON(url.toString());
       }
 
       setText("status", "Calculado.");
-      trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
+      renderAdminPayrollPanel();
+      trackAnalyticsEvent("calculo_mensual_realizado", currentAnalyticsContext({
         tipo_calculo: "mensual",
         jornada: String(jornada),
         con_osecac: osecac ? "si" : "no",
@@ -4327,9 +4812,6 @@ const p = await fetchJSON(url.toString());
       console.error(err);
       alert("Error al calcular (API). Revisá conexión o datos.");
       setText("status", "Error al calcular.");
-      trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
-        tipo_calculo: "mensual"
-      }));
     }
   }
 
@@ -4838,9 +5320,15 @@ const p = await fetchJSON(url.toString());
     // Construye el printArea ANTES de imprimir.
     try{
       const t = tab || 'mensual';
-      trackAnalyticsEvent("imprimir_pdf", currentAnalyticsContext({
-        tipo_calculo: t
-      }));
+      if(t === "mensual"){
+        trackAnalyticsEvent("pdf_mensual_generado", currentAnalyticsContext({
+          tipo_calculo: "mensual"
+        }));
+      }else if(t === "final"){
+        trackAnalyticsEvent("pdf_liquidacion_final_generado", currentAnalyticsContext({
+          tipo_calculo: "liquidacion_final"
+        }));
+      }
       buildPrintAreaEnhanced(t);
 
       // Forzar reflow para que el navegador “vea” el contenido
@@ -5201,6 +5689,7 @@ function wire(){
       try{
         await saveActiveAdminCompany(nextId);
         await refreshAdminEmployees();
+        await refreshAdminPayroll();
         if(feedback) feedback.textContent = nextId ? "Empresa activa guardada." : "Selección de empresa activa limpiada.";
       }catch(err){
         console.error(err);
@@ -5213,6 +5702,16 @@ function wire(){
     $("adminSaveEmployeeBtn")?.addEventListener("click", () => {
       saveAdminEmployee();
     });
+    $("adminSavePayrollBtn")?.addEventListener("click", saveCurrentAdminPayroll);
+    $("adminDbLoginBtn")?.addEventListener("click", loginProfessionalDb);
+    $("adminDbRegisterBtn")?.addEventListener("click", registerProfessionalDb);
+    $("adminDbMigrateBtn")?.addEventListener("click", migrateProfessionalCompany);
+    $("adminDbLogoutBtn")?.addEventListener("click", logoutProfessionalDb);
+    $("adminRefreshPayrollBtn")?.addEventListener("click", refreshAdminPayroll);
+    $("adminPrintPayrollBtn")?.addEventListener("click", printAdminPayrollPeriod);
+    $("adminValidateArcaBtn")?.addEventListener("click", validateAdminArca);
+    $("adminSaveArcaMappingBtn")?.addEventListener("click", saveAdminArcaMapping);
+    $("adminPayrollPeriod")?.addEventListener("change", refreshAdminPayroll);
     $("adminReceiptEmployeeSelect")?.addEventListener("change", async (ev) => {
       const feedback = $("adminEmployeesFeedback");
       const nextId = String(ev?.target?.value || "");
@@ -5221,6 +5720,7 @@ function wire(){
       if(feedback) feedback.textContent = "Guardando empleado activo...";
       try{
         await saveActiveAdminEmployee(nextId);
+        await refreshAdminPayroll();
         if(feedback) feedback.textContent = nextId ? "Empleado activo guardado." : "Selección de empleado activa limpiada.";
       }catch(err){
         console.error(err);
@@ -5955,7 +6455,7 @@ function switchTab(tab){
       renderAdminPreview('final', data);
 
       setText('diagFinal', 'Calculado.');
-      trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
+      trackAnalyticsEvent("liquidacion_final_realizada", currentAnalyticsContext({
         tipo_calculo: "liquidacion_final",
         tipo_baja: tipo
       }));
@@ -5964,9 +6464,6 @@ function switchTab(tab){
       console.error(err);
       alert('Error al calcular Liquidación Final (API).');
       setText('diagFinal', 'Error al calcular.');
-      trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
-        tipo_calculo: "liquidacion_final"
-      }));
     }
   };
 
