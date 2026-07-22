@@ -752,6 +752,8 @@ def home():
 def admin_app(admin_token: str = Query(default="")):
     if admin_token:
         _read_admin_token(admin_token)
+    if PUBLIC_STATIC_INDEX_FILE.exists():
+        return FileResponse(PUBLIC_STATIC_INDEX_FILE, headers=NOINDEX_HEADERS)
     if ADMIN_INDEX_FILE.exists():
         return FileResponse(ADMIN_INDEX_FILE, headers=NOINDEX_HEADERS)
     return HTMLResponse("<h1>Panel administrador no encontrado</h1>", status_code=404, headers=NOINDEX_HEADERS)
