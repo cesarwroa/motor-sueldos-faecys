@@ -50,6 +50,8 @@ ADMIN_COMPANY_STATE_FILE = BASE_DIR / "data" / "admin_company_state.json"
 ADMIN_EMPLOYEES_FILE = BASE_DIR / "data" / "admin_employees.json"
 ADMIN_EMPLOYEE_STATE_FILE = BASE_DIR / "data" / "admin_employee_state.json"
 ADMIN_LEADS_FILE = BASE_DIR / "data" / "admin_leads.json"
+ADMIN_PAYROLL_HISTORY_FILE = BASE_DIR / "data" / "admin_payroll_history.json"
+ADMIN_ARCA_MAPPINGS_FILE = BASE_DIR / "data" / "admin_arca_mappings.json"
 ADMIN_COMPANY_ASSETS_DIR = BASE_DIR / "data" / "admin_company_assets"
 ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
@@ -68,6 +70,7 @@ DEFAULT_FEATURE_ACCESS = {
     "portal_empresa": "admin_only",
     "firma_digital": "admin_only",
     "portal_empleado": "admin_only",
+    "gestion_nomina": "admin_only",
 }
 DEFAULT_PUBLIC_FEATURES = {
     "liquidacion_final_publica": True,
@@ -86,6 +89,7 @@ class AdminFeaturesUpdate(BaseModel):
     portal_empresa: Optional[str] = None
     firma_digital: Optional[str] = None
     portal_empleado: Optional[str] = None
+    gestion_nomina: Optional[str] = None
     liquidacion_final_publica: Optional[bool] = None
 
 
@@ -133,6 +137,23 @@ class AdminEmployeeCreate(BaseModel):
 class AdminEmployeeActiveUpdate(BaseModel):
     company_id: str
     employee_id: str = ""
+
+
+class AdminPayrollHistoryCreate(BaseModel):
+    company_id: str
+    employee_id: str
+    periodo: str
+    tipo: str = "mensual"
+    inputs: Dict[str, Any] = {}
+    resultado: Dict[str, Any]
+
+
+class AdminArcaMappingCreate(BaseModel):
+    company_id: str
+    concepto: str
+    codigo_empleador: str
+    codigo_arca: str
+    unidad: str = "$"
 
 
 class PublicLeadCreate(BaseModel):
@@ -498,6 +519,95 @@ def _write_admin_employees(employees: List[Dict[str, Any]]) -> None:
     tmp_path = ADMIN_EMPLOYEES_FILE.with_suffix(".tmp")
     tmp_path.write_text(json.dumps(employees, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp_path.replace(ADMIN_EMPLOYEES_FILE)
+
+
+def _read_json_list(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return []
+    return [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+
+
+def _write_json_list(path: Path, items: List[Dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_path.replace(path)
+
+
+def _digits(value: Any) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _payroll_summary(result: Dict[str, Any]) -> Dict[str, float]:
+    totals = result.get("totales") if isinstance(result, dict) else {}
+    totals = totals if isinstance(totals, dict) else {}
+    return {
+        "rem": float(totals.get("rem") or 0),
+        "nr": float(totals.get("nr") or 0),
+        "ded": float(totals.get("ded") or 0),
+        "neto": float(totals.get("neto") or 0),
+    }
+
+
+def _arca_validation(company_id: str, periodo: str) -> Dict[str, Any]:
+    companies = _read_admin_companies()
+    employees = _read_admin_employees()
+    histories = _read_json_list(ADMIN_PAYROLL_HISTORY_FILE)
+    mappings = _read_json_list(ADMIN_ARCA_MAPPINGS_FILE)
+    company = next((item for item in companies if item.get("id") == company_id), None)
+    selected = [
+        item for item in histories
+        if item.get("company_id") == company_id and item.get("periodo") == periodo and item.get("tipo") == "mensual"
+    ]
+    errors: List[str] = []
+    warnings: List[str] = []
+    if not company:
+        errors.append("La empresa seleccionada no existe.")
+    elif len(_digits(company.get("cuit"))) != 11:
+        errors.append("La empresa necesita un CUIT valido de 11 digitos.")
+    if not re.fullmatch(r"\d{6}", periodo or ""):
+        errors.append("El periodo debe tener formato AAAAMM.")
+    if not selected:
+        errors.append("No hay liquidaciones mensuales guardadas para el periodo.")
+
+    employee_by_id = {str(item.get("id") or ""): item for item in employees}
+    mapped_names = {
+        str(item.get("concepto") or "").strip().lower()
+        for item in mappings if item.get("company_id") == company_id
+    }
+    missing_concepts = set()
+    for history in selected:
+        employee = employee_by_id.get(str(history.get("employee_id") or ""))
+        if not employee:
+            errors.append(f"La liquidacion {history.get('id')} no tiene un empleado vigente.")
+            continue
+        if len(_digits(employee.get("cuil"))) != 11:
+            errors.append(f"{employee.get('apellido_nombre')}: falta un CUIL valido de 11 digitos.")
+        result = history.get("resultado") if isinstance(history.get("resultado"), dict) else {}
+        for concept in result.get("items") or []:
+            if not isinstance(concept, dict):
+                continue
+            name = str(concept.get("concepto") or "").strip()
+            amount = float(concept.get("r") or 0) + float(concept.get("n") or 0) + float(concept.get("d") or 0)
+            if name and amount and name.lower() not in mapped_names:
+                missing_concepts.add(name)
+    if missing_concepts:
+        errors.append(f"Faltan parametrizar {len(missing_concepts)} conceptos para ARCA.")
+    warnings.append("El TXT se habilitara cuando tambien esten completos los datos F.931 de cada trabajador.")
+    return {
+        "ok": not errors,
+        "ready_for_txt": False,
+        "company_id": company_id,
+        "periodo": periodo,
+        "liquidaciones": len(selected),
+        "errors": errors,
+        "warnings": warnings,
+        "missing_concepts": sorted(missing_concepts),
+    }
 
 
 def _default_admin_company_state() -> Dict[str, Any]:
@@ -1012,6 +1122,152 @@ def set_active_admin_employee(payload: AdminEmployeeActiveUpdate, authorization:
         "updated_by": saved.get("updated_by") or "",
         "count": len(employees),
     }
+
+
+@app.get("/admin/payroll-history")
+def admin_payroll_history(
+    company_id: str = Query(default=""),
+    periodo: str = Query(default=""),
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_admin_feature_access(authorization, "gestion_nomina")
+    company = company_id.strip()
+    period = re.sub(r"\D+", "", periodo or "")[:6]
+    items = [
+        item for item in _read_json_list(ADMIN_PAYROLL_HISTORY_FILE)
+        if (not company or item.get("company_id") == company)
+        and (not period or item.get("periodo") == period)
+    ]
+    items.sort(key=lambda item: (item.get("periodo") or "", item.get("updated_at") or ""), reverse=True)
+    return {"ok": True, "count": len(items), "items": items}
+
+
+@app.post("/admin/payroll-history")
+def save_admin_payroll_history(
+    payload: AdminPayrollHistoryCreate,
+    authorization: Optional[str] = Header(default=None),
+):
+    admin_payload = _require_admin_feature_access(authorization, "gestion_nomina")
+    company_id = payload.company_id.strip()
+    employee_id = payload.employee_id.strip()
+    periodo = re.sub(r"\D+", "", payload.periodo or "")[:6]
+    tipo = payload.tipo.strip().lower() or "mensual"
+    if not re.fullmatch(r"\d{6}", periodo):
+        raise HTTPException(status_code=400, detail="El periodo debe tener formato AAAAMM.")
+    if not any(item.get("id") == company_id for item in _read_admin_companies()):
+        raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
+    employee = next(
+        (item for item in _read_admin_employees() if item.get("id") == employee_id and item.get("company_id") == company_id),
+        None,
+    )
+    if not employee:
+        raise HTTPException(status_code=404, detail="El empleado seleccionado no pertenece a la empresa.")
+    if not isinstance(payload.resultado, dict) or not isinstance(payload.resultado.get("items"), list):
+        raise HTTPException(status_code=400, detail="Primero realiza una liquidacion valida.")
+
+    histories = _read_json_list(ADMIN_PAYROLL_HISTORY_FILE)
+    now = _feature_timestamp()
+    existing = next(
+        (
+            item for item in histories
+            if item.get("company_id") == company_id
+            and item.get("employee_id") == employee_id
+            and item.get("periodo") == periodo
+            and item.get("tipo") == tipo
+        ),
+        None,
+    )
+    record_id = str(existing.get("id") or "") if existing else uuid.uuid4().hex[:16]
+    record = {
+        "id": record_id,
+        "company_id": company_id,
+        "employee_id": employee_id,
+        "employee_name": employee.get("apellido_nombre") or "",
+        "employee_cuil": employee.get("cuil") or "",
+        "periodo": periodo,
+        "tipo": tipo,
+        "inputs": payload.inputs if isinstance(payload.inputs, dict) else {},
+        "resultado": payload.resultado,
+        "resumen": _payroll_summary(payload.resultado),
+        "created_at": existing.get("created_at") if existing else now,
+        "updated_at": now,
+        "updated_by": str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower(),
+    }
+    if existing:
+        histories = [record if item is existing else item for item in histories]
+    else:
+        histories.append(record)
+    try:
+        _write_json_list(ADMIN_PAYROLL_HISTORY_FILE, histories)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="No se pudo guardar la liquidacion en el historial.") from exc
+    return {"ok": True, "item": record, "updated": bool(existing)}
+
+
+@app.delete("/admin/payroll-history/{record_id}")
+def delete_admin_payroll_history(record_id: str, authorization: Optional[str] = Header(default=None)):
+    _require_admin_feature_access(authorization, "gestion_nomina")
+    histories = _read_json_list(ADMIN_PAYROLL_HISTORY_FILE)
+    next_items = [item for item in histories if str(item.get("id") or "") != record_id]
+    if len(next_items) == len(histories):
+        raise HTTPException(status_code=404, detail="La liquidacion guardada no existe.")
+    _write_json_list(ADMIN_PAYROLL_HISTORY_FILE, next_items)
+    return {"ok": True, "count": len(next_items)}
+
+
+@app.get("/admin/arca/mappings")
+def admin_arca_mappings(company_id: str = Query(default=""), authorization: Optional[str] = Header(default=None)):
+    _require_admin_feature_access(authorization, "gestion_nomina")
+    company = company_id.strip()
+    items = [item for item in _read_json_list(ADMIN_ARCA_MAPPINGS_FILE) if not company or item.get("company_id") == company]
+    items.sort(key=lambda item: str(item.get("concepto") or "").lower())
+    return {"ok": True, "count": len(items), "items": items}
+
+
+@app.post("/admin/arca/mappings")
+def save_admin_arca_mapping(payload: AdminArcaMappingCreate, authorization: Optional[str] = Header(default=None)):
+    admin_payload = _require_admin_feature_access(authorization, "gestion_nomina")
+    company_id = payload.company_id.strip()
+    concepto = payload.concepto.strip()
+    employer_code = re.sub(r"[^A-Za-z0-9_-]+", "", payload.codigo_empleador.strip())[:10]
+    arca_code = _digits(payload.codigo_arca)[:6]
+    if not any(item.get("id") == company_id for item in _read_admin_companies()):
+        raise HTTPException(status_code=404, detail="La empresa seleccionada no existe.")
+    if not concepto or not employer_code or len(arca_code) != 6:
+        raise HTTPException(status_code=400, detail="Completa concepto, codigo empleador y codigo ARCA de 6 digitos.")
+    mappings = _read_json_list(ADMIN_ARCA_MAPPINGS_FILE)
+    now = _feature_timestamp()
+    record = {
+        "id": uuid.uuid4().hex[:16],
+        "company_id": company_id,
+        "concepto": concepto,
+        "codigo_empleador": employer_code,
+        "codigo_arca": arca_code,
+        "unidad": (payload.unidad.strip() or "$")[:1],
+        "updated_at": now,
+        "updated_by": str(admin_payload.get("email") or ADMIN_LOGIN_EMAIL).strip().lower(),
+    }
+    replaced = False
+    for index, item in enumerate(mappings):
+        if item.get("company_id") == company_id and str(item.get("concepto") or "").strip().lower() == concepto.lower():
+            record["id"] = item.get("id") or record["id"]
+            mappings[index] = record
+            replaced = True
+            break
+    if not replaced:
+        mappings.append(record)
+    _write_json_list(ADMIN_ARCA_MAPPINGS_FILE, mappings)
+    return {"ok": True, "item": record, "updated": replaced}
+
+
+@app.get("/admin/arca/validate")
+def validate_admin_arca(
+    company_id: str = Query(default=""),
+    periodo: str = Query(default=""),
+    authorization: Optional[str] = Header(default=None),
+):
+    _require_admin_feature_access(authorization, "gestion_nomina")
+    return _arca_validation(company_id.strip(), re.sub(r"\D+", "", periodo or "")[:6])
 
 
 @app.post("/admin/companies/logo")
