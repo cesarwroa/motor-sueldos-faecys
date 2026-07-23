@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Gestión de empresas | Calculadora de Comercio</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#64748b;--line:#dbe3ef;--blue:#2563eb;--green:#047857;--red:#b91c1c}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif}
+    .wrap{max-width:1120px;margin:0 auto;padding:24px 16px 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+    h1{font-size:28px;margin:0 0 4px}h2{font-size:20px;margin:0 0 8px}.muted{color:var(--muted);margin:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 10px 28px rgba(15,23,42,.05);margin-bottom:16px}
+    label{display:block;font-size:13px;font-weight:750;margin:12px 0 6px}input,select,button{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 12px;font:inherit;background:#fff}button,.button{display:inline-flex;justify-content:center;align-items:center;width:auto;text-decoration:none;cursor:pointer;background:var(--blue);color:#fff;border-color:var(--blue);font-weight:800}.secondary{background:#fff;color:#1e3a8a}.danger{background:#fff;color:var(--red);border-color:#fecaca}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.status{min-height:22px;margin-top:10px;color:#334155;font-size:14px}.pill{display:inline-flex;padding:5px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:850}.pill.active{background:#d1fae5;color:#065f46}.pill.paused,.pill.closed{background:#fee2e2;color:#991b1b}.hidden{display:none!important}.summary{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.table-wrap{overflow:auto;margin-top:14px}table{width:100%;border-collapse:collapse;min-width:720px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f8fafc}td select{min-width:135px;padding:7px}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px;margin-top:14px}.notice{padding:12px 14px;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:14px;margin-top:12px}.error{color:var(--red)}.ok{color:var(--green)}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div><span class="pill">Piloto profesional</span><h1>Gestión de empresas y nómina</h1><p class="muted">Registrá tu empresa y prepará la nómina que utilizará el motor de la calculadora.</p></div>
+    <a class="button secondary" href="/">Volver a la calculadora</a>
+  </header>
+
+  <section id="authView" class="grid">
+    <article class="card">
+      <h2>Ingresar</h2><p class="muted">Accedé a una cuenta ya registrada.</p>
+      <label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username">
+      <label for="loginPassword">Contraseña</label><input id="loginPassword" type="password" autocomplete="current-password">
+      <div class="actions"><button id="loginBtn" type="button">Ingresar</button></div><div id="loginStatus" class="status"></div>
+    </article>
+    <article class="card">
+      <h2>Crear cuenta gratuita</h2><p class="muted">La empresa comenzará en prueba. El administrador podrá habilitar luego el plan contratado.</p>
+      <label for="registerName">Nombre del responsable</label><input id="registerName" autocomplete="name">
+      <label for="registerCompany">Razón social</label><input id="registerCompany" autocomplete="organization">
+      <label for="registerCuit">CUIT</label><input id="registerCuit" inputmode="numeric" maxlength="13" placeholder="11 dígitos">
+      <label for="registerEmail">Email</label><input id="registerEmail" type="email" autocomplete="email">
+      <label for="registerPassword">Contraseña</label><input id="registerPassword" type="password" minlength="10" autocomplete="new-password" placeholder="10 caracteres, letras y números">
+      <div class="actions"><button id="registerBtn" type="button">Registrarme</button></div><div id="registerStatus" class="status"></div>
+    </article>
+  </section>
+
+  <section id="dashboardView" class="hidden">
+    <article class="card summary">
+      <div><span class="pill active">Sesión activa</span><h2 id="welcomeText" style="margin-top:8px">Mi empresa</h2><p id="accountText" class="muted"></p></div>
+      <div class="actions"><a class="button" href="/">Abrir calculadora</a><button id="logoutBtn" class="danger" type="button">Cerrar sesión</button></div>
+    </article>
+
+    <article class="card">
+      <div class="summary"><div><h2>Empresa activa</h2><p class="muted">Datos, plan y acceso a la nómina.</p></div><div><span id="planPill" class="pill"></span> <span id="companyStatusPill" class="pill"></span></div></div>
+      <label for="companySelect">Empresa</label><select id="companySelect"></select>
+      <div id="companyDetail" class="notice"></div>
+    </article>
+
+    <article class="card">
+      <div class="summary"><div><h2>Nómina de empleados</h2><p class="muted">Estos empleados quedarán disponibles para las próximas liquidaciones mensuales.</p></div><span id="employeeCount" class="pill">0 empleados</span></div>
+      <div class="grid">
+        <div><label for="employeeFile">Legajo</label><input id="employeeFile" maxlength="30"></div>
+        <div><label for="employeeName">Apellido y nombre</label><input id="employeeName" maxlength="190"></div>
+        <div><label for="employeeCuil">CUIL</label><input id="employeeCuil" inputmode="numeric" maxlength="13"></div>
+        <div><label for="employeeCategory">Categoría</label><input id="employeeCategory" maxlength="120"></div>
+        <div><label for="employeeTask">Tarea</label><input id="employeeTask" maxlength="120"></div>
+        <div><label for="employeeStart">Fecha de ingreso</label><input id="employeeStart" type="date"></div>
+      </div>
+      <div class="actions"><button id="employeeSaveBtn" type="button">Agregar empleado</button></div><div id="employeeStatus" class="status"></div>
+      <div id="employeesEmpty" class="empty">Todavía no hay empleados cargados.</div>
+      <div id="employeesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Legajo</th><th>Empleado</th><th>CUIL</th><th>Categoría</th><th>Ingreso</th><th>Estado</th></tr></thead><tbody id="employeesTbody"></tbody></table></div>
+    </article>
+
+    <article class="card">
+      <h2>Próxima etapa: novedades y liquidación</h2>
+      <p class="muted">La nómina ya queda centralizada en Hostinger. El siguiente módulo permitirá cargar horas extras, ausencias, licencias, feriados, comisiones, embargos y adelantos por período, y luego liquidar en lote con el motor actual.</p>
+    </article>
+
+    <article id="platformAdminPanel" class="card hidden">
+      <div class="summary"><div><span class="pill">Administrador</span><h2 style="margin-top:8px">Planes y habilitación de empresas</h2><p class="muted">Aprobá pruebas, activá suscripciones o pausá cuentas.</p></div><button id="adminRefreshBtn" class="secondary" type="button">Actualizar</button></div>
+      <div id="adminCompaniesEmpty" class="empty">No hay empresas registradas.</div>
+      <div id="adminCompaniesWrap" class="table-wrap hidden"><table><thead><tr><th>Empresa</th><th>Responsable</th><th>Empleados</th><th>Liquidaciones</th><th>Plan</th><th>Estado</th><th></th></tr></thead><tbody id="adminCompaniesTbody"></tbody></table></div>
+      <div id="adminStatus" class="status"></div>
+    </article>
+  </section>
+</main>
+<script>
+(() => {
+  const API_URL = "https://calculadoradecomercio.com.ar/api/";
+  const TOKEN_KEY = "co_company_portal_token_v1";
+  const COMPANY_KEY = "co_company_portal_company_v1";
+  const $ = id => document.getElementById(id);
+  let session = null;
+  let employees = [];
+
+  const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const digits = value => String(value || "").replace(/\D/g, "");
+  const token = () => { try{return localStorage.getItem(TOKEN_KEY)||""}catch(_){return ""} };
+  const selectedCompanyId = () => { try{return localStorage.getItem(COMPANY_KEY)||""}catch(_){return ""} };
+  const setAuth = (value, companyId="") => { try{value?localStorage.setItem(TOKEN_KEY,value):localStorage.removeItem(TOKEN_KEY);companyId?localStorage.setItem(COMPANY_KEY,companyId):(!value&&localStorage.removeItem(COMPANY_KEY))}catch(_){} };
+  const setStatus = (id, text, ok=false) => { const el=$(id); if(el){el.textContent=text||"";el.className=`status ${text?(ok?"ok":"error"):""}`;} };
+
+  async function api(action,{method="GET",body=null,auth=true,params={}}={}){
+    const url=new URL(API_URL);url.searchParams.set("action",action);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!=null)url.searchParams.set(k,String(v))});
+    const headers={"Content-Type":"application/json"};if(auth){if(!token())throw new Error("Iniciá sesión.");headers.Authorization=`Bearer ${token()}`;}
+    const response=await fetch(url,{method,headers,...(body?{body:JSON.stringify(body)}:{})});
+    let data={};try{data=await response.json()}catch(_){ }
+    if(!response.ok||data.ok===false)throw new Error(data.message||`Error HTTP ${response.status}`);return data;
+  }
+
+  function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
+  function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado"})[status]||status||"";}
+  function mapPlan(plan){return ({free:"Gratuito",starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Gratuito";}
+
+  function renderSession(){
+    const connected=!!session?.user;$("authView").classList.toggle("hidden",connected);$("dashboardView").classList.toggle("hidden",!connected);if(!connected)return;
+    $("welcomeText").textContent=`Hola, ${session.user.name||""}`;$("accountText").textContent=session.user.email||"";
+    const companies=session.companies||[];const current=activeCompany();
+    $("companySelect").innerHTML=companies.map(item=>`<option value="${esc(item.id)}">${esc(item.legal_name)}</option>`).join("");
+    if(current){$("companySelect").value=current.id;setAuth(token(),current.id);$("planPill").textContent=`Plan ${mapPlan(current.plan_code)}`;$("companyStatusPill").textContent=mapStatus(current.status);$("companyStatusPill").className=`pill ${esc(current.status)}`;$("companyDetail").innerHTML=`<strong>${esc(current.legal_name)}</strong>${current.cuit?` · CUIT ${esc(current.cuit)}`:""}<br>Tu acceso está en estado <strong>${esc(mapStatus(current.status))}</strong>.`;}
+    else{$("companyDetail").textContent="La cuenta todavía no tiene una empresa vinculada.";}
+    $("platformAdminPanel").classList.toggle("hidden",!session.is_platform_admin);
+  }
+
+  async function loadSession(){
+    if(!token()){session=null;renderSession();return;}
+    try{session=await api("me");const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();await loadEmployees();if(session.is_platform_admin)await loadAdminCompanies();}
+    catch(err){setAuth("");session=null;renderSession();setStatus("loginStatus",err.message);}
+  }
+
+  async function login(email,password){
+    const data=await api("login",{method:"POST",auth:false,body:{email,password}});setAuth(data.token);await loadSession();
+  }
+
+  async function register(){
+    const body={name:$("registerName").value.trim(),company_name:$("registerCompany").value.trim(),cuit:digits($("registerCuit").value),email:$("registerEmail").value.trim(),password:$("registerPassword").value};
+    setStatus("registerStatus","Creando la cuenta...");
+    try{await api("register",{method:"POST",auth:false,body});await login(body.email,body.password);$("registerPassword").value="";setStatus("registerStatus","Cuenta creada.",true);}catch(err){setStatus("registerStatus",err.message);}
+  }
+
+  async function loadEmployees(){
+    const company=activeCompany();if(!company){employees=[];renderEmployees();return;}
+    try{const data=await api("employees",{params:{company_id:company.id}});employees=data.items||[];renderEmployees();}catch(err){employees=[];renderEmployees();setStatus("employeeStatus",err.message);}
+  }
+
+  function renderEmployees(){
+    $("employeeCount").textContent=`${employees.length} empleado${employees.length===1?"":"s"}`;$("employeesEmpty").classList.toggle("hidden",employees.length>0);$("employeesTableWrap").classList.toggle("hidden",employees.length===0);
+    $("employeesTbody").innerHTML=employees.map(item=>`<tr><td>${esc(item.file_number)}</td><td><strong>${esc(item.full_name)}</strong></td><td>${esc(item.cuil)}</td><td>${esc(item.category)}</td><td>${esc(item.start_date)}</td><td>${esc(item.status)}</td></tr>`).join("");
+  }
+
+  async function saveEmployee(){
+    const company=activeCompany();if(!company)return setStatus("employeeStatus","No hay una empresa activa.");
+    const body={company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:$("employeeTask").value.trim(),start_date:$("employeeStart").value,status:"active",profile:{}};
+    setStatus("employeeStatus","Guardando...");try{await api("employees",{method:"POST",body});["employeeFile","employeeName","employeeCuil","employeeCategory","employeeTask","employeeStart"].forEach(id=>$(id).value="");await loadEmployees();setStatus("employeeStatus","Empleado guardado.",true);}catch(err){setStatus("employeeStatus",err.message);}
+  }
+
+  async function loadAdminCompanies(){
+    if(!session?.is_platform_admin)return;try{const data=await api("admin-companies");renderAdminCompanies(data.items||[]);}catch(err){setStatus("adminStatus",err.message);}
+  }
+
+  function renderAdminCompanies(items){
+    $("adminCompaniesEmpty").classList.toggle("hidden",items.length>0);$("adminCompaniesWrap").classList.toggle("hidden",items.length===0);
+    $("adminCompaniesTbody").innerHTML=items.map(item=>`<tr data-company="${esc(item.id)}"><td><strong>${esc(item.legal_name)}</strong><br>${esc(item.cuit)}</td><td>${esc(item.owner_name)}<br>${esc(item.owner_email)}</td><td>${esc(item.employee_count)}</td><td>${esc(item.payroll_count)}</td><td><select data-field="plan"><option value="free" ${item.plan_code==="free"?"selected":""}>Gratuito</option><option value="starter" ${item.plan_code==="starter"?"selected":""}>Empresa</option><option value="professional" ${item.plan_code==="professional"?"selected":""}>Profesional</option><option value="studio" ${item.plan_code==="studio"?"selected":""}>Estudio</option></select></td><td><select data-field="status"><option value="trial" ${item.status==="trial"?"selected":""}>Prueba</option><option value="active" ${item.status==="active"?"selected":""}>Activo</option><option value="paused" ${item.status==="paused"?"selected":""}>Pausado</option><option value="closed" ${item.status==="closed"?"selected":""}>Cerrado</option></select></td><td><button type="button" data-save-plan="${esc(item.id)}">Guardar</button></td></tr>`).join("");
+  }
+
+  async function savePlan(companyId){
+    const row=document.querySelector(`tr[data-company="${CSS.escape(companyId)}"]`);if(!row)return;const plan=row.querySelector('[data-field="plan"]').value;const status=row.querySelector('[data-field="status"]').value;
+    setStatus("adminStatus","Guardando...");try{await api("admin-company-plan",{method:"POST",body:{company_id:companyId,plan_code:plan,status}});await loadAdminCompanies();await loadSession();setStatus("adminStatus","Plan actualizado.",true);}catch(err){setStatus("adminStatus",err.message);}
+  }
+
+  $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
+  $("registerBtn").addEventListener("click",register);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);renderSession();await loadEmployees();});
+  $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];renderSession();});
+  $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
+  loadSession();
+})();
+</script>
+</body>
+</html>
