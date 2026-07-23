@@ -91,9 +91,11 @@
           <div><label for="employeeStart">Fecha de ingreso</label><input id="employeeStart" type="date"></div>
           <div><label for="employeeEnd">Fecha de egreso</label><input id="employeeEnd" type="date"></div>
           <div><label for="employeeStatusSelect">Estado laboral</label><select id="employeeStatusSelect"><option value="active">Activo</option><option value="paused">Pausado</option><option value="terminated">Desvinculado</option></select></div>
-          <div><label for="employeeCategory">Categoría</label><input id="employeeCategory" maxlength="120"></div>
+          <div><label for="employeeRama">Convenio / rama *</label><select id="employeeRama"><option value="">Cargando convenios...</option></select></div>
+          <div><label for="employeeAgrup">Agrupamiento *</label><select id="employeeAgrup"><option value="">Seleccionar rama</option></select></div>
+          <div><label for="employeeCategory">Categoría *</label><select id="employeeCategory"><option value="">Seleccionar agrupamiento</option></select></div>
           <div><label for="employeeTask">Tarea</label><input id="employeeTask" maxlength="120"></div>
-          <div><label for="employeeAgreement">Convenio</label><input id="employeeAgreement" maxlength="120" value="CCT 130/75"></div>
+          <div><label for="employeeAgreement">Convenio aplicable</label><input id="employeeAgreement" maxlength="120" value="CCT 130/75" readonly></div>
           <div><label for="employeeWorkday">Jornada</label><select id="employeeWorkday"><option value="">Seleccionar</option><option value="Tiempo completo">Tiempo completo</option><option value="Tiempo parcial">Tiempo parcial</option><option value="Por horas">Por horas</option></select></div>
           <div><label for="employeeWeeklyHours">Horas semanales</label><input id="employeeWeeklyHours" type="number" min="0" max="168" step="0.5"></div>
           <div><label for="employeeContract">Modalidad contractual</label><input id="employeeContract" maxlength="120"></div>
@@ -153,11 +155,12 @@
 
     <article id="noveltiesCard" class="card">
       <div class="summary"><div><h2>Novedades del período</h2><p id="noveltyPeriodText" class="muted">Seleccioná un período para cargar novedades.</p></div><span class="pill">Paso 3</span></div>
+      <div class="notice"><strong>Presentismo automático:</strong> se cobra con hasta 1 ausencia injustificada. Con más de 1, el motor lo elimina. No se carga como adicional manual.</div>
       <input id="noveltyId" type="hidden">
       <div id="noveltyForm" class="hidden">
         <div class="grid">
           <div><label for="noveltyEmployee">Empleado *</label><select id="noveltyEmployee"></select></div>
-          <div><label for="noveltyType">Tipo de novedad</label><select id="noveltyType"><option value="overtime_50">Horas extra 50%</option><option value="overtime_100">Horas extra 100%</option><option value="holiday">Feriado trabajado</option><option value="absence">Ausencia</option><option value="license">Licencia</option><option value="commission">Comisión</option><option value="attendance">Presentismo / asistencia</option><option value="advance">Adelanto</option><option value="garnishment">Embargo</option><option value="bonus">Premio / adicional</option><option value="other">Otro concepto</option></select></div>
+          <div><label for="noveltyType">Tipo de novedad</label><select id="noveltyType"><option value="overtime_50">Horas extra 50%</option><option value="overtime_100">Horas extra 100%</option><option value="night_hours">Horas nocturnas</option><option value="holiday">Feriado trabajado</option><option value="holiday_not_worked">Feriado no trabajado</option><option value="absence">Ausencia injustificada</option><option value="vacation_days">Vacaciones gozadas</option><option value="license">Licencia sin goce / suspensión</option><option value="commission">Comisión</option><option value="viaticos_nr">Viáticos no remunerativos</option><option value="km_driver_under100">KM chofer: primeros 100</option><option value="km_driver_over100">KM chofer: excedente de 100</option><option value="km_helper_under100">KM ayudante: primeros 100</option><option value="km_helper_over100">KM ayudante: excedente de 100</option><option value="cash_handling_a">Manejo de caja A</option><option value="cash_handling_b">Manejo de caja B</option><option value="cash_handling_c">Manejo de caja C</option><option value="cash_shortage">Faltante de caja</option><option value="window_dressing">Armado de vidriera</option><option value="advance">Adelanto de sueldo</option><option value="garnishment">Embargo</option><option value="bonus">Premio / adicional</option><option value="other">Otro concepto</option></select></div>
           <div><label for="noveltyName">Concepto *</label><input id="noveltyName" maxlength="190"></div>
           <div><label for="noveltyQuantity">Cantidad / unidades</label><input id="noveltyQuantity" type="number" step="0.01"></div>
           <div><label for="noveltyAmount">Importe informado</label><input id="noveltyAmount" type="number" step="0.01"></div>
@@ -202,6 +205,7 @@
   let novelties = [];
   let payrolls = [];
   let activePeriodId = "";
+  let payrollMeta = null;
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -210,6 +214,41 @@
   const selectedCompanyId = () => { try{return localStorage.getItem(COMPANY_KEY)||""}catch(_){return ""} };
   const setAuth = (value, companyId="") => { try{value?localStorage.setItem(TOKEN_KEY,value):localStorage.removeItem(TOKEN_KEY);companyId?localStorage.setItem(COMPANY_KEY,companyId):(!value&&localStorage.removeItem(COMPANY_KEY))}catch(_){} };
   const setStatus = (id, text, ok=false) => { const el=$(id); if(el){el.textContent=text||"";el.className=`status ${text?(ok?"ok":"error"):""}`;} };
+
+  function agreementForRama(rama){
+    return String(rama||"").toUpperCase()==="TURISMO"?"CCT 547/08":"CCT 130/75";
+  }
+  function fillPayrollSelect(id,values,placeholder,preferred=""){
+    const select=$(id),list=Array.from(new Set((values||[]).filter(Boolean)));
+    select.innerHTML=`<option value="">${esc(placeholder)}</option>${list.map(value=>`<option value="${esc(value)}">${esc(value)}</option>`).join("")}`;
+    if(preferred&&list.includes(preferred))select.value=preferred;
+    else if(list.length===1)select.value=list[0];
+  }
+  function refreshEmployeeCategories(preferred=""){
+    const rama=$("employeeRama").value,agrup=$("employeeAgrup").value;
+    fillPayrollSelect("employeeCategory",payrollMeta?.categorias?.[rama]?.[agrup]||[],"Seleccionar categoría",preferred);
+  }
+  function refreshEmployeeAgrups(preferredAgrup="",preferredCategory=""){
+    const rama=$("employeeRama").value;
+    fillPayrollSelect("employeeAgrup",payrollMeta?.agrupamientos?.[rama]||[],"Seleccionar agrupamiento",preferredAgrup);
+    $("employeeAgreement").value=agreementForRama(rama);
+    refreshEmployeeCategories(preferredCategory);
+  }
+  async function loadPayrollMeta(){
+    try{
+      const response=await fetch("/meta");
+      const data=await response.json();
+      if(!response.ok||!Array.isArray(data.ramas))throw new Error("No se pudo leer el catálogo salarial.");
+      payrollMeta=data;
+      fillPayrollSelect("employeeRama",data.ramas,"Seleccionar convenio / rama","GENERAL");
+      refreshEmployeeAgrups("GENERAL","MAESTRANZA A");
+    }catch(err){
+      payrollMeta={ramas:["GENERAL"],agrupamientos:{GENERAL:["GENERAL"]},categorias:{GENERAL:{GENERAL:["MAESTRANZA A"]}}};
+      fillPayrollSelect("employeeRama",payrollMeta.ramas,"Seleccionar convenio / rama","GENERAL");
+      refreshEmployeeAgrups("GENERAL","MAESTRANZA A");
+      setStatus("employeeStatus",err.message);
+    }
+  }
 
   async function api(action,{method="GET",body=null,auth=true,params={}}={}){
     const url=new URL(API_URL);url.searchParams.set("action",action);Object.entries(params).forEach(([k,v])=>{if(v!==""&&v!=null)url.searchParams.set(k,String(v))});
@@ -282,21 +321,23 @@
     $("noveltyEmployee").innerHTML=employees.filter(item=>item.status!=="terminated").map(item=>`<option value="${esc(item.id)}">${esc(item.full_name)}${item.file_number?` · Legajo ${esc(item.file_number)}`:""}</option>`).join("");
   }
 
-  const employeeFields=["employeeId","employeeFile","employeeName","employeeCuil","employeeDni","employeeBirth","employeeStart","employeeEnd","employeeCategory","employeeTask","employeeAgreement","employeeWeeklyHours","employeeContract","employeeContractCode","employeeEmail","employeePhone","employeeAddress","employeeLocality","employeeProvince","employeeHealthName","employeeHealthCode","employeeHealthMember","employeeHealthStart","employeeUnionName","employeeUnionCode","employeeUnionMember","employeeBank","employeeCbu","employeeAlias"];
+  const employeeFields=["employeeId","employeeFile","employeeName","employeeCuil","employeeDni","employeeBirth","employeeStart","employeeEnd","employeeRama","employeeAgrup","employeeCategory","employeeTask","employeeAgreement","employeeWeeklyHours","employeeContract","employeeContractCode","employeeEmail","employeePhone","employeeAddress","employeeLocality","employeeProvince","employeeHealthName","employeeHealthCode","employeeHealthMember","employeeHealthStart","employeeUnionName","employeeUnionCode","employeeUnionMember","employeeBank","employeeCbu","employeeAlias"];
   function clearEmployeeForm(){
-    employeeFields.forEach(id=>$(id).value="");$("employeeAgreement").value="CCT 130/75";$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
+    employeeFields.forEach(id=>$(id).value="");$("employeeRama").value=payrollMeta?.ramas?.includes("GENERAL")?"GENERAL":payrollMeta?.ramas?.[0]||"";refreshEmployeeAgrups("GENERAL","MAESTRANZA A");$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeeWeeklyHours").value="48";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
   }
 
   function editEmployee(id){
     const item=employees.find(row=>String(row.id)===String(id));if(!item)return;const p=item.profile||{},a=item.arca_profile||{};
-    const values={employeeId:item.id,employeeFile:item.file_number,employeeName:item.full_name,employeeCuil:item.cuil,employeeDni:p.dni,employeeBirth:p.birth_date,employeeStart:item.start_date,employeeEnd:p.end_date,employeeCategory:item.category,employeeTask:item.task_name,employeeAgreement:p.agreement,employeeWeeklyHours:p.weekly_hours,employeeContract:p.contract_modality,employeeContractCode:a.contract_modality_code,employeeEmail:p.email,employeePhone:p.phone,employeeAddress:p.address,employeeLocality:p.locality,employeeProvince:p.province,employeeHealthName:p.health_insurance_name,employeeHealthCode:a.health_insurance_code,employeeHealthMember:p.health_insurance_member,employeeHealthStart:p.health_insurance_start,employeeUnionName:p.union_name,employeeUnionCode:a.union_code,employeeUnionMember:p.union_member,employeeBank:p.bank_name,employeeCbu:p.cbu,employeeAlias:p.bank_alias};
+    const rama=p.rama||"GENERAL",agrup=p.agrup||"GENERAL";$("employeeRama").value=payrollMeta?.ramas?.includes(rama)?rama:"GENERAL";refreshEmployeeAgrups(agrup,item.category);
+    const values={employeeId:item.id,employeeFile:item.file_number,employeeName:item.full_name,employeeCuil:item.cuil,employeeDni:p.dni,employeeBirth:p.birth_date,employeeStart:item.start_date,employeeEnd:p.end_date,employeeTask:item.task_name,employeeAgreement:p.agreement||agreementForRama(rama),employeeWeeklyHours:p.weekly_hours,employeeContract:p.contract_modality,employeeContractCode:a.contract_modality_code,employeeEmail:p.email,employeePhone:p.phone,employeeAddress:p.address,employeeLocality:p.locality,employeeProvince:p.province,employeeHealthName:p.health_insurance_name,employeeHealthCode:a.health_insurance_code,employeeHealthMember:p.health_insurance_member,employeeHealthStart:p.health_insurance_start,employeeUnionName:p.union_name,employeeUnionCode:a.union_code,employeeUnionMember:p.union_member,employeeBank:p.bank_name,employeeCbu:p.cbu,employeeAlias:p.bank_alias};
     Object.entries(values).forEach(([id,value])=>$(id).value=value||"");$("employeeStatusSelect").value=item.status||"active";$("employeeWorkday").value=p.workday||"";$("employeePaymentMethod").value=p.payment_method||"Transferencia bancaria";$("employeeFormTitle").textContent=`Editar: ${item.full_name}`;$("employeeSaveBtn").textContent="Guardar cambios";$("employeeCancelBtn").classList.remove("hidden");$("employeeFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
   }
 
   async function saveEmployee(){
     const company=activeCompany();if(!company)return setStatus("employeeStatus","No hay una empresa activa.");
-    const body={id:$("employeeId").value||undefined,company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:$("employeeTask").value.trim(),start_date:$("employeeStart").value,status:$("employeeStatusSelect").value,profile:{dni:digits($("employeeDni").value),birth_date:$("employeeBirth").value,address:$("employeeAddress").value.trim(),locality:$("employeeLocality").value.trim(),province:$("employeeProvince").value.trim(),phone:$("employeePhone").value.trim(),email:$("employeeEmail").value.trim(),end_date:$("employeeEnd").value,agreement:$("employeeAgreement").value.trim(),workday:$("employeeWorkday").value,weekly_hours:$("employeeWeeklyHours").value,contract_modality:$("employeeContract").value.trim(),health_insurance_name:$("employeeHealthName").value.trim(),health_insurance_member:$("employeeHealthMember").value.trim(),health_insurance_start:$("employeeHealthStart").value,union_name:$("employeeUnionName").value.trim(),union_member:$("employeeUnionMember").value.trim(),bank_name:$("employeeBank").value.trim(),cbu:digits($("employeeCbu").value),bank_alias:$("employeeAlias").value.trim(),payment_method:$("employeePaymentMethod").value},arca_profile:{health_insurance_code:digits($("employeeHealthCode").value),contract_modality_code:digits($("employeeContractCode").value),union_code:digits($("employeeUnionCode").value)}};
+    const body={id:$("employeeId").value||undefined,company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:$("employeeTask").value.trim(),start_date:$("employeeStart").value,status:$("employeeStatusSelect").value,profile:{dni:digits($("employeeDni").value),birth_date:$("employeeBirth").value,address:$("employeeAddress").value.trim(),locality:$("employeeLocality").value.trim(),province:$("employeeProvince").value.trim(),phone:$("employeePhone").value.trim(),email:$("employeeEmail").value.trim(),end_date:$("employeeEnd").value,rama:$("employeeRama").value,agrup:$("employeeAgrup").value,agreement:$("employeeAgreement").value.trim(),workday:$("employeeWorkday").value,weekly_hours:$("employeeWeeklyHours").value,contract_modality:$("employeeContract").value.trim(),health_insurance_name:$("employeeHealthName").value.trim(),health_insurance_member:$("employeeHealthMember").value.trim(),health_insurance_start:$("employeeHealthStart").value,union_name:$("employeeUnionName").value.trim(),union_member:$("employeeUnionMember").value.trim(),bank_name:$("employeeBank").value.trim(),cbu:digits($("employeeCbu").value),bank_alias:$("employeeAlias").value.trim(),payment_method:$("employeePaymentMethod").value},arca_profile:{health_insurance_code:digits($("employeeHealthCode").value),contract_modality_code:digits($("employeeContractCode").value),union_code:digits($("employeeUnionCode").value)}};
     if(!body.full_name||body.cuil.length!==11)return setStatus("employeeStatus","Completá nombre y un CUIL válido de 11 dígitos.");
+    if(!body.profile.rama||!body.profile.agrup||!body.category)return setStatus("employeeStatus","Seleccioná convenio / rama, agrupamiento y categoría.");
     if(body.profile.cbu&&body.profile.cbu.length!==22)return setStatus("employeeStatus","El CBU debe tener 22 dígitos.");
     setStatus("employeeStatus","Guardando...");try{await api("employees",{method:"POST",body});clearEmployeeForm();await loadEmployees();setStatus("employeeStatus","Empleado guardado.",true);}catch(err){setStatus("employeeStatus",err.message);}
   }
@@ -340,7 +381,7 @@
     $("noveltiesTbody").innerHTML=novelties.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">${esc(item.file_number)}</span></td><td>${esc(item.concept_name)}<span class="subtext">${esc(mapNoveltyType(item.concept_type))}</span></td><td>${esc(item.quantity)}</td><td class="amount">${money(item.amount)}</td><td>${esc(item.notes)}</td><td><div class="actions"><button class="secondary small-button" type="button" data-edit-novelty="${esc(item.id)}">Editar</button><button class="danger small-button" type="button" data-delete-novelty="${esc(item.id)}">Quitar</button></div></td></tr>`).join("");
   }
 
-  function mapNoveltyType(type){return ({overtime_50:"Horas extra 50%",overtime_100:"Horas extra 100%",holiday:"Feriado trabajado",absence:"Ausencia",license:"Licencia",commission:"Comisión",attendance:"Presentismo",advance:"Adelanto",garnishment:"Embargo",bonus:"Premio / adicional",other:"Otro concepto"})[type]||type||"";}
+  function mapNoveltyType(type){return ({overtime_50:"Horas extra 50%",overtime_100:"Horas extra 100%",night_hours:"Horas nocturnas",holiday:"Feriado trabajado",holiday_not_worked:"Feriado no trabajado",absence:"Ausencia injustificada",vacation_days:"Vacaciones gozadas",license:"Licencia sin goce / suspensión",commission:"Comisión",viaticos_nr:"Viáticos no remunerativos",km_driver_under100:"KM chofer: primeros 100",km_driver_over100:"KM chofer: excedente de 100",km_helper_under100:"KM ayudante: primeros 100",km_helper_over100:"KM ayudante: excedente de 100",cash_handling_a:"Manejo de caja A",cash_handling_b:"Manejo de caja B",cash_handling_c:"Manejo de caja C",cash_shortage:"Faltante de caja",window_dressing:"Armado de vidriera",attendance:"Presentismo (registro anterior; no se suma)",advance:"Adelanto de sueldo",garnishment:"Embargo",bonus:"Premio / adicional",other:"Otro concepto"})[type]||type||"";}
   function clearNoveltyForm(){["noveltyId","noveltyName","noveltyQuantity","noveltyAmount","noveltyNotes"].forEach(id=>$(id).value="");$("noveltyType").value="overtime_50";$("noveltyName").value=mapNoveltyType("overtime_50");$("noveltySaveBtn").textContent="Agregar novedad";$("noveltyCancelBtn").classList.add("hidden");}
   function editNovelty(id){const item=novelties.find(row=>String(row.id)===String(id));if(!item)return;$("noveltyId").value=item.id;$("noveltyEmployee").value=item.employee_id;$("noveltyType").value=item.concept_type;$("noveltyName").value=item.concept_name;$("noveltyQuantity").value=item.quantity;$("noveltyAmount").value=item.amount;$("noveltyNotes").value=item.notes||"";$("noveltySaveBtn").textContent="Guardar novedad";$("noveltyCancelBtn").classList.remove("hidden");}
   async function saveNovelty(){const company=activeCompany(),period=activePeriod();if(!company||!period)return setStatus("noveltySaveStatus","Seleccioná un período.");const body={id:$("noveltyId").value||undefined,company_id:company.id,period_id:period.id,employee_id:$("noveltyEmployee").value,concept_type:$("noveltyType").value,concept_name:$("noveltyName").value.trim(),quantity:$("noveltyQuantity").value||0,amount:$("noveltyAmount").value||0,notes:$("noveltyNotes").value.trim()};if(!body.employee_id||!body.concept_name)return setStatus("noveltySaveStatus","Seleccioná empleado y completá el concepto.");setStatus("noveltySaveStatus","Guardando...");try{await api("novelties",{method:"POST",body});clearNoveltyForm();await loadNovelties();await loadPeriods();setStatus("noveltySaveStatus","Novedad guardada.",true);}catch(err){setStatus("noveltySaveStatus",err.message);}}
@@ -358,13 +399,19 @@
 
   function yearsAtPeriod(startDate,period){if(!startDate||String(period).length!==6)return 0;const start=new Date(`${startDate}T00:00:00`),end=new Date(Number(String(period).slice(0,4)),Number(String(period).slice(4,6)),0);if(Number.isNaN(start.getTime()))return 0;let years=end.getFullYear()-start.getFullYear();if(end.getMonth()<start.getMonth()||(end.getMonth()===start.getMonth()&&end.getDate()<start.getDate()))years--;return Math.max(0,years);}
   function noveltySum(items,types,field="amount"){return items.filter(item=>types.includes(item.concept_type)).reduce((sum,item)=>sum+Number(item[field]||0),0);}
+  function noveltyFlag(items,types){return items.some(item=>types.includes(item.concept_type));}
 
   async function calculateBatch(){
     const company=activeCompany(),period=activePeriod(),activeEmployees=employees.filter(item=>item.status==="active");if(!company||!period||period.payroll_type!=="monthly")return setStatus("batchStatus","Seleccioná un período mensual.");if(!activeEmployees.length)return setStatus("batchStatus","No hay empleados activos para liquidar.");
     setStatus("batchStatus",`Calculando 0 de ${activeEmployees.length}...`);let completed=0;const errors=[];
     for(const employee of activeEmployees){
       try{
-        const employeeNovelties=novelties.filter(item=>String(item.employee_id)===String(employee.id));const customRem=noveltySum(employeeNovelties,["commission","bonus","attendance","other"]);const params={rama:"GENERAL",agrup:"GENERAL",categoria:String(employee.category||"MAESTRANZA A").toUpperCase(),mes:`${String(period.period).slice(0,4)}-${String(period.period).slice(4,6)}`,jornada:Number(employee.profile?.weekly_hours||48),anios_antig:yearsAtPeriod(employee.start_date,period.period),osecac:!!employee.profile?.health_insurance_name,afiliado:!!employee.profile?.union_name,hex50:noveltySum(employeeNovelties,["overtime_50"],"quantity"),hex100:noveltySum(employeeNovelties,["overtime_100"],"quantity"),fer_trab:noveltySum(employeeNovelties,["holiday"],"quantity"),aus_inj:noveltySum(employeeNovelties,["absence"],"quantity"),embargo:noveltySum(employeeNovelties,["garnishment"]),adelanto_sueldo:noveltySum(employeeNovelties,["advance"]),a_cuenta_rem:customRem};
+        const employeeNovelties=novelties.filter(item=>String(item.employee_id)===String(employee.id));
+        const customRem=noveltySum(employeeNovelties,["commission","bonus","other"]);
+        const driverKm=noveltyFlag(employeeNovelties,["km_driver_under100","km_driver_over100"]);
+        const helperKm=noveltyFlag(employeeNovelties,["km_helper_under100","km_helper_over100"]);
+        const cashType=noveltyFlag(employeeNovelties,["cash_handling_b"])?"B":noveltyFlag(employeeNovelties,["cash_handling_c"])?"C":noveltyFlag(employeeNovelties,["cash_handling_a"])?"A":"";
+        const params={rama:employee.profile?.rama||"GENERAL",agrup:employee.profile?.agrup||"GENERAL",categoria:String(employee.category||"MAESTRANZA A").toUpperCase(),mes:`${String(period.period).slice(0,4)}-${String(period.period).slice(4,6)}`,jornada:Number(employee.profile?.weekly_hours||48),anios_antig:yearsAtPeriod(employee.start_date,period.period),osecac:!!employee.profile?.health_insurance_name,afiliado:!!employee.profile?.union_name,hex50:noveltySum(employeeNovelties,["overtime_50"],"quantity"),hex100:noveltySum(employeeNovelties,["overtime_100"],"quantity"),hs_noct:noveltySum(employeeNovelties,["night_hours"],"quantity"),fer_trab:noveltySum(employeeNovelties,["holiday"],"quantity"),fer_no_trab:noveltySum(employeeNovelties,["holiday_not_worked"],"quantity"),vac_goz:noveltySum(employeeNovelties,["vacation_days"],"quantity"),aus_inj:noveltySum(employeeNovelties,["absence"],"quantity"),susp_dias:noveltySum(employeeNovelties,["license"],"quantity"),embargo:noveltySum(employeeNovelties,["garnishment"]),adelanto_sueldo:noveltySum(employeeNovelties,["advance"]),a_cuenta_rem:customRem,viaticos_nr:noveltySum(employeeNovelties,["viaticos_nr"]),km_tipo:driverKm?"CH":helperKm?"AY":"",km_menos100:noveltySum(employeeNovelties,["km_driver_under100","km_helper_under100"],"quantity"),km_mas100:noveltySum(employeeNovelties,["km_driver_over100","km_helper_over100"],"quantity"),manejo_caja:!!cashType,cajero_tipo:cashType,faltante_caja:noveltySum(employeeNovelties,["cash_shortage"]),armado_vidriera:noveltyFlag(employeeNovelties,["window_dressing"])};
         const url=new URL("/calcular",location.origin);Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));const response=await fetch(url);const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.detail||result.message||`Error HTTP ${response.status}`);if(customRem>0&&Array.isArray(result.items))result.items=result.items.map(item=>String(item.concepto||"").startsWith("A cuenta futuros")?{...item,concepto:"Comisiones y adicionales informados"}:item);
         await api("payrolls",{method:"POST",body:{company_id:company.id,employee_id:employee.id,period:period.period,payroll_type:"monthly",inputs:{engine_params:params,novelties:employeeNovelties,company_snapshot:company,employee_snapshot:employee,period_snapshot:period},result}});completed++;
       }catch(err){errors.push(`${employee.full_name}: ${err.message}`);}setStatus("batchStatus",`Calculando ${completed+errors.length} de ${activeEmployees.length}...`);
@@ -420,6 +467,8 @@
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
   $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();});
+  $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
+  $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
   $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
@@ -428,7 +477,7 @@
   $("noveltiesTbody").addEventListener("click",ev=>{const editId=ev.target?.dataset?.editNovelty,deleteId=ev.target?.dataset?.deleteNovelty;if(editId)editNovelty(editId);if(deleteId)deleteNovelty(deleteId);});
   $("batchTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.printPayroll;if(id)printPayrolls(id);});
   clearNoveltyForm();
-  loadSession();
+  loadPayrollMeta().then(loadSession);
 })();
 </script>
 </body>
