@@ -216,7 +216,15 @@
   const setStatus = (id, text, ok=false) => { const el=$(id); if(el){el.textContent=text||"";el.className=`status ${text?(ok?"ok":"error"):""}`;} };
 
   function agreementForRama(rama){
-    return String(rama||"").toUpperCase()==="TURISMO"?"CCT 547/08":"CCT 130/75";
+    const value=String(rama||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+    return ({
+      "GENERAL":"CCT 130/75",
+      "CEREALES":"CCT 130/75",
+      "FUNEBRES":"CCT 177/75",
+      "AGUA POTABLE":"CCT Agua potable",
+      "CALL CENTER":"CCT 781/20",
+      "TURISMO":"CCT 547/08"
+    })[value]||"";
   }
   function fillPayrollSelect(id,values,placeholder,preferred=""){
     const select=$(id),list=Array.from(new Set((values||[]).filter(Boolean)));
