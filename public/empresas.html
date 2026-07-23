@@ -169,9 +169,17 @@
       <div id="noveltiesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Concepto</th><th>Cantidad</th><th>Importe</th><th>Observaciones</th><th></th></tr></thead><tbody id="noveltiesTbody"></tbody></table></div>
     </article>
 
+    <article id="batchCard" class="card">
+      <div class="summary"><div><h2>Liquidación de la nómina</h2><p id="batchPeriodText" class="muted">Seleccioná un período mensual.</p></div><span class="pill">Pasos 4 y 5</span></div>
+      <div class="actions"><button id="batchCalculateBtn" type="button">Liquidar nómina</button><button id="batchRefreshBtn" class="secondary" type="button">Actualizar resultados</button><button id="batchPrintAllBtn" class="secondary" type="button" disabled>PDF conjunto</button></div>
+      <div id="batchStatus" class="status"></div>
+      <div id="batchEmpty" class="empty">Todavía no hay liquidaciones calculadas para el período.</div>
+      <div id="batchTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Remunerativo</th><th>No remunerativo</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead><tbody id="batchTbody"></tbody></table></div>
+    </article>
+
     <article class="card">
-      <h2>Próxima etapa: liquidación con el motor</h2>
-      <p class="muted">La empresa, la nómina, los períodos y las novedades ya quedan centralizados. El próximo módulo enviará esta información al motor actual para calcular en lote y generar los recibos.</p>
+      <h2>Próxima etapa: exportación y validación ARCA</h2>
+      <p class="muted">Las liquidaciones y recibos ya pueden quedar guardados por período. El próximo módulo parametrizará conceptos y validará el archivo antes de exportarlo al Libro de Sueldos Digital.</p>
     </article>
 
     <article id="platformAdminPanel" class="card hidden">
@@ -192,6 +200,7 @@
   let employees = [];
   let periods = [];
   let novelties = [];
+  let payrolls = [];
   let activePeriodId = "";
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -295,8 +304,8 @@
   function activePeriod(){return periods.find(item=>String(item.id)===String(activePeriodId))||null;}
 
   async function loadPeriods(){
-    const company=activeCompany();if(!company){periods=[];activePeriodId="";renderPeriods();renderNovelties();return;}
-    try{const data=await api("periods",{params:{company_id:company.id}});periods=data.items||[];if(activePeriodId&&!periods.some(item=>String(item.id)===String(activePeriodId)))activePeriodId="";renderPeriods();if(activePeriodId)await loadNovelties();else{novelties=[];renderNovelties();}}catch(err){periods=[];renderPeriods();setStatus("periodSaveStatus",err.message);}
+    const company=activeCompany();if(!company){periods=[];novelties=[];payrolls=[];activePeriodId="";renderPeriods();renderNovelties();renderPayrolls();return;}
+    try{const data=await api("periods",{params:{company_id:company.id}});periods=data.items||[];if(activePeriodId&&!periods.some(item=>String(item.id)===String(activePeriodId)))activePeriodId="";if(!activePeriodId&&periods.length)activePeriodId=periods[0].id;renderPeriods();if(activePeriodId){await loadNovelties();await loadPayrolls();}else{novelties=[];payrolls=[];renderNovelties();renderPayrolls();}}catch(err){periods=[];renderPeriods();setStatus("periodSaveStatus",err.message);}
   }
 
   function renderPeriods(){
@@ -319,7 +328,7 @@
     if(period.length!==6)return setStatus("periodSaveStatus","Seleccioná un período mensual.");setStatus("periodSaveStatus","Guardando...");try{const data=await api("periods",{method:"POST",body});activePeriodId=data.id;clearPeriodForm();await loadPeriods();setStatus("periodSaveStatus","Período guardado.",true);}catch(err){setStatus("periodSaveStatus",err.message);}
   }
 
-  async function selectPeriod(id){activePeriodId=id;renderPeriods();await loadNovelties();$("noveltiesCard").scrollIntoView({behavior:"smooth",block:"start"});}
+  async function selectPeriod(id){activePeriodId=id;renderPeriods();await loadNovelties();await loadPayrolls();$("noveltiesCard").scrollIntoView({behavior:"smooth",block:"start"});}
 
   async function loadNovelties(){
     const company=activeCompany(),period=activePeriod();if(!company||!period){novelties=[];renderNovelties();return;}
@@ -337,6 +346,36 @@
   async function saveNovelty(){const company=activeCompany(),period=activePeriod();if(!company||!period)return setStatus("noveltySaveStatus","Seleccioná un período.");const body={id:$("noveltyId").value||undefined,company_id:company.id,period_id:period.id,employee_id:$("noveltyEmployee").value,concept_type:$("noveltyType").value,concept_name:$("noveltyName").value.trim(),quantity:$("noveltyQuantity").value||0,amount:$("noveltyAmount").value||0,notes:$("noveltyNotes").value.trim()};if(!body.employee_id||!body.concept_name)return setStatus("noveltySaveStatus","Seleccioná empleado y completá el concepto.");setStatus("noveltySaveStatus","Guardando...");try{await api("novelties",{method:"POST",body});clearNoveltyForm();await loadNovelties();await loadPeriods();setStatus("noveltySaveStatus","Novedad guardada.",true);}catch(err){setStatus("noveltySaveStatus",err.message);}}
   async function deleteNovelty(id){const company=activeCompany();if(!company||!confirm("¿Quitar esta novedad del período?"))return;setStatus("noveltySaveStatus","Quitando...");try{await api("novelties",{method:"DELETE",body:{id,company_id:company.id}});await loadNovelties();await loadPeriods();setStatus("noveltySaveStatus","Novedad eliminada.",true);}catch(err){setStatus("noveltySaveStatus",err.message);}}
 
+  async function loadPayrolls(){
+    const company=activeCompany(),period=activePeriod();if(!company||!period){payrolls=[];renderPayrolls();return;}
+    try{const data=await api("payrolls",{params:{company_id:company.id,period:period.period}});payrolls=(data.items||[]).filter(item=>String(item.payroll_type)===String(period.payroll_type));renderPayrolls();}catch(err){payrolls=[];renderPayrolls();setStatus("batchStatus",err.message);}
+  }
+
+  function renderPayrolls(){
+    const period=activePeriod(),canCalculate=period&&period.payroll_type==="monthly"&&!["closed","cancelled"].includes(period.status);$("batchCalculateBtn").disabled=!canCalculate||employees.filter(item=>item.status==="active").length===0;$("batchPrintAllBtn").disabled=payrolls.length===0;$("batchPeriodText").textContent=period?`${period.label||formatPeriod(period.period)} · ${mapPeriodType(period.payroll_type)} · ${mapPeriodStatus(period.status)}`:"Seleccioná un período mensual.";$("batchEmpty").classList.toggle("hidden",payrolls.length>0);$("batchTableWrap").classList.toggle("hidden",payrolls.length===0);
+    $("batchTbody").innerHTML=payrolls.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">CUIL ${esc(item.cuil)}</span></td><td class="amount">${money(item.remunerative)}</td><td class="amount">${money(item.non_remunerative)}</td><td class="amount">${money(item.deductions)}</td><td class="amount"><strong>${money(item.net_amount)}</strong></td><td><button class="secondary small-button" type="button" data-print-payroll="${esc(item.id)}">PDF individual</button></td></tr>`).join("");
+  }
+
+  function yearsAtPeriod(startDate,period){if(!startDate||String(period).length!==6)return 0;const start=new Date(`${startDate}T00:00:00`),end=new Date(Number(String(period).slice(0,4)),Number(String(period).slice(4,6)),0);if(Number.isNaN(start.getTime()))return 0;let years=end.getFullYear()-start.getFullYear();if(end.getMonth()<start.getMonth()||(end.getMonth()===start.getMonth()&&end.getDate()<start.getDate()))years--;return Math.max(0,years);}
+  function noveltySum(items,types,field="amount"){return items.filter(item=>types.includes(item.concept_type)).reduce((sum,item)=>sum+Number(item[field]||0),0);}
+
+  async function calculateBatch(){
+    const company=activeCompany(),period=activePeriod(),activeEmployees=employees.filter(item=>item.status==="active");if(!company||!period||period.payroll_type!=="monthly")return setStatus("batchStatus","Seleccioná un período mensual.");if(!activeEmployees.length)return setStatus("batchStatus","No hay empleados activos para liquidar.");
+    setStatus("batchStatus",`Calculando 0 de ${activeEmployees.length}...`);let completed=0;const errors=[];
+    for(const employee of activeEmployees){
+      try{
+        const employeeNovelties=novelties.filter(item=>String(item.employee_id)===String(employee.id));const customRem=noveltySum(employeeNovelties,["commission","bonus","attendance","other"]);const params={rama:"GENERAL",agrup:"GENERAL",categoria:String(employee.category||"MAESTRANZA A").toUpperCase(),mes:`${String(period.period).slice(0,4)}-${String(period.period).slice(4,6)}`,jornada:Number(employee.profile?.weekly_hours||48),anios_antig:yearsAtPeriod(employee.start_date,period.period),osecac:!!employee.profile?.health_insurance_name,afiliado:!!employee.profile?.union_name,hex50:noveltySum(employeeNovelties,["overtime_50"],"quantity"),hex100:noveltySum(employeeNovelties,["overtime_100"],"quantity"),fer_trab:noveltySum(employeeNovelties,["holiday"],"quantity"),aus_inj:noveltySum(employeeNovelties,["absence"],"quantity"),embargo:noveltySum(employeeNovelties,["garnishment"]),adelanto_sueldo:noveltySum(employeeNovelties,["advance"]),a_cuenta_rem:customRem};
+        const url=new URL("/calcular",location.origin);Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));const response=await fetch(url);const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.detail||result.message||`Error HTTP ${response.status}`);if(customRem>0&&Array.isArray(result.items))result.items=result.items.map(item=>String(item.concepto||"").startsWith("A cuenta futuros")?{...item,concepto:"Comisiones y adicionales informados"}:item);
+        await api("payrolls",{method:"POST",body:{company_id:company.id,employee_id:employee.id,period:period.period,payroll_type:"monthly",inputs:{engine_params:params,novelties:employeeNovelties,company_snapshot:company,employee_snapshot:employee,period_snapshot:period},result}});completed++;
+      }catch(err){errors.push(`${employee.full_name}: ${err.message}`);}setStatus("batchStatus",`Calculando ${completed+errors.length} de ${activeEmployees.length}...`);
+    }
+    await loadPayrolls();await loadPeriods();setStatus("batchStatus",errors.length?`Se calcularon ${completed}. Errores: ${errors.join(" | ")}`:`Nómina calculada: ${completed} empleado${completed===1?"":"s"}.`,errors.length===0);
+  }
+
+  function receiptRows(result){return (result?.items||[]).map(item=>`<tr><td>${esc(item.concepto)}</td><td>${esc(item.unidad||"")}</td><td class="num">${Number(item.r||0)?money(item.r):""}</td><td class="num">${Number(item.n||0)?money(item.n):""}</td><td class="num">${Number(item.d||0)?money(item.d):""}</td></tr>`).join("");}
+  function receiptCopy(record,copyLabel){const company=activeCompany(),employee=employees.find(item=>String(item.id)===String(record.employee_id))||{},period=activePeriod(),result=record.result||{},address=company?.address||{},settings=company?.settings||{},profile=employee.profile||{},totals=result.totales||{};return `<section class="receipt"><div class="copy">${esc(copyLabel)}</div><h1>Recibo de haberes</h1><div class="company"><strong>${esc(company?.legal_name)}</strong> · CUIT ${esc(company?.cuit)}<br>${esc([address.street,address.number,address.floor,address.city,address.province].filter(Boolean).join(" · "))}<br>${esc(settings.activity||"")}</div><div class="period"><span>Período: <strong>${esc(formatPeriod(period?.period))}</strong></span><span>Fecha de pago: <strong>${esc(period?.payment_date||"")}</strong></span><span>Lugar: <strong>${esc(period?.payment_place||settings.payment_place||"")}</strong></span></div><div class="employee"><span>Legajo: <strong>${esc(employee.file_number||"")}</strong></span><span>Empleado: <strong>${esc(employee.full_name||record.full_name)}</strong></span><span>CUIL: <strong>${esc(employee.cuil||record.cuil)}</strong></span><span>Ingreso: <strong>${esc(employee.start_date||"")}</strong></span><span>Categoría: <strong>${esc(employee.category||"")}</strong></span><span>Tarea: <strong>${esc(employee.task_name||"")}</strong></span><span>Obra social: <strong>${esc(profile.health_insurance_name||"No informada")}</strong></span></div><table><thead><tr><th>Concepto</th><th>Unidad</th><th>Remunerativo</th><th>No remunerativo</th><th>Descuentos</th></tr></thead><tbody>${receiptRows(result)}</tbody><tfoot><tr><th colspan="2">Totales</th><th>${money(totals.rem)}</th><th>${money(totals.nr)}</th><th>${money(totals.ded)}</th></tr><tr><th colspan="4">Neto a cobrar</th><th>${money(totals.neto)}</th></tr></tfoot></table><div class="signatures"><div>Firma del empleador</div><div>Firma del empleado</div></div><p class="legend">${esc(settings.receipt_legend||"")}</p></section>`;}
+  function printPayrolls(id=""){const selected=id?payrolls.filter(item=>String(item.id)===String(id)):payrolls;if(!selected.length)return setStatus("batchStatus","No hay recibos para imprimir.");const popup=window.open("","_blank");if(!popup)return setStatus("batchStatus","El navegador bloqueó la ventana de impresión.");const receipts=selected.map(item=>receiptCopy(item,"ORIGINAL")+receiptCopy(item,"DUPLICADO")).join("");popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Recibos ${esc(activePeriod()?.label||formatPeriod(activePeriod()?.period))}</title><style>@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0}.receipt{position:relative;border:1px solid #222;padding:16px;margin:0 0 12mm;break-after:page}.receipt:last-child{break-after:auto}.copy{position:absolute;right:16px;top:14px;font-weight:700}.receipt h1{text-align:center;margin:0 0 12px}.company{text-align:center;line-height:1.45}.period,.employee{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:1px solid #555;padding:9px;margin-top:12px;font-size:12px}.receipt table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}.receipt th,.receipt td{border:1px solid #555;padding:6px}.num{text-align:right}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:55px;text-align:center}.signatures div{border-top:1px solid #333;padding-top:5px}.legend{text-align:center;font-size:10px;margin:16px 0 0}@media print{body{print-color-adjust:exact}}</style></head><body>${receipts}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);popup.document.close();}
+
   async function loadAdminCompanies(){
     if(!session?.is_platform_admin)return;try{const data=await api("admin-companies");renderAdminCompanies(data.items||[]);}catch(err){setStatus("adminStatus",err.message);}
   }
@@ -352,14 +391,15 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();});
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
-  $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];activePeriodId="";renderSession();});
+  $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
   $("employeesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.editEmployee;if(id)editEmployee(id);});
   $("periodsTbody").addEventListener("click",ev=>{const selectId=ev.target?.dataset?.selectPeriod,editId=ev.target?.dataset?.editPeriod;if(selectId)selectPeriod(selectId);if(editId)editPeriod(editId);});
   $("noveltiesTbody").addEventListener("click",ev=>{const editId=ev.target?.dataset?.editNovelty,deleteId=ev.target?.dataset?.deleteNovelty;if(editId)editNovelty(editId);if(deleteId)deleteNovelty(deleteId);});
+  $("batchTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.printPayroll;if(id)printPayrolls(id);});
   clearNoveltyForm();
   loadSession();
 })();
