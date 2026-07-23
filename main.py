@@ -57,6 +57,7 @@ ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".sv
 ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
 PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
 PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
+COMPANY_PORTAL_FILE = BASE_DIR / "public" / "empresas.html"
 ADMIN_INDEX_FILE = BASE_DIR / "index.html"
 NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
@@ -757,6 +758,14 @@ def admin_app(admin_token: str = Query(default="")):
     if ADMIN_INDEX_FILE.exists():
         return FileResponse(ADMIN_INDEX_FILE, headers=NOINDEX_HEADERS)
     return HTMLResponse("<h1>Panel administrador no encontrado</h1>", status_code=404, headers=NOINDEX_HEADERS)
+
+
+@app.get("/empresas", include_in_schema=False)
+@app.get("/empresas/", include_in_schema=False)
+def company_portal():
+    if COMPANY_PORTAL_FILE.exists():
+        return FileResponse(COMPANY_PORTAL_FILE, headers=NOINDEX_HEADERS)
+    return HTMLResponse("<h1>Portal de empresas no encontrado</h1>", status_code=404, headers=NOINDEX_HEADERS)
 
 # ========= HEALTH =========
 @app.get("/health")
