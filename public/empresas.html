@@ -10,7 +10,8 @@
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif}
     .wrap{max-width:1120px;margin:0 auto;padding:24px 16px 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
     h1{font-size:28px;margin:0 0 4px}h2{font-size:20px;margin:0 0 8px}.muted{color:var(--muted);margin:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 10px 28px rgba(15,23,42,.05);margin-bottom:16px}
-    label{display:block;font-size:13px;font-weight:750;margin:12px 0 6px}input,select,button{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 12px;font:inherit;background:#fff}button,.button{display:inline-flex;justify-content:center;align-items:center;width:auto;text-decoration:none;cursor:pointer;background:var(--blue);color:#fff;border-color:var(--blue);font-weight:800}.secondary{background:#fff;color:#1e3a8a}.danger{background:#fff;color:var(--red);border-color:#fecaca}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.status{min-height:22px;margin-top:10px;color:#334155;font-size:14px}.pill{display:inline-flex;padding:5px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:850}.pill.active{background:#d1fae5;color:#065f46}.pill.paused,.pill.closed{background:#fee2e2;color:#991b1b}.hidden{display:none!important}.summary{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.table-wrap{overflow:auto;margin-top:14px}table{width:100%;border-collapse:collapse;min-width:720px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f8fafc}td select{min-width:135px;padding:7px}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px;margin-top:14px}.notice{padding:12px 14px;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:14px;margin-top:12px}.error{color:var(--red)}.ok{color:var(--green)}
+    label{display:block;font-size:13px;font-weight:750;margin:12px 0 6px}input,select,button{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 12px;font:inherit;background:#fff}button,.button{display:inline-flex;justify-content:center;align-items:center;width:auto;text-decoration:none;cursor:pointer;background:var(--blue);color:#fff;border-color:var(--blue);font-weight:800}.secondary{background:#fff;color:#1e3a8a}.danger{background:#fff;color:var(--red);border-color:#fecaca}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.status{min-height:22px;margin-top:10px;color:#334155;font-size:14px}.pill{display:inline-flex;padding:5px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:850}.pill.active{background:#d1fae5;color:#065f46}.pill.paused,.pill.closed,.pill.terminated{background:#fee2e2;color:#991b1b}.hidden{display:none!important}.summary{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.table-wrap{overflow:auto;margin-top:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f8fafc}td select{min-width:135px;padding:7px}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px;margin-top:14px}.notice{padding:12px 14px;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:14px;margin-top:12px}.error{color:var(--red)}.ok{color:var(--green)}
+    details{border:1px solid var(--line);border-radius:14px;margin-top:14px;background:#fbfdff}summary{cursor:pointer;padding:14px 16px;font-weight:850;color:#1e3a8a}.detail-body{padding:0 16px 16px}.section-note{font-size:13px;color:var(--muted);margin:0 0 4px}.small-button{padding:7px 10px;font-size:12px}.employee-form-title{margin-top:14px}.subtext{display:block;color:var(--muted);font-size:12px;margin-top:3px}
     @media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}
   </style>
 </head>
@@ -52,18 +53,61 @@
     </article>
 
     <article class="card">
-      <div class="summary"><div><h2>Nómina de empleados</h2><p class="muted">Estos empleados quedarán disponibles para las próximas liquidaciones mensuales.</p></div><span id="employeeCount" class="pill">0 empleados</span></div>
-      <div class="grid">
-        <div><label for="employeeFile">Legajo</label><input id="employeeFile" maxlength="30"></div>
-        <div><label for="employeeName">Apellido y nombre</label><input id="employeeName" maxlength="190"></div>
-        <div><label for="employeeCuil">CUIL</label><input id="employeeCuil" inputmode="numeric" maxlength="13"></div>
-        <div><label for="employeeCategory">Categoría</label><input id="employeeCategory" maxlength="120"></div>
-        <div><label for="employeeTask">Tarea</label><input id="employeeTask" maxlength="120"></div>
-        <div><label for="employeeStart">Fecha de ingreso</label><input id="employeeStart" type="date"></div>
-      </div>
-      <div class="actions"><button id="employeeSaveBtn" type="button">Agregar empleado</button></div><div id="employeeStatus" class="status"></div>
+      <div class="summary"><div><h2>Nómina de empleados</h2><p class="muted">Ficha completa para recibos, liquidaciones y futuras exportaciones a ARCA.</p></div><span id="employeeCount" class="pill">0 empleados</span></div>
+      <input id="employeeId" type="hidden">
+      <h2 id="employeeFormTitle" class="employee-form-title">Nuevo empleado</h2>
+      <details open>
+        <summary>Datos personales y laborales</summary>
+        <div class="detail-body"><div class="grid">
+          <div><label for="employeeFile">Legajo</label><input id="employeeFile" maxlength="30"></div>
+          <div><label for="employeeName">Apellido y nombre *</label><input id="employeeName" maxlength="190"></div>
+          <div><label for="employeeCuil">CUIL *</label><input id="employeeCuil" inputmode="numeric" maxlength="13"></div>
+          <div><label for="employeeDni">DNI</label><input id="employeeDni" inputmode="numeric" maxlength="10"></div>
+          <div><label for="employeeBirth">Fecha de nacimiento</label><input id="employeeBirth" type="date"></div>
+          <div><label for="employeeStart">Fecha de ingreso</label><input id="employeeStart" type="date"></div>
+          <div><label for="employeeEnd">Fecha de egreso</label><input id="employeeEnd" type="date"></div>
+          <div><label for="employeeStatusSelect">Estado laboral</label><select id="employeeStatusSelect"><option value="active">Activo</option><option value="paused">Pausado</option><option value="terminated">Desvinculado</option></select></div>
+          <div><label for="employeeCategory">Categoría</label><input id="employeeCategory" maxlength="120"></div>
+          <div><label for="employeeTask">Tarea</label><input id="employeeTask" maxlength="120"></div>
+          <div><label for="employeeAgreement">Convenio</label><input id="employeeAgreement" maxlength="120" value="CCT 130/75"></div>
+          <div><label for="employeeWorkday">Jornada</label><select id="employeeWorkday"><option value="">Seleccionar</option><option value="Tiempo completo">Tiempo completo</option><option value="Tiempo parcial">Tiempo parcial</option><option value="Por horas">Por horas</option></select></div>
+          <div><label for="employeeWeeklyHours">Horas semanales</label><input id="employeeWeeklyHours" type="number" min="0" max="168" step="0.5"></div>
+          <div><label for="employeeContract">Modalidad contractual</label><input id="employeeContract" maxlength="120"></div>
+          <div><label for="employeeContractCode">Código modalidad ARCA</label><input id="employeeContractCode" inputmode="numeric" maxlength="10"></div>
+          <div><label for="employeeEmail">Email</label><input id="employeeEmail" type="email" maxlength="190"></div>
+          <div><label for="employeePhone">Teléfono</label><input id="employeePhone" maxlength="60"></div>
+          <div><label for="employeeAddress">Domicilio</label><input id="employeeAddress" maxlength="190"></div>
+          <div><label for="employeeLocality">Localidad</label><input id="employeeLocality" maxlength="120"></div>
+          <div><label for="employeeProvince">Provincia</label><input id="employeeProvince" maxlength="120"></div>
+        </div></div>
+      </details>
+      <details>
+        <summary>Obra social y afiliaciones</summary>
+        <div class="detail-body">
+          <p class="section-note">Datos opcionales. El código se utilizará más adelante para validar exportaciones.</p>
+          <div class="grid">
+            <div><label for="employeeHealthName">Obra social</label><input id="employeeHealthName" maxlength="190"></div>
+            <div><label for="employeeHealthCode">Código obra social ARCA</label><input id="employeeHealthCode" inputmode="numeric" maxlength="12"></div>
+            <div><label for="employeeHealthMember">Número de afiliado</label><input id="employeeHealthMember" maxlength="80"></div>
+            <div><label for="employeeHealthStart">Vigencia desde</label><input id="employeeHealthStart" type="date"></div>
+            <div><label for="employeeUnionName">Sindicato</label><input id="employeeUnionName" maxlength="190"></div>
+            <div><label for="employeeUnionCode">Código sindical</label><input id="employeeUnionCode" inputmode="numeric" maxlength="12"></div>
+            <div><label for="employeeUnionMember">Número de afiliado sindical</label><input id="employeeUnionMember" maxlength="80"></div>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>Datos bancarios y forma de pago</summary>
+        <div class="detail-body grid">
+          <div><label for="employeeBank">Banco</label><input id="employeeBank" maxlength="190"></div>
+          <div><label for="employeeCbu">CBU</label><input id="employeeCbu" inputmode="numeric" maxlength="22"></div>
+          <div><label for="employeeAlias">Alias</label><input id="employeeAlias" maxlength="120"></div>
+          <div><label for="employeePaymentMethod">Forma de pago</label><select id="employeePaymentMethod"><option value="Transferencia bancaria">Transferencia bancaria</option><option value="Efectivo">Efectivo</option><option value="Cheque">Cheque</option><option value="Otro">Otro</option></select></div>
+        </div>
+      </details>
+      <div class="actions"><button id="employeeSaveBtn" type="button">Agregar empleado</button><button id="employeeCancelBtn" class="secondary hidden" type="button">Cancelar edición</button></div><div id="employeeStatus" class="status"></div>
       <div id="employeesEmpty" class="empty">Todavía no hay empleados cargados.</div>
-      <div id="employeesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Legajo</th><th>Empleado</th><th>CUIL</th><th>Categoría</th><th>Ingreso</th><th>Estado</th></tr></thead><tbody id="employeesTbody"></tbody></table></div>
+      <div id="employeesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Legajo</th><th>Empleado</th><th>Categoría</th><th>Obra social</th><th>Ingreso</th><th>Estado</th><th></th></tr></thead><tbody id="employeesTbody"></tbody></table></div>
     </article>
 
     <article class="card">
@@ -106,6 +150,7 @@
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
   function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado"})[status]||status||"";}
   function mapPlan(plan){return ({free:"Gratuito",starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Gratuito";}
+  function mapEmployeeStatus(status){return ({active:"Activo",paused:"Pausado",terminated:"Desvinculado"})[status]||status||"";}
 
   function renderSession(){
     const connected=!!session?.user;$("authView").classList.toggle("hidden",connected);$("dashboardView").classList.toggle("hidden",!connected);if(!connected)return;
@@ -140,13 +185,26 @@
 
   function renderEmployees(){
     $("employeeCount").textContent=`${employees.length} empleado${employees.length===1?"":"s"}`;$("employeesEmpty").classList.toggle("hidden",employees.length>0);$("employeesTableWrap").classList.toggle("hidden",employees.length===0);
-    $("employeesTbody").innerHTML=employees.map(item=>`<tr><td>${esc(item.file_number)}</td><td><strong>${esc(item.full_name)}</strong></td><td>${esc(item.cuil)}</td><td>${esc(item.category)}</td><td>${esc(item.start_date)}</td><td>${esc(item.status)}</td></tr>`).join("");
+    $("employeesTbody").innerHTML=employees.map(item=>`<tr><td>${esc(item.file_number)}</td><td><strong>${esc(item.full_name)}</strong><span class="subtext">CUIL ${esc(item.cuil)}${item.profile?.dni?` · DNI ${esc(item.profile.dni)}`:""}</span></td><td>${esc(item.category)}<span class="subtext">${esc(item.task_name)}</span></td><td>${esc(item.profile?.health_insurance_name||"Sin informar")}${item.arca_profile?.health_insurance_code?`<span class="subtext">Código ${esc(item.arca_profile.health_insurance_code)}</span>`:""}</td><td>${esc(item.start_date)}</td><td><span class="pill ${esc(item.status)}">${esc(mapEmployeeStatus(item.status))}</span></td><td><button class="secondary small-button" type="button" data-edit-employee="${esc(item.id)}">Editar</button></td></tr>`).join("");
+  }
+
+  const employeeFields=["employeeId","employeeFile","employeeName","employeeCuil","employeeDni","employeeBirth","employeeStart","employeeEnd","employeeCategory","employeeTask","employeeAgreement","employeeWeeklyHours","employeeContract","employeeContractCode","employeeEmail","employeePhone","employeeAddress","employeeLocality","employeeProvince","employeeHealthName","employeeHealthCode","employeeHealthMember","employeeHealthStart","employeeUnionName","employeeUnionCode","employeeUnionMember","employeeBank","employeeCbu","employeeAlias"];
+  function clearEmployeeForm(){
+    employeeFields.forEach(id=>$(id).value="");$("employeeAgreement").value="CCT 130/75";$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
+  }
+
+  function editEmployee(id){
+    const item=employees.find(row=>String(row.id)===String(id));if(!item)return;const p=item.profile||{},a=item.arca_profile||{};
+    const values={employeeId:item.id,employeeFile:item.file_number,employeeName:item.full_name,employeeCuil:item.cuil,employeeDni:p.dni,employeeBirth:p.birth_date,employeeStart:item.start_date,employeeEnd:p.end_date,employeeCategory:item.category,employeeTask:item.task_name,employeeAgreement:p.agreement,employeeWeeklyHours:p.weekly_hours,employeeContract:p.contract_modality,employeeContractCode:a.contract_modality_code,employeeEmail:p.email,employeePhone:p.phone,employeeAddress:p.address,employeeLocality:p.locality,employeeProvince:p.province,employeeHealthName:p.health_insurance_name,employeeHealthCode:a.health_insurance_code,employeeHealthMember:p.health_insurance_member,employeeHealthStart:p.health_insurance_start,employeeUnionName:p.union_name,employeeUnionCode:a.union_code,employeeUnionMember:p.union_member,employeeBank:p.bank_name,employeeCbu:p.cbu,employeeAlias:p.bank_alias};
+    Object.entries(values).forEach(([id,value])=>$(id).value=value||"");$("employeeStatusSelect").value=item.status||"active";$("employeeWorkday").value=p.workday||"";$("employeePaymentMethod").value=p.payment_method||"Transferencia bancaria";$("employeeFormTitle").textContent=`Editar: ${item.full_name}`;$("employeeSaveBtn").textContent="Guardar cambios";$("employeeCancelBtn").classList.remove("hidden");$("employeeFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
   }
 
   async function saveEmployee(){
     const company=activeCompany();if(!company)return setStatus("employeeStatus","No hay una empresa activa.");
-    const body={company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:$("employeeTask").value.trim(),start_date:$("employeeStart").value,status:"active",profile:{}};
-    setStatus("employeeStatus","Guardando...");try{await api("employees",{method:"POST",body});["employeeFile","employeeName","employeeCuil","employeeCategory","employeeTask","employeeStart"].forEach(id=>$(id).value="");await loadEmployees();setStatus("employeeStatus","Empleado guardado.",true);}catch(err){setStatus("employeeStatus",err.message);}
+    const body={id:$("employeeId").value||undefined,company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:$("employeeTask").value.trim(),start_date:$("employeeStart").value,status:$("employeeStatusSelect").value,profile:{dni:digits($("employeeDni").value),birth_date:$("employeeBirth").value,address:$("employeeAddress").value.trim(),locality:$("employeeLocality").value.trim(),province:$("employeeProvince").value.trim(),phone:$("employeePhone").value.trim(),email:$("employeeEmail").value.trim(),end_date:$("employeeEnd").value,agreement:$("employeeAgreement").value.trim(),workday:$("employeeWorkday").value,weekly_hours:$("employeeWeeklyHours").value,contract_modality:$("employeeContract").value.trim(),health_insurance_name:$("employeeHealthName").value.trim(),health_insurance_member:$("employeeHealthMember").value.trim(),health_insurance_start:$("employeeHealthStart").value,union_name:$("employeeUnionName").value.trim(),union_member:$("employeeUnionMember").value.trim(),bank_name:$("employeeBank").value.trim(),cbu:digits($("employeeCbu").value),bank_alias:$("employeeAlias").value.trim(),payment_method:$("employeePaymentMethod").value},arca_profile:{health_insurance_code:digits($("employeeHealthCode").value),contract_modality_code:digits($("employeeContractCode").value),union_code:digits($("employeeUnionCode").value)}};
+    if(!body.full_name||body.cuil.length!==11)return setStatus("employeeStatus","Completá nombre y un CUIL válido de 11 dígitos.");
+    if(body.profile.cbu&&body.profile.cbu.length!==22)return setStatus("employeeStatus","El CBU debe tener 22 dígitos.");
+    setStatus("employeeStatus","Guardando...");try{await api("employees",{method:"POST",body});clearEmployeeForm();await loadEmployees();setStatus("employeeStatus","Empleado guardado.",true);}catch(err){setStatus("employeeStatus",err.message);}
   }
 
   async function loadAdminCompanies(){
@@ -164,10 +222,11 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);renderSession();await loadEmployees();});
   $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
+  $("employeesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.editEmployee;if(id)editEmployee(id);});
   loadSession();
 })();
 </script>
