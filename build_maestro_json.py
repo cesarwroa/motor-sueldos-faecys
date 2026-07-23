@@ -4,7 +4,7 @@ from pathlib import Path
 
 import openpyxl
 
-SRC = Path(__file__).resolve().parents[1] / "maestro_actualizado.xlsx"
+SRC = Path(__file__).resolve().parent / "maestro_actualizado.xlsx"
 OUT = Path(__file__).resolve().parent / "data" / "maestro.json"
 
 
@@ -66,7 +66,29 @@ def main():
     for name in wb.sheetnames:
         if name.startswith("Categorias_"):
             ws = wb[name]
-            rows = export_sheet_rows(ws, ["Rama", "Agrupamiento", "Categoria", "Mes", "Basico", "No Remunerativo", "SUMA_FIJA"])
+            rows = export_sheet_rows(
+                ws,
+                [
+                    "Rama",
+                    "Agrupamiento",
+                    "Categoria",
+                    "Mes",
+                    "Basico",
+                    "No Remunerativo",
+                    "SUMA_FIJA",
+                ],
+            )
+            extra_col = None
+            for c in range(1, ws.max_column + 1):
+                header = norm(ws.cell(1, c).value)
+                if header and header.lower() == "asignacion_extraordinaria":
+                    extra_col = c
+                    break
+            if extra_col:
+                for row_number, row in enumerate(rows, start=2):
+                    row["ASIGNACION_EXTRAORDINARIA"] = ws.cell(
+                        row_number, extra_col
+                    ).value or 0
             escala.extend(rows)
 
     adicionales = []

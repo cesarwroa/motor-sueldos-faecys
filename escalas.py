@@ -218,7 +218,16 @@ def _build_index() -> Dict[str, Any]:
     cat_by_rama_agrup: Dict[Tuple[str, str], set] = {}
     meses_by_rama: Dict[str, set] = {}
 
-    def add_row(rama: str, agrup: str, cat: str, mes: str, bas: float, nr: float, sf: float):
+    def add_row(
+        rama: str,
+        agrup: str,
+        cat: str,
+        mes: str,
+        bas: float,
+        nr: float,
+        sf: float,
+        extraordinaria: float = 0.0,
+    ):
         rama_u = _norm(rama).upper()
         agrup_u = _norm(agrup).upper() if _norm(agrup) else "—"
         cat_u = _norm(cat).upper() if _norm(cat) else "—"
@@ -232,12 +241,22 @@ def _build_index() -> Dict[str, Any]:
         if not rama_u or not mes_k:
             return
 
-        payload[(rama_u, agrup_u, cat_u, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
+        payload[(rama_u, agrup_u, cat_u, mes_k)] = {
+            "basico": bas,
+            "no_rem": nr,
+            "suma_fija": sf,
+            "extraordinaria": extraordinaria,
+        }
         # Alias de categoría (Fúnebres): permitir lookup sin la letra final "(A/B/C/D)"
         if rama_u in ("FUNEBRES", "FÚNEBRES"):
             cat_base = re.sub(r"\s*\([A-D]\)\s*$", "", cat_u).strip()
             if cat_base and cat_base != cat_u:
-                payload[(rama_u, agrup_u, cat_base, mes_k)] = {"basico": bas, "no_rem": nr, "suma_fija": sf}
+                payload[(rama_u, agrup_u, cat_base, mes_k)] = {
+                    "basico": bas,
+                    "no_rem": nr,
+                    "suma_fija": sf,
+                    "extraordinaria": extraordinaria,
+                }
         ramas_set.add(rama_u)
         meses_set.add(mes_k)
         agrup_by_rama.setdefault(rama_u, set()).add(agrup_u)
@@ -268,6 +287,7 @@ def _build_index() -> Dict[str, Any]:
         i_bas = idx("basico") or 5
         i_nr  = idx("no_rem") or 6
         i_sf  = idx("suma_fija") or 7
+        i_extra = idx("asignacion_extraordinaria")
 
         for r in range(2, ws.max_row + 1):
             rama = ws.cell(r, i_rama).value
@@ -280,7 +300,8 @@ def _build_index() -> Dict[str, Any]:
             bas = _to_float(ws.cell(r, i_bas).value)
             nr  = _to_float(ws.cell(r, i_nr).value)
             sf  = _to_float(ws.cell(r, i_sf).value)
-            add_row(rama_u, agrup, cat, mes, bas, nr, sf)
+            extraordinaria = _to_float(ws.cell(r, i_extra).value) if i_extra else 0.0
+            add_row(rama_u, agrup, cat, mes, bas, nr, sf, extraordinaria)
 
     # --- AGUA POTABLE (sheet no tabular, por bloques)
     if "Categorias_Agua_Potable" in wb.sheetnames:
@@ -487,6 +508,7 @@ def get_payload(
             out["basico"] = _round2(out.get("basico", 0.0) * f)
             out["no_rem"] = _round2(out.get("no_rem", 0.0) * f)
             out["suma_fija"] = _round2(out.get("suma_fija", 0.0) * f)
+            out["extraordinaria"] = _round2(out.get("extraordinaria", 0.0) * f)
             out["conex_cat"] = _norm(conex_cat).upper() if conex_cat else ""
             out["conexiones"] = int(conexiones or 0)
 
@@ -814,6 +836,7 @@ def calcular_payload(
     bas_base = float(base.get("basico", 0.0) or 0.0)
     nr_base = float(base.get("no_rem", 0.0) or 0.0)
     sf_base = float(base.get("suma_fija", 0.0) or 0.0)
+    extraordinaria_base = float(base.get("extraordinaria", 0.0) or 0.0)
 
     # Agua Potable: Conexiones (A/B/C/D) NO se muestra como adicional;
     # modifica directamente el valor del Básico y de los No Rem.
@@ -826,6 +849,7 @@ def calcular_payload(
             bas_base *= fac
             nr_base *= fac
             sf_base *= fac
+            extraordinaria_base *= fac
 
     basico_manual_val = _positive_float(basico_manual)
     if basico_manual_val > 0:
@@ -834,6 +858,15 @@ def calcular_payload(
     bas = bas_base * factor
     nr = nr_base * factor
     sf = sf_base * factor
+
+    # Asignación Extraordinaria por Única Vez - Revisión 2026:
+    # - proporcional a la jornada y a los días efectivamente cumplidos;
+    # - no integra antigüedad, presentismo, SAC, aportes, contribuciones ni descuentos.
+    aus_dias_extra = max(0, min(30, int(aus_inj or 0)))
+    factor_asistencia_extra = max(0.0, (30.0 - aus_dias_extra) / 30.0)
+    extraordinaria = round2(
+        extraordinaria_base * factor * factor_asistencia_extra
+    )
 
     # NR base total (sin derivados). Se usa también para valor-hora NR.
     nr_base_total = round2(nr + sf)
@@ -1459,7 +1492,7 @@ def calcular_payload(
         + faltante_desc
         + adelanto
     )
-    neto_pre = round2((rem_total + nr_total) - ded_pre)
+    neto_pre = round2((rem_total + nr_total + extraordinaria) - ded_pre)
     emb_in = 0.0
     try:
         emb_in = float(embargo or 0.0)
@@ -1473,9 +1506,17 @@ def calcular_payload(
     sac_habil = bool(sac_concepto and (sac_row_rem or sac_row_nr))
 
     mensual_rem_total = round2(rem_total - sac_row_rem) if sac_habil else round2(rem_total)
-    mensual_nr_total = round2(nr_total - sac_row_nr) if sac_habil else round2(nr_total)
+    mensual_nr_total_aportable = round2(nr_total - sac_row_nr) if sac_habil else round2(nr_total)
     mensual_rem_aportes = max(0.0, round2(mensual_rem_total - aus_rem - susp_rem))
-    mensual_nr_aportable = max(0.0, round2(mensual_nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
+    mensual_nr_aportable = max(
+        0.0,
+        round2(
+            mensual_nr_total_aportable
+            - (viaticos or 0.0)
+            - (caja_exento or 0.0)
+        ),
+    )
+    mensual_nr_total = round2(mensual_nr_total_aportable + extraordinaria)
     mensual_base_fs = round2(mensual_rem_aportes + mensual_nr_aportable)
 
     mensual_rem_total_os = round2(rem_total_os - sac_row_rem_os) if sac_habil else round2(rem_total_os)
@@ -1765,6 +1806,14 @@ def calcular_payload(
         items.append(item(labels.get("no_rem", "No Remunerativo"), n=nr, unidad=unidad_dias_basico))
     if sf:
         items.append(item(labels.get("suma_fija", "Suma Fija (NR)"), n=sf, unidad=unidad_dias_basico))
+    if extraordinaria:
+        items.append(
+            item(
+                "Asignación Extraordinaria por Única Vez - Revisión 2026",
+                n=extraordinaria,
+                unidad=unidad_dias_basico,
+            )
+        )
 
     # Viáticos (NR sin aportes)
     if viaticos:
@@ -2019,11 +2068,13 @@ def calcular_payload(
         "basico_base": float(bas_base),
         "no_rem_base": float(nr_base),
         "suma_fija_base": float(sf_base),
+        "extraordinaria_base": float(extraordinaria_base),
 
         "basico": float(bas),
         "zona": float(zona),
         "no_rem": float(nr),
         "suma_fija": float(sf),
+        "extraordinaria": float(extraordinaria),
 
         "items": items,
         "totales": {
@@ -2724,6 +2775,8 @@ def calcular_final_payload(
             r = float(it.get("r", 0.0) or 0.0)
             n = float(it.get("n", 0.0) or 0.0)
             d = float(it.get("d", 0.0) or 0.0)
+            if con.strip().lower() == "asignación extraordinaria por única vez - revisión 2026":
+                n = round2(n * (float(dm_prorr) / 30.0))
             if abs(r) + abs(n) + abs(d) <= 0:
                 continue
             # Preservar base numérica (ej. valor hora en horas extra) si viene del mensual
@@ -2762,6 +2815,7 @@ def calcular_final_payload(
     # - Sindicato 2%
     # Base = REM aportable + NR aportable (excluye viáticos NR sin aportes).
     viaticos_nr = 0.0
+    extraordinaria_exenta_nr = 0.0
     for x in items:
         con = str(x.get("concepto", "")).lower()
         if ("viat" in con) or ("viát" in con):
@@ -2769,8 +2823,17 @@ def calcular_final_payload(
                 viaticos_nr += float(x.get("n", 0.0) or 0.0)
             except Exception:
                 pass
+        if con.strip() == "asignación extraordinaria por única vez - revisión 2026":
+            try:
+                extraordinaria_exenta_nr += float(x.get("n", 0.0) or 0.0)
+            except Exception:
+                pass
     viaticos_nr = round2(viaticos_nr)
-    nr_aportable = max(0.0, round2(nr_total - viaticos_nr))
+    extraordinaria_exenta_nr = round2(extraordinaria_exenta_nr)
+    nr_aportable = max(
+        0.0,
+        round2(nr_total - viaticos_nr - extraordinaria_exenta_nr),
+    )
     base_fs = round2(rem_aportes + nr_aportable)
     faecys = round2(base_fs * 0.005) if base_fs else 0.0
     sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
@@ -2799,7 +2862,9 @@ def calcular_final_payload(
         # Obra Social: base jornada completa (48hs) para TODAS las ramas (sin prorrateo por jornada).
         factor_os = 1.0 if j_in >= 48.0 else (48.0 / j_in)
         rem_aportes_os = round2(rem_aportes * factor_os)
-        nr_os = round2(nr_total * factor_os)
+        nr_os = round2(
+            max(0.0, nr_total - extraordinaria_exenta_nr) * factor_os
+        )
         os_base = round2((rem_aportes_os + nr_os) if bool(osecac) else rem_aportes_os)
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
         osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(rama, mes_baja)) else 0.0
