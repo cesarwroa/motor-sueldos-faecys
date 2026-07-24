@@ -547,15 +547,10 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div class="container">
 <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h1 style="margin:0">Calculadora de Comercio</h1>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a class="co-home-btn" href="/empresas" title="Ingresar al portal de empresas" style="background:#047857;border-color:#047857">
-      <span>Acceso empresas</span>
-    </a>
-    <a class="co-home-btn" href="https://www.calculadoradecomercio.com/" title="Volver a la web principal">
-      <svg class="co-home-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
-      <span>Volver a la web</span>
-    </a>
-  </div>
+  <a class="co-home-btn" href="https://www.calculadoradecomercio.com/" title="Volver a la web principal">
+    <svg class="co-home-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <span>Volver a la web</span>
+  </a>
 </div>
 <div class="tabs no-print">
 <div class="tab active" id="tabMensual" onclick="switchTab('mensual')">Mensual</div>
@@ -3654,15 +3649,15 @@ function toggleManejoCajaUI(){
   function mesesPorRama(rama){
     const r = normRama(rama);
     // Reglas pedidas (Etapa 2):
-    // - GENERAL: 2026-01 a 2026-07
-    // - FUNEBRES / AGUA: 2026-01 a 2026-07
+    // - GENERAL / FUNEBRES: 2026-01 a 2026-09
+    // - AGUA: 2026-01 a 2026-07
     // - CALL: 2026-01 a 2026-07
     // - TURISMO: 2026-01 a 2026-08
     // - CEREALES: 2026-01 a 2026-06
     if(r === "TURISMO") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08"];
     if(r === "CEREALES") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"];
-    if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
-    if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
+    if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09"];
+    if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09"];
     if(r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     // Fallback: desde 2026-01 en adelante (hasta lo disponible)
