@@ -5977,9 +5977,11 @@ function switchTab(tab){
         clearAdminSession();
       });
       wire();
+      // Las escalas son el contenido principal: cargarlas antes de validar
+      // módulos administrativos evita mostrar importes en cero innecesariamente.
+      await loadMeta();
       await refreshAdminSession();
       await refreshFeatureState({ adminView: !!window.__adminAccess });
-      await loadMeta();
       try{ updateEmployerCostBranchUI(); updateEmployerCostNote(); updateFinalEmployerCostBranchUI(); updateFinalEmployerCostNote(); }catch(_){ }
       try{ window.lf_autofill_mejor && window.lf_autofill_mejor(); }catch(_){ }
     }catch(err){
