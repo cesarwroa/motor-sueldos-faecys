@@ -22,6 +22,26 @@
 *{box-sizing:border-box} body{margin:0;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto;background:var(--bg);color:var(--ink)}
 .container{max-width:1200px;margin:24px auto;padding:0 16px} .card{background:#fff;border:1px solid var(--grid);border-radius:16px;padding:16px}
 .grid{display:grid;gap:12px} .cols-4{grid-template-columns:repeat(4,minmax(0,1fr))} .cols-3{grid-template-columns:repeat(3,1fr)}
+.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.co-update-stamp{
+  display:none;
+  width:max-content;
+  max-width:100%;
+  margin:14px auto 18px;
+  padding:9px 18px;
+  border:4px double #c81e1e;
+  border-radius:8px;
+  color:#b91c1c;
+  background:#fff7f7;
+  font-size:clamp(14px,2vw,20px);
+  font-weight:950;
+  letter-spacing:.08em;
+  line-height:1.15;
+  text-align:center;
+  text-transform:uppercase;
+  transform:rotate(-2deg);
+  box-shadow:0 3px 0 rgba(185,28,28,.14);
+}
 /* CO: mejorar espacio en selector de Categoría y evitar que Mes tape texto */
 #topSelectors{grid-template-columns:1.1fr 1.2fr 2.8fr .9fr;}
 #topSelectors.co-funebres{grid-template-columns:1.1fr 1.2fr 3.6fr .7fr;}
@@ -545,6 +565,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </head>
 <body>
 <div class="container">
+<div class="co-update-stamp no-print" id="coUpdateStamp" role="status">Paritaria CCT 130/75 · JUL 26 · ACTUALIZADA</div>
 <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h1 style="margin:0">Calculadora de Comercio</h1>
   <a class="co-home-btn" href="https://www.calculadoradecomercio.com/" title="Volver a la web principal">
@@ -807,8 +828,8 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Años de antigüedad</label><input id="anios" min="0" type="number" value="0"/></div>
 <div id="hsWrap"><label>Jornada</label><input id="hs" max="48" min="1" type="number" value="48"/></div>
 </div>
-<div class="grid cols-4" id="mensualScaleFields" style="margin-top:8px">
-<div><label>Básico (Rem)</label><input id="basico" min="0" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">Incr. NR. Acu. Abr 26</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Recomp. Acu. Abr 26</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-5" id="mensualScaleFields" style="margin-top:8px">
+<div><label>Básico (Rem)</label><input id="basico" min="0" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrVar">Incr. NR. Acu. Abr 26</span> — auto</label><input class="readonly" disabled="" id="nrVar" readonly="" step="0.01" type="number" value="0"/></div><div><label><span id="lblNrSF">Recomp. Acu. Abr 26</span> — auto</label><input class="readonly" disabled="" id="nrSF" readonly="" step="0.01" type="number" value="0"/></div><div><label>Asignación Extraordinaria — auto</label><input class="readonly" disabled="" id="nrExtra" readonly="" step="0.01" type="number" value="0"/></div><div><label>NR Total (auto)</label><input class="readonly" disabled="" id="nrTotal" readonly="" step="0.01" type="number" value="0"/></div></div>
 <div id="mensualExtrasHost">
 <div class="note" id="aguaBlock" style="display:none">
   <strong>Agua Potable:</strong> Conexiones
@@ -1247,6 +1268,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     @media (max-width: 600px) {
       /* Stack all grid layouts to a single column */
       .grid,
+      .cols-5,
       .cols-4,
       .cols-3 {
         grid-template-columns: 1fr !important;
@@ -1290,6 +1312,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
     }
     /* On small tablets (601–900px), use two columns */
     @media (min-width: 601px) and (max-width: 900px) {
+      .cols-5,
       .cols-4 {
         grid-template-columns: repeat(2, 1fr) !important;
       }
@@ -3165,15 +3188,15 @@ function toggleManejoCajaUI(){
   function mesesPorRama(rama){
     const r = normRama(rama);
     // Reglas pedidas (Etapa 2):
-    // - GENERAL / FUNEBRES: 2026-01 a 2026-09
+    // - GENERAL / FUNEBRES: 2026-01 a 2027-05
     // - AGUA: 2026-01 a 2026-07
     // - CALL: 2026-01 a 2026-07
     // - TURISMO: 2026-01 a 2026-08
     // - CEREALES: 2026-01 a 2026-06
     if(r === "TURISMO") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08"];
     if(r === "CEREALES") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"];
-    if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09"];
-    if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09"];
+    if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05"];
+    if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05"];
     if(r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
     // Fallback: desde 2026-01 en adelante (hasta lo disponible)
@@ -3792,7 +3815,8 @@ const p = await fetchJSON(url.toString());
       }
       setVal("nrVar", (p.no_rem_base ?? p.no_rem ?? 0));
       setVal("nrSF", (p.suma_fija_base ?? p.suma_fija ?? 0));
-      const nrTot = num(p.no_rem_base ?? p.no_rem ?? 0) + num(p.suma_fija_base ?? p.suma_fija ?? 0);
+      setVal("nrExtra", (p.extraordinaria_base ?? p.extraordinaria ?? 0));
+      const nrTot = num(p.no_rem_base ?? p.no_rem ?? 0) + num(p.suma_fija_base ?? p.suma_fija ?? 0) + num(p.extraordinaria_base ?? p.extraordinaria ?? 0);
       setVal("nrTotal", nrTot);
 
       // Labels oficiales NR por rama
@@ -5972,6 +5996,10 @@ function switchTab(tab){
 
   document.addEventListener('DOMContentLoaded', async () => {
     try{
+      const updateStamp = $("coUpdateStamp");
+      if(updateStamp && Date.now() < Date.parse("2026-08-09T03:00:00Z")){
+        updateStamp.style.display = "block";
+      }
       syncAdminUI();
       $("adminLogoutBtn")?.addEventListener("click", () => {
         clearAdminSession();
