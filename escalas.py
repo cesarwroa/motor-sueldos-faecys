@@ -2361,6 +2361,116 @@ def _vac_anuales_por_antig(anios: int) -> int:
     return 35
 
 
+def calcular_vacaciones_payload(
+    *,
+    rama: str,
+    agrup: str,
+    categoria: str,
+    mes: str,
+    dias: float,
+    base_rem: float,
+    base_nr: float = 0.0,
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0.0,
+    jubilado: bool = False,
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 3.0,
+    art_fijo: float = 1765.0,
+) -> Dict[str, Any]:
+    """Adelanto de vacaciones para personal mensualizado (art. 155 LCT).
+
+    La base proviene de una liquidación mensual guardada. El importe por día se
+    calcula con divisor 25 y conserva la composición remunerativa/no remunerativa.
+    """
+    dias_f = round2(max(0.0, float(dias or 0.0)))
+    rem_base = round2(max(0.0, float(base_rem or 0.0)))
+    nr_base = round2(max(0.0, float(base_nr or 0.0)))
+    if dias_f <= 0:
+        raise ValueError("La cantidad de días de vacaciones debe ser mayor a 0")
+    if rem_base + nr_base <= 0:
+        raise ValueError("La base salarial de vacaciones debe ser mayor a 0")
+
+    rem = round2((rem_base / 25.0) * dias_f)
+    nr = round2((nr_base / 25.0) * dias_f)
+    base_aportes = round2(rem + nr)
+    jub = round2(rem * 0.11)
+    pami = 0.0 if bool(jubilado) else round2(rem * 0.03)
+    obra_social = 0.0 if bool(jubilado) or not bool(osecac) else round2(base_aportes * 0.03)
+    faecys = round2(base_aportes * 0.005)
+    sindicato = round2(base_aportes * 0.02)
+    afiliacion = round2(base_aportes * (max(0.0, float(sind_pct or 0.0)) / 100.0)) if afiliado else 0.0
+    ded = round2(jub + pami + obra_social + faecys + sindicato + afiliacion)
+    neto = round2(rem + nr - ded)
+
+    items = [
+        {
+            "concepto": "Vacaciones gozadas (adelanto art. 155 LCT)",
+            "r": rem,
+            "n": nr,
+            "i": 0.0,
+            "d": 0.0,
+            "base": round2(rem_base + nr_base),
+            "unidad": _fmt_unidad_num(dias_f),
+        }
+    ]
+    for concepto, monto, base in [
+        ("Jubilación 11%", jub, rem),
+        ("Ley 19.032 (PAMI) 3%", pami, rem),
+        ("Obra Social 3%", obra_social, base_aportes),
+        ("FAECYS 0,5%", faecys, base_aportes),
+        ("Sindicato 2% Art 100", sindicato, base_aportes),
+        (f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", afiliacion, base_aportes),
+    ]:
+        if monto:
+            items.append(
+                {"concepto": concepto, "r": 0.0, "n": 0.0, "i": 0.0, "d": monto, "base": base}
+            )
+
+    contribuciones = _calcular_contribuciones_empleador(
+        rama=rama,
+        agrup=agrup,
+        mes=mes,
+        regimen_contribuciones=regimen_contribuciones,
+        art_pct=art_pct,
+        art_fijo=art_fijo,
+        seguro_vida_cct_prima=0.0,
+        osecac=osecac,
+        jubilado=jubilado,
+        rem_aportes=rem,
+        os_base=base_aportes,
+        base_fs=base_aportes,
+        bruto_trabajador=round2(rem + nr),
+        basico_ref_fallback=rem_base,
+    )
+    return {
+        "ok": True,
+        "tipo": "VACACIONES",
+        "rama": _norm(rama),
+        "agrup": _norm(agrup),
+        "categoria": _norm(categoria),
+        "mes": mes,
+        "dias_vacaciones": dias_f,
+        "base_vacaciones": {
+            "remunerativa": rem_base,
+            "no_remunerativa": nr_base,
+            "total": round2(rem_base + nr_base),
+            "divisor": 25,
+        },
+        "items": items,
+        "totales": {
+            "rem": rem,
+            "nr": nr,
+            "ind": 0.0,
+            "ded": ded,
+            "neto": neto,
+            "contribuciones_empleador": float(contribuciones.get("total") or 0.0),
+            "costo_laboral_total": float(contribuciones.get("costo_laboral_total") or 0.0),
+        },
+        "contribuciones_empleador": contribuciones,
+    }
+
+
 def calcular_final_payload(
     *,
     rama: str,
@@ -2381,6 +2491,8 @@ def calcular_final_payload(
     integracion: bool = True,
     sac_sobre_preaviso: bool = False,
     sac_sobre_integracion: bool = True,
+    sac_devengado_rem: float = -1.0,
+    sac_devengado_nr: float = -1.0,
     osecac: bool = True,
     afiliado: bool = False,
     sind_pct: float = 0.0,
@@ -2576,9 +2688,17 @@ def calcular_final_payload(
 
     # SAC sobre vacaciones no gozadas (indemnizatorio)
     sac_vac_total = round2(vac_pago_total / 12.0) if vac_pago_total else 0.0
-    # SAC proporcional del semestre
-    sac_prop_total = round2(base_total * (dias_sem / 360.0)) if dias_sem else 0.0
-    sac_prop_r, sac_prop_n = split_amount(sac_prop_total)
+    # SAC proporcional: si empresas informa remuneraciones realmente devengadas
+    # en el semestre, se aplica art. 123 LCT (doceava parte). Se conserva la
+    # fórmula histórica solo como compatibilidad para la calculadora pública.
+    sac_historico = float(sac_devengado_rem or 0) >= 0 or float(sac_devengado_nr or 0) >= 0
+    if sac_historico:
+        sac_prop_r = round2(max(0.0, float(sac_devengado_rem or 0.0)) / 12.0)
+        sac_prop_n = round2(max(0.0, float(sac_devengado_nr or 0.0)) / 12.0)
+        sac_prop_total = round2(sac_prop_r + sac_prop_n)
+    else:
+        sac_prop_total = round2(base_total * (dias_sem / 360.0)) if dias_sem else 0.0
+        sac_prop_r, sac_prop_n = split_amount(sac_prop_total)
 
     # Integración mes despido (art. 233) – default ON
     dias_int = max(0, dim - dia_baja) if integracion else 0
@@ -3036,6 +3156,12 @@ def calcular_final_payload(
         "dias_prorr": dm_prorr,
         "mes_completo": bool(mes_completo),
         "dias_semestre": dias_sem,
+        "base_sac_proporcional": {
+            "origen": "liquidaciones_guardadas" if sac_historico else "estimacion_base_actual",
+            "remunerativa_devengada": round2(max(0.0, float(sac_devengado_rem or 0.0))) if sac_historico else 0.0,
+            "no_remunerativa_devengada": round2(max(0.0, float(sac_devengado_nr or 0.0))) if sac_historico else 0.0,
+            "divisor": 12 if sac_historico else 0,
+        },
         "vac_anuales": vac_an,
         "vac_dias_computables": dias_vac_computables,
         "vac_no_gozadas_dias": vac_no_goz,

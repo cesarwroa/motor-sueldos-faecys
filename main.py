@@ -29,6 +29,7 @@ from escalas import (
     get_regla_cajero,
     get_regla_km,
     calcular_final_payload,
+    calcular_vacaciones_payload,
 )
 
 app = FastAPI(title="motor-sueldos-faecys")
@@ -1709,6 +1710,42 @@ def calcular(
 
 
 
+# ========= VACACIONES EMPRESAS =========
+@app.get("/calcular-vacaciones")
+def calcular_vacaciones(
+    rama: str,
+    agrup: str,
+    categoria: str,
+    mes: str,
+    dias: float,
+    base_rem: float,
+    base_nr: float = 0,
+    osecac: bool = True,
+    afiliado: bool = False,
+    sind_pct: float = 0,
+    jubilado: bool = False,
+    regimen_contribuciones: str = "inciso_b",
+    art_pct: float = 3,
+    art_fijo: float = 1765,
+):
+    return calcular_vacaciones_payload(
+        rama=rama,
+        agrup=agrup,
+        categoria=categoria,
+        mes=mes,
+        dias=dias,
+        base_rem=base_rem,
+        base_nr=base_nr,
+        osecac=osecac,
+        afiliado=afiliado,
+        sind_pct=sind_pct,
+        jubilado=jubilado,
+        regimen_contribuciones=regimen_contribuciones,
+        art_pct=art_pct,
+        art_fijo=art_fijo,
+    )
+
+
 # ========= CALCULAR FINAL (liquidación final) =========
 @app.get("/calcular-final")
 def calcular_final(
@@ -1732,6 +1769,8 @@ def calcular_final(
     integracion: bool = True,
     sac_preaviso: bool = False,
     sac_integracion: bool = True,
+    sac_devengado_rem: float = -1,
+    sac_devengado_nr: float = -1,
     # Mismos flags/descuentos que mensual
     osecac: bool = True,
     afiliado: bool = False,
@@ -1789,6 +1828,8 @@ def calcular_final(
         integracion=integracion,
         sac_sobre_preaviso=sac_preaviso,
         sac_sobre_integracion=sac_integracion,
+        sac_devengado_rem=sac_devengado_rem,
+        sac_devengado_nr=sac_devengado_nr,
         osecac=osecac,
         afiliado=afiliado,
         sind_pct=sind_pct,
