@@ -218,6 +218,50 @@
       <div id="batchTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Remunerativo</th><th>No remunerativo</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead><tbody id="batchTbody"></tbody></table></div>
     </article>
 
+    <article id="securityCard" class="card">
+      <div class="summary"><div><h2>Seguridad y colaboradores</h2><p class="muted">Controlá quién accede, revisá la actividad y descargá un respaldo empresarial.</p></div><span id="currentRolePill" class="pill"></span></div>
+      <div id="teamAdminSection">
+        <details open>
+          <summary>Usuarios y permisos</summary>
+          <div class="detail-body">
+            <p class="section-note">Administrador: gestiona la empresa. Liquidador: carga empleados y liquidaciones. Consulta: acceso de solo lectura.</p>
+            <div class="grid">
+              <div><label for="teamName">Nombre del colaborador</label><input id="teamName" maxlength="120"></div>
+              <div><label for="teamEmail">Email</label><input id="teamEmail" type="email" maxlength="190"></div>
+              <div><label for="teamRole">Rol</label><select id="teamRole"><option value="payroll">Liquidador</option><option value="viewer">Consulta</option><option value="admin">Administrador</option></select></div>
+            </div>
+            <div class="actions"><button id="teamInviteBtn" type="button">Invitar o actualizar acceso</button></div>
+            <div id="teamStatus" class="status"></div>
+            <div id="teamTableWrap" class="table-wrap hidden"><table><thead><tr><th>Colaborador</th><th>Rol</th><th>Estado</th><th>Alta</th><th></th></tr></thead><tbody id="teamTbody"></tbody></table></div>
+          </div>
+        </details>
+        <details>
+          <summary>Actividad reciente</summary>
+          <div class="detail-body">
+            <div class="actions"><button id="auditRefreshBtn" class="secondary" type="button">Actualizar actividad</button></div>
+            <div id="auditStatus" class="status"></div>
+            <div id="auditTableWrap" class="table-wrap hidden"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Elemento</th></tr></thead><tbody id="auditTbody"></tbody></table></div>
+          </div>
+        </details>
+        <details>
+          <summary>Respaldo de la empresa</summary>
+          <div class="detail-body">
+            <p class="section-note">Descarga empleados, períodos, novedades, liquidaciones, conceptos ARCA y colaboradores en un archivo JSON.</p>
+            <div class="actions"><button id="companyBackupBtn" class="secondary" type="button">Descargar respaldo</button></div>
+            <div id="backupStatus" class="status"></div>
+          </div>
+        </details>
+      </div>
+      <details>
+        <summary>Mis sesiones abiertas</summary>
+        <div class="detail-body">
+          <div class="actions"><button id="sessionsRefreshBtn" class="secondary" type="button">Actualizar sesiones</button><button id="sessionsRevokeOthersBtn" class="danger" type="button">Cerrar las demás sesiones</button></div>
+          <div id="sessionsStatus" class="status"></div>
+          <div id="sessionsTableWrap" class="table-wrap hidden"><table><thead><tr><th>Dispositivo</th><th>Creada</th><th>Último uso</th><th>Vence</th><th></th></tr></thead><tbody id="sessionsTbody"></tbody></table></div>
+        </div>
+      </details>
+    </article>
+
     <article class="card">
       <h2>Próxima etapa: exportación y validación ARCA</h2>
       <p class="muted">Las liquidaciones y recibos ya pueden quedar guardados por período. El próximo módulo parametrizará conceptos y validará el archivo antes de exportarlo al Libro de Sueldos Digital.</p>
@@ -247,6 +291,9 @@
   let companyLogoImage = "";
   let employeeImportRows = [];
   let payrollQueueRunning = false;
+  let teamMembers = [];
+  let activeSessions = [];
+  let auditItems = [];
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -310,24 +357,32 @@
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
   function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado"})[status]||status||"";}
   function mapPlan(plan){return ({free:"Gratuito",starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Gratuito";}
+  function mapRole(role){return ({owner:"Titular",admin:"Administrador",payroll:"Liquidador",viewer:"Consulta"})[role]||role||"";}
   function mapEmployeeStatus(status){return ({active:"Activo",paused:"Pausado",terminated:"Desvinculado"})[status]||status||"";}
   function mapPeriodStatus(status){return ({draft:"Borrador",open:"Abierto",closed:"Cerrado",cancelled:"Cancelado"})[status]||status||"";}
   function mapPeriodType(type){return ({monthly:"Mensual",sac:"SAC",vacation:"Vacaciones",final:"Liquidación final",other:"Otro"})[type]||type||"";}
   function formatPeriod(period){const value=String(period||"");return value.length===6?`${value.slice(4,6)}/${value.slice(0,4)}`:value;}
+
+  function applyRolePermissions(company){
+    const role=company?.role||"",canAdmin=["owner","admin"].includes(role),canPayroll=canAdmin||role==="payroll";
+    $("companySaveBtn").disabled=!canAdmin;
+    ["employeeSaveBtn","employeeImportPreviewBtn","employeeImportStartBtn","periodSaveBtn","noveltySaveBtn","batchCalculateBtn"].forEach(id=>$(id).disabled=!canPayroll);
+    if(role==="viewer")setStatus("employeeStatus","Tu rol es de consulta: podés revisar información, pero no modificarla.");
+  }
 
   function renderSession(){
     const connected=!!session?.user;$("authView").classList.toggle("hidden",connected);$("dashboardView").classList.toggle("hidden",!connected);if(!connected)return;
     $("welcomeText").textContent=`Hola, ${session.user.name||""}`;$("accountText").textContent=session.user.email||"";
     const companies=session.companies||[];const current=activeCompany();
     $("companySelect").innerHTML=companies.map(item=>`<option value="${esc(item.id)}">${esc(item.legal_name)}</option>`).join("");
-    if(current){$("companySelect").value=current.id;setAuth(token(),current.id);$("planPill").textContent=`Plan ${mapPlan(current.plan_code)}`;$("companyStatusPill").textContent=mapStatus(current.status);$("companyStatusPill").className=`pill ${esc(current.status)}`;$("companyDetail").innerHTML=`<strong>${esc(current.legal_name)}</strong>${current.cuit?` · CUIT ${esc(current.cuit)}`:""}<br>Tu acceso está en estado <strong>${esc(mapStatus(current.status))}</strong>.`;}
+    if(current){$("companySelect").value=current.id;setAuth(token(),current.id);$("planPill").textContent=`Plan ${mapPlan(current.plan_code)}`;$("companyStatusPill").textContent=mapStatus(current.status);$("companyStatusPill").className=`pill ${esc(current.status)}`;$("companyDetail").innerHTML=`<strong>${esc(current.legal_name)}</strong>${current.cuit?` · CUIT ${esc(current.cuit)}`:""}<br>Tu acceso está en estado <strong>${esc(mapStatus(current.status))}</strong>.`;$("currentRolePill").textContent=mapRole(current.role);const canManage=["owner","admin"].includes(current.role);$("teamAdminSection").classList.toggle("hidden",!canManage);$("teamRole").querySelector('option[value="admin"]').disabled=current.role!=="owner";applyRolePermissions(current);}
     else{$("companyDetail").textContent="La cuenta todavía no tiene una empresa vinculada.";}
     $("platformAdminPanel").classList.toggle("hidden",!session.is_platform_admin);
   }
 
   async function loadSession(){
     if(!token()){session=null;renderSession();return;}
-    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();if(session.is_platform_admin)await loadAdminCompanies();}
+    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();await loadSecurity();if(session.is_platform_admin)await loadAdminCompanies();}
     catch(err){setAuth("");session=null;renderSession();setStatus("loginStatus",err.message);}
   }
 
@@ -431,8 +486,9 @@
   }
 
   function renderEmployees(){
+    const canPayroll=["owner","admin","payroll"].includes(activeCompany()?.role||"");
     $("employeeCount").textContent=`${employees.length} empleado${employees.length===1?"":"s"}`;$("employeesEmpty").classList.toggle("hidden",employees.length>0);$("employeesTableWrap").classList.toggle("hidden",employees.length===0);
-    $("employeesTbody").innerHTML=employees.map(item=>`<tr><td>${esc(item.file_number)}</td><td><strong>${esc(item.full_name)}</strong><span class="subtext">CUIL ${esc(item.cuil)}${item.profile?.dni?` · DNI ${esc(item.profile.dni)}`:""}</span></td><td>${esc(item.category)}</td><td>${esc(item.profile?.health_insurance_name||"Sin informar")}${item.arca_profile?.health_insurance_code?`<span class="subtext">Código ${esc(item.arca_profile.health_insurance_code)}</span>`:""}</td><td>${esc(item.start_date)}</td><td><span class="pill ${esc(item.status)}">${esc(mapEmployeeStatus(item.status))}</span></td><td><button class="secondary small-button" type="button" data-edit-employee="${esc(item.id)}">Editar</button></td></tr>`).join("");
+    $("employeesTbody").innerHTML=employees.map(item=>`<tr><td>${esc(item.file_number)}</td><td><strong>${esc(item.full_name)}</strong><span class="subtext">CUIL ${esc(item.cuil)}${item.profile?.dni?` · DNI ${esc(item.profile.dni)}`:""}</span></td><td>${esc(item.category)}</td><td>${esc(item.profile?.health_insurance_name||"Sin informar")}${item.arca_profile?.health_insurance_code?`<span class="subtext">Código ${esc(item.arca_profile.health_insurance_code)}</span>`:""}</td><td>${esc(item.start_date)}</td><td><span class="pill ${esc(item.status)}">${esc(mapEmployeeStatus(item.status))}</span></td><td>${canPayroll?`<button class="secondary small-button" type="button" data-edit-employee="${esc(item.id)}">Editar</button>`:""}</td></tr>`).join("");
     $("noveltyEmployee").innerHTML=employees.filter(item=>item.status!=="terminated").map(item=>`<option value="${esc(item.id)}">${esc(item.full_name)}${item.file_number?` · Legajo ${esc(item.file_number)}`:""}</option>`).join("");
   }
 
@@ -513,9 +569,10 @@
   }
 
   function renderPeriods(){
+    const role=activeCompany()?.role||"",canPayroll=["owner","admin","payroll"].includes(role),canAdmin=["owner","admin"].includes(role);
     $("periodsEmpty").classList.toggle("hidden",periods.length>0);$("periodsTableWrap").classList.toggle("hidden",periods.length===0);
-    $("periodsTbody").innerHTML=periods.map(item=>`<tr class="${String(item.id)===String(activePeriodId)?"selected-row":""}"><td><strong>${esc(item.label||formatPeriod(item.period))}</strong><span class="subtext">${esc(formatPeriod(item.period))}</span></td><td>${esc(mapPeriodType(item.payroll_type))}</td><td>${esc(item.payment_date||"")}</td><td><span class="pill ${esc(item.status)}">${esc(mapPeriodStatus(item.status))}</span></td><td>${esc(item.novelty_count||0)}</td><td>${esc(item.payroll_count||0)}</td><td><div class="actions"><button class="small-button" type="button" data-select-period="${esc(item.id)}">Novedades</button>${item.status!=="closed"?`<button class="secondary small-button" type="button" data-edit-period="${esc(item.id)}">Editar</button>`:""}${!["closed","cancelled"].includes(item.status)?`<button class="secondary small-button" type="button" data-close-period="${esc(item.id)}">Cerrar</button>`:""}${item.status==="closed"?`<button class="secondary small-button" type="button" data-reopen-period="${esc(item.id)}">Reabrir</button>`:""}</div></td></tr>`).join("");
-    const current=activePeriod();$("noveltyForm").classList.toggle("hidden",!current||["closed","cancelled"].includes(current.status));$("noveltyPeriodText").textContent=current?`${current.label||formatPeriod(current.period)} · ${mapPeriodType(current.payroll_type)} · ${mapPeriodStatus(current.status)}`:"Seleccioná un período para cargar novedades.";
+    $("periodsTbody").innerHTML=periods.map(item=>`<tr class="${String(item.id)===String(activePeriodId)?"selected-row":""}"><td><strong>${esc(item.label||formatPeriod(item.period))}</strong><span class="subtext">${esc(formatPeriod(item.period))}</span></td><td>${esc(mapPeriodType(item.payroll_type))}</td><td>${esc(item.payment_date||"")}</td><td><span class="pill ${esc(item.status)}">${esc(mapPeriodStatus(item.status))}</span></td><td>${esc(item.novelty_count||0)}</td><td>${esc(item.payroll_count||0)}</td><td><div class="actions"><button class="small-button" type="button" data-select-period="${esc(item.id)}">Ver</button>${canPayroll&&item.status!=="closed"?`<button class="secondary small-button" type="button" data-edit-period="${esc(item.id)}">Editar</button>`:""}${canPayroll&&!["closed","cancelled"].includes(item.status)?`<button class="secondary small-button" type="button" data-close-period="${esc(item.id)}">Cerrar</button>`:""}${canAdmin&&item.status==="closed"?`<button class="secondary small-button" type="button" data-reopen-period="${esc(item.id)}">Reabrir</button>`:""}</div></td></tr>`).join("");
+    const current=activePeriod();$("noveltyForm").classList.toggle("hidden",!canPayroll||!current||["closed","cancelled"].includes(current.status));$("noveltyPeriodText").textContent=current?`${current.label||formatPeriod(current.period)} · ${mapPeriodType(current.payroll_type)} · ${mapPeriodStatus(current.status)}`:"Seleccioná un período para cargar novedades.";
   }
 
   function clearPeriodForm(){
@@ -555,8 +612,8 @@
   }
 
   function renderNovelties(){
-    const period=activePeriod(),canEdit=period&&!["closed","cancelled"].includes(period.status);$("noveltyForm").classList.toggle("hidden",!canEdit);$("noveltiesEmpty").classList.toggle("hidden",!!period&&novelties.length>0);$("noveltiesEmpty").textContent=!period?"Seleccioná un período abierto o en borrador.":novelties.length?"":"Todavía no hay novedades cargadas para este período.";$("noveltiesTableWrap").classList.toggle("hidden",!period||novelties.length===0);
-    $("noveltiesTbody").innerHTML=novelties.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">${esc(item.file_number)}</span></td><td>${esc(item.concept_name)}<span class="subtext">${esc(mapNoveltyType(item.concept_type))}</span></td><td>${esc(item.quantity)}</td><td class="amount">${money(item.amount)}</td><td>${esc(item.notes)}</td><td><div class="actions"><button class="secondary small-button" type="button" data-edit-novelty="${esc(item.id)}">Editar</button><button class="danger small-button" type="button" data-delete-novelty="${esc(item.id)}">Quitar</button></div></td></tr>`).join("");
+    const period=activePeriod(),canPayroll=["owner","admin","payroll"].includes(activeCompany()?.role||""),canEdit=canPayroll&&period&&!["closed","cancelled"].includes(period.status);$("noveltyForm").classList.toggle("hidden",!canEdit);$("noveltiesEmpty").classList.toggle("hidden",!!period&&novelties.length>0);$("noveltiesEmpty").textContent=!period?"Seleccioná un período abierto o en borrador.":novelties.length?"":"Todavía no hay novedades cargadas para este período.";$("noveltiesTableWrap").classList.toggle("hidden",!period||novelties.length===0);
+    $("noveltiesTbody").innerHTML=novelties.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">${esc(item.file_number)}</span></td><td>${esc(item.concept_name)}<span class="subtext">${esc(mapNoveltyType(item.concept_type))}</span></td><td>${esc(item.quantity)}</td><td class="amount">${money(item.amount)}</td><td>${esc(item.notes)}</td><td>${canEdit?`<div class="actions"><button class="secondary small-button" type="button" data-edit-novelty="${esc(item.id)}">Editar</button><button class="danger small-button" type="button" data-delete-novelty="${esc(item.id)}">Quitar</button></div>`:""}</td></tr>`).join("");
   }
 
   function mapNoveltyType(type){return ({overtime_50:"Horas extra 50%",overtime_100:"Horas extra 100%",night_hours:"Horas nocturnas",holiday:"Feriado trabajado",holiday_not_worked:"Feriado no trabajado",absence:"Ausencia injustificada",vacation_days:"Vacaciones gozadas",license:"Licencia sin goce / suspensión",commission:"Comisión",viaticos_nr:"Viáticos no remunerativos",water_connections:"Agua Potable: cantidad de conexiones",funeral_general:"Fúnebres: manipulación de cadáveres",funeral_other:"Fúnebres: resto del personal",funeral_driver:"Fúnebres: chofer / furgonero",funeral_clothing:"Fúnebres: indumentaria",tourism_title_tertiary:"Turismo: título terciario 2,5%",tourism_title_degree:"Turismo: licenciatura 5%",km_driver_under100:"KM chofer: primeros 100",km_driver_over100:"KM chofer: excedente de 100",km_helper_under100:"KM ayudante: primeros 100",km_helper_over100:"KM ayudante: excedente de 100",cash_handling_a:"Manejo de caja A",cash_handling_b:"Manejo de caja B",cash_handling_c:"Manejo de caja C",cash_shortage:"Faltante de caja",window_dressing:"Armado de vidriera",attendance:"Presentismo (registro anterior; no se suma)",advance:"Adelanto de sueldo",garnishment:"Embargo",bonus:"Premio / adicional",other:"Otro concepto"})[type]||type||"";}
@@ -587,7 +644,7 @@
   }
 
   function renderPayrolls(){
-    const period=activePeriod(),canCalculate=period&&period.payroll_type==="monthly"&&!["closed","cancelled"].includes(period.status);$("batchCalculateBtn").disabled=!canCalculate||employees.filter(item=>item.status==="active").length===0;$("batchPrintAllBtn").disabled=payrolls.length===0;$("batchPeriodText").textContent=period?`${period.label||formatPeriod(period.period)} · ${mapPeriodType(period.payroll_type)} · ${mapPeriodStatus(period.status)}`:"Seleccioná un período mensual.";$("batchEmpty").classList.toggle("hidden",payrolls.length>0);$("batchTableWrap").classList.toggle("hidden",payrolls.length===0);
+    const period=activePeriod(),canPayroll=["owner","admin","payroll"].includes(activeCompany()?.role||""),canCalculate=canPayroll&&period&&period.payroll_type==="monthly"&&!["closed","cancelled"].includes(period.status);$("batchCalculateBtn").disabled=!canCalculate||employees.filter(item=>item.status==="active").length===0;$("batchPrintAllBtn").disabled=payrolls.length===0;$("batchPeriodText").textContent=period?`${period.label||formatPeriod(period.period)} · ${mapPeriodType(period.payroll_type)} · ${mapPeriodStatus(period.status)}`:"Seleccioná un período mensual.";$("batchEmpty").classList.toggle("hidden",payrolls.length>0);$("batchTableWrap").classList.toggle("hidden",payrolls.length===0);
     $("batchTbody").innerHTML=payrolls.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">CUIL ${esc(item.cuil)}</span></td><td class="amount">${money(item.remunerative)}</td><td class="amount">${money(item.non_remunerative)}</td><td class="amount">${money(item.deductions)}</td><td class="amount"><strong>${money(item.net_amount)}</strong></td><td><button class="secondary small-button" type="button" data-print-payroll="${esc(item.id)}">PDF individual</button></td></tr>`).join("");
   }
 
@@ -664,18 +721,100 @@
     setStatus("adminStatus","Guardando...");try{await api("admin-company-plan",{method:"POST",body:{company_id:companyId,plan_code:plan,status}});await loadAdminCompanies();await loadSession();setStatus("adminStatus","Plan actualizado.",true);}catch(err){setStatus("adminStatus",err.message);}
   }
 
+  function formatDateTime(value){
+    if(!value)return"";const date=new Date(String(value).replace(" ","T")+(String(value).includes("Z")?"":"Z"));
+    return Number.isNaN(date.getTime())?String(value):new Intl.DateTimeFormat("es-AR",{dateStyle:"short",timeStyle:"short"}).format(date);
+  }
+
+  function mapAuditAction(action){
+    return ({
+      "company.updated":"Empresa actualizada","employee.saved":"Empleado guardado","employees.imported":"Empleados importados",
+      "period.saved":"Período guardado","period.closed":"Período cerrado","period.reopened":"Período reabierto",
+      "novelty.saved":"Novedad guardada","novelties.bulk_saved":"Novedades masivas","novelty.deleted":"Novedad eliminada",
+      "payroll.saved":"Liquidación guardada","payroll.deleted":"Liquidación eliminada","arca_mapping.saved":"Concepto ARCA guardado",
+      "team.member_saved":"Colaborador actualizado","team.member_removed":"Colaborador eliminado","company.backup_exported":"Respaldo descargado"
+    })[action]||action||"";
+  }
+
+  async function loadTeam(){
+    const company=activeCompany();if(!company||!["owner","admin"].includes(company.role)){teamMembers=[];renderTeam();return;}
+    try{const data=await api("team-members",{params:{company_id:company.id}});teamMembers=data.items||[];renderTeam();}catch(err){teamMembers=[];renderTeam();setStatus("teamStatus",err.message);}
+  }
+
+  function renderTeam(){
+    const company=activeCompany();$("teamTableWrap").classList.toggle("hidden",teamMembers.length===0);
+    $("teamTbody").innerHTML=teamMembers.map(item=>`<tr><td><strong>${esc(item.name)}</strong><span class="subtext">${esc(item.email)}</span></td><td>${esc(mapRole(item.role))}</td><td><span class="pill ${esc(item.status)}">${esc(item.status==="active"?"Activo":item.status==="pending"?"Invitación pendiente":"Bloqueado")}</span></td><td>${esc(formatDateTime(item.created_at))}</td><td>${item.role!=="owner"&&String(item.id)!==String(session?.user?.id)?`<button class="danger small-button" type="button" data-remove-member="${esc(item.id)}">Quitar</button>`:""}</td></tr>`).join("");
+    if(company?.role!=="owner"&&$("teamRole").value==="admin")$("teamRole").value="payroll";
+  }
+
+  async function saveTeamMember(){
+    const company=activeCompany();if(!company)return;
+    const body={company_id:company.id,name:$("teamName").value.trim(),email:$("teamEmail").value.trim(),role:$("teamRole").value};
+    if(!body.name||!body.email)return setStatus("teamStatus","Completá nombre y email.");
+    setStatus("teamStatus","Guardando acceso...");
+    try{
+      const data=await api("team-members",{method:"POST",body});$("teamName").value="";$("teamEmail").value="";await loadTeam();await loadAudit();
+      setStatus("teamStatus",data.new_user?(data.invitation_sent?"Invitación enviada por email.":"El acceso fue creado, pero el email no pudo enviarse. Podés intentarlo nuevamente."):"Acceso del colaborador actualizado.",!!data.invitation_sent||!data.new_user);
+    }catch(err){setStatus("teamStatus",err.message);}
+  }
+
+  async function removeTeamMember(userId){
+    const company=activeCompany(),member=teamMembers.find(item=>String(item.id)===String(userId));if(!company||!member||!confirm(`¿Quitar el acceso de ${member.name}?`))return;
+    setStatus("teamStatus","Quitando acceso...");try{await api("team-members",{method:"DELETE",body:{company_id:company.id,user_id:userId}});await loadTeam();await loadAudit();setStatus("teamStatus","Acceso eliminado.",true);}catch(err){setStatus("teamStatus",err.message);}
+  }
+
+  async function loadSessions(){
+    if(!session?.user){activeSessions=[];renderSessions();return;}
+    try{const data=await api("my-sessions");activeSessions=data.items||[];renderSessions();}catch(err){activeSessions=[];renderSessions();setStatus("sessionsStatus",err.message);}
+  }
+
+  function renderSessions(){
+    $("sessionsTableWrap").classList.toggle("hidden",activeSessions.length===0);
+    $("sessionsTbody").innerHTML=activeSessions.map(item=>`<tr><td><strong>${item.is_current?"Esta sesión":"Otra sesión"}</strong><span class="subtext">${esc(item.user_agent||"Dispositivo no identificado")}</span></td><td>${esc(formatDateTime(item.created_at))}</td><td>${esc(formatDateTime(item.last_used_at))}</td><td>${esc(formatDateTime(item.expires_at))}</td><td>${item.is_current?"<span class=\"pill active\">Actual</span>":`<button class="danger small-button" type="button" data-revoke-session="${esc(item.id)}">Cerrar</button>`}</td></tr>`).join("");
+  }
+
+  async function revokeSessions(sessionId="",allOther=false){
+    if(allOther&&!confirm("¿Cerrar todas las demás sesiones abiertas de tu cuenta?"))return;
+    setStatus("sessionsStatus","Cerrando sesiones...");try{const data=await api("my-sessions",{method:"DELETE",body:{session_id:sessionId,all_other:allOther}});await loadSessions();setStatus("sessionsStatus",`${data.revoked||0} sesión${Number(data.revoked)===1?"":"es"} cerrada${Number(data.revoked)===1?"":"s"}.`,true);}catch(err){setStatus("sessionsStatus",err.message);}
+  }
+
+  async function loadAudit(){
+    const company=activeCompany();if(!company||!["owner","admin"].includes(company.role)){auditItems=[];renderAudit();return;}
+    try{const data=await api("audit-log",{params:{company_id:company.id,limit:100}});auditItems=data.items||[];renderAudit();}catch(err){auditItems=[];renderAudit();setStatus("auditStatus",err.message);}
+  }
+
+  function renderAudit(){
+    $("auditTableWrap").classList.toggle("hidden",auditItems.length===0);
+    $("auditTbody").innerHTML=auditItems.map(item=>`<tr><td>${esc(formatDateTime(item.created_at))}</td><td><strong>${esc(item.user_name)}</strong><span class="subtext">${esc(item.user_email)}</span></td><td>${esc(mapAuditAction(item.action_name))}</td><td>${esc(item.entity_type||"")}${item.entity_id?`<span class="subtext">${esc(item.entity_id)}</span>`:""}</td></tr>`).join("");
+  }
+
+  async function downloadCompanyBackup(){
+    const company=activeCompany();if(!company)return;
+    setStatus("backupStatus","Preparando respaldo...");
+    try{
+      const data=await api("company-backup",{params:{company_id:company.id}}),blob=new Blob([JSON.stringify(data.backup,null,2)],{type:"application/json;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");
+      link.href=url;link.download=`respaldo_${String(company.cuit||company.id).replace(/\D/g,"")}_${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);await loadAudit();setStatus("backupStatus","Respaldo descargado.",true);
+    }catch(err){setStatus("backupStatus",err.message);}
+  }
+
+  async function loadSecurity(){
+    const company=activeCompany();await loadSessions();if(company&&["owner","admin"].includes(company.role)){await loadTeam();await loadAudit();}else{teamMembers=[];auditItems=[];renderTeam();renderAudit();}
+  }
+
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
-  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();});
+  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();await loadSecurity();});
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
   $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
+  $("teamTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.removeMember;if(id)removeTeamMember(id);});
+  $("sessionsTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.revokeSession;if(id)revokeSessions(id,false);});
   $("employeesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.editEmployee;if(id)editEmployee(id);});
   $("periodsTbody").addEventListener("click",ev=>{const selectId=ev.target?.dataset?.selectPeriod,editId=ev.target?.dataset?.editPeriod,closeId=ev.target?.dataset?.closePeriod,reopenId=ev.target?.dataset?.reopenPeriod;if(selectId)selectPeriod(selectId);if(editId)editPeriod(editId);if(closeId)closePeriod(closeId);if(reopenId)reopenPeriod(reopenId);});
   $("noveltiesTbody").addEventListener("click",ev=>{const editId=ev.target?.dataset?.editNovelty,deleteId=ev.target?.dataset?.deleteNovelty;if(editId)editNovelty(editId);if(deleteId)deleteNovelty(deleteId);});
