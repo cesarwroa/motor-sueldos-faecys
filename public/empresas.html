@@ -14,7 +14,8 @@
     details{border:1px solid var(--line);border-radius:14px;margin-top:14px;background:#fbfdff}summary{cursor:pointer;padding:14px 16px;font-weight:850;color:#1e3a8a}.detail-body{padding:0 16px 16px}.section-note{font-size:13px;color:var(--muted);margin:0 0 4px}.small-button{padding:7px 10px;font-size:12px}.employee-form-title{margin-top:14px}.subtext{display:block;color:var(--muted);font-size:12px;margin-top:3px}.wide{grid-column:1/-1}.module-title{margin-top:16px}.selected-row{background:#eff6ff}.amount{text-align:right;white-space:nowrap}
     .logo-preview-wrap{display:flex;align-items:center;gap:12px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.logo-preview-wrap img{display:block;width:120px;height:64px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}.logo-preview-wrap button{flex:none}
     .progress{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:10px}.progress>span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}.check-line{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:14px;font-weight:700}.check-line input{width:auto}.import-summary{margin-top:12px;font-size:14px}.queue-note{font-size:12px;color:var(--muted);margin-top:8px}
-    @media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}
+    .usage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.usage-box{padding:12px;border:1px solid var(--line);border-radius:13px;background:#f8fafc}.usage-box strong{display:block;font-size:20px;margin-top:3px}.usage-box span{font-size:12px;color:var(--muted)}.plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.plan-box{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}.plan-box.current{border:2px solid var(--blue);background:#eff6ff}.plan-box h3{margin:0 0 6px;font-size:16px}.plan-box ul{margin:10px 0 14px;padding-left:18px;color:var(--muted);font-size:12px;min-height:75px}.plan-box button{width:100%}.plan-request{margin-top:14px}
+    @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -67,6 +68,20 @@
       <div class="summary"><div><h2>Empresa activa</h2><p class="muted">Datos, plan y acceso a la nómina.</p></div><div><span id="planPill" class="pill"></span> <span id="companyStatusPill" class="pill"></span></div></div>
       <label for="companySelect">Empresa</label><select id="companySelect"></select>
       <div id="companyDetail" class="notice"></div>
+    </article>
+
+    <article id="subscriptionCard" class="card">
+      <div class="summary"><div><h2>Plan y consumo</h2><p id="subscriptionPeriodText" class="muted">Consultando vigencia y limites...</p></div><span id="subscriptionPlanPill" class="pill"></span></div>
+      <div id="subscriptionUsage" class="usage-grid"></div>
+      <details>
+        <summary>Ver planes disponibles</summary>
+        <div class="detail-body">
+          <p class="section-note">Los precios se confirmaran antes de activar el cobro. Desde aqui podes solicitar el plan que necesitas.</p>
+          <div id="planCatalog" class="plan-grid"></div>
+          <div id="planRequestStatus" class="status"></div>
+          <div id="planRequestHistory" class="plan-request"></div>
+        </div>
+      </details>
     </article>
 
     <article class="card">
@@ -270,7 +285,7 @@
     <article id="platformAdminPanel" class="card hidden">
       <div class="summary"><div><span class="pill">Administrador</span><h2 style="margin-top:8px">Planes y habilitación de empresas</h2><p class="muted">Aprobá pruebas, activá suscripciones o pausá cuentas.</p></div><button id="adminRefreshBtn" class="secondary" type="button">Actualizar</button></div>
       <div id="adminCompaniesEmpty" class="empty">No hay empresas registradas.</div>
-      <div id="adminCompaniesWrap" class="table-wrap hidden"><table><thead><tr><th>Empresa</th><th>Responsable</th><th>Empleados</th><th>Liquidaciones</th><th>Plan</th><th>Estado</th><th></th></tr></thead><tbody id="adminCompaniesTbody"></tbody></table></div>
+      <div id="adminCompaniesWrap" class="table-wrap hidden"><table><thead><tr><th>Empresa</th><th>Responsable</th><th>Empleados</th><th>Liquidaciones</th><th>Solicitud</th><th>Plan</th><th>Estado</th><th>Vencimiento</th><th></th></tr></thead><tbody id="adminCompaniesTbody"></tbody></table></div>
       <div id="adminStatus" class="status"></div>
     </article>
   </section>
@@ -294,6 +309,8 @@
   let teamMembers = [];
   let activeSessions = [];
   let auditItems = [];
+  let planCatalog = [];
+  let subscriptionSummary = null;
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -355,13 +372,43 @@
   }
 
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
-  function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado"})[status]||status||"";}
+  function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado",expired:"Vencido"})[status]||status||"";}
   function mapPlan(plan){return ({free:"Gratuito",starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Gratuito";}
   function mapRole(role){return ({owner:"Titular",admin:"Administrador",payroll:"Liquidador",viewer:"Consulta"})[role]||role||"";}
   function mapEmployeeStatus(status){return ({active:"Activo",paused:"Pausado",terminated:"Desvinculado"})[status]||status||"";}
   function mapPeriodStatus(status){return ({draft:"Borrador",open:"Abierto",closed:"Cerrado",cancelled:"Cancelado"})[status]||status||"";}
   function mapPeriodType(type){return ({monthly:"Mensual",sac:"SAC",vacation:"Vacaciones",final:"Liquidación final",other:"Otro"})[type]||type||"";}
   function formatPeriod(period){const value=String(period||"");return value.length===6?`${value.slice(4,6)}/${value.slice(0,4)}`:value;}
+  function formatDate(value){if(!value)return"";const raw=String(value).slice(0,10),parts=raw.split("-");return parts.length===3?`${parts[2]}/${parts[1]}/${parts[0]}`:raw;}
+
+  function renderSubscription(){
+    const company=activeCompany(),summary=subscriptionSummary,sub=summary?.subscription||company||{},effective=sub.effective_status||sub.status||"";
+    $("subscriptionPlanPill").textContent=sub.status==="trial"?"Prueba gratuita":`Plan ${mapPlan(sub.plan_code)}`;
+    $("subscriptionPlanPill").className=`pill ${effective==="expired"?"closed":effective}`;
+    const expiry=sub.status==="trial"?sub.trial_ends_at:sub.subscription_ends_at;
+    $("subscriptionPeriodText").textContent=effective==="expired"?`La vigencia finalizo el ${formatDate(expiry)}. Solicita un plan para seguir operando.`:expiry?`Vigente hasta el ${formatDate(expiry)}.`:sub.status==="active"?"Plan activo sin vencimiento cargado.":"Periodo de prueba activo.";
+    const labels={employees:"Empleados activos",team_members:"Usuarios",monthly_payrolls:"Liquidaciones este mes"};
+    $("subscriptionUsage").innerHTML=Object.keys(labels).map(key=>{const used=Number(summary?.usage?.[key]||0),limit=Number(summary?.limits?.[key]||0);return `<div class="usage-box"><span>${esc(labels[key])}</span><strong>${used} / ${limit||"Sin limite"}</strong><span>${Math.max(0,limit-used)} disponibles</span></div>`}).join("");
+    const canRequest=["owner","admin"].includes(company?.role||"");
+    $("planCatalog").innerHTML=planCatalog.map(plan=>{const current=String(plan.code)===String(sub.plan_code)&&sub.status!=="trial",features=(plan.features||[]).map(item=>`<li>${esc(item)}</li>`).join(""),limits=plan.limits||{};return `<div class="plan-box ${current?"current":""}"><h3>${esc(plan.name)}</h3><span class="subtext">${Number(limits.employees||0)} empleados · ${Number(limits.team_members||0)} usuarios</span><ul>${features}</ul>${plan.code==="free"?`<button class="secondary" type="button" disabled>Plan base</button>`:`<button type="button" data-request-plan="${esc(plan.code)}" ${!canRequest||current?"disabled":""}>${current?"Plan actual":"Solicitar plan"}</button>`}</div>`}).join("");
+    const requests=summary?.requests||[],pending=requests.find(item=>item.status==="pending");
+    $("planRequestHistory").innerHTML=pending?`<div class="notice">Solicitud pendiente: <strong>${esc(mapPlan(pending.requested_plan))}</strong> · enviada el ${esc(formatDate(pending.created_at))}.</div>`:"";
+  }
+
+  async function loadSubscription(){
+    const company=activeCompany();if(!company){subscriptionSummary=null;renderSubscription();return;}
+    try{
+      if(!planCatalog.length){const catalog=await api("plan-catalog",{auth:false});planCatalog=catalog.plans||[];}
+      subscriptionSummary=await api("subscription-summary",{params:{company_id:company.id}});
+      renderSubscription();
+    }catch(err){subscriptionSummary={subscription:company,usage:{},limits:{},requests:[]};renderSubscription();setStatus("planRequestStatus",err.message);}
+  }
+
+  async function requestPlan(planCode){
+    const company=activeCompany();if(!company||!confirm(`¿Solicitar el plan ${mapPlan(planCode)} para ${company.legal_name}?`))return;
+    setStatus("planRequestStatus","Enviando solicitud...");
+    try{await api("plan-request",{method:"POST",body:{company_id:company.id,requested_plan:planCode}});await loadSubscription();if(session?.is_platform_admin)await loadAdminCompanies();setStatus("planRequestStatus","Solicitud enviada. El administrador ya puede revisarla y activar el plan.",true);}catch(err){setStatus("planRequestStatus",err.message);}
+  }
 
   function applyRolePermissions(company){
     const role=company?.role||"",canAdmin=["owner","admin"].includes(role),canPayroll=canAdmin||role==="payroll";
@@ -382,7 +429,7 @@
 
   async function loadSession(){
     if(!token()){session=null;renderSession();return;}
-    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();await loadSecurity();if(session.is_platform_admin)await loadAdminCompanies();}
+    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadSecurity();if(session.is_platform_admin)await loadAdminCompanies();}
     catch(err){setAuth("");session=null;renderSession();setStatus("loginStatus",err.message);}
   }
 
@@ -534,7 +581,7 @@
         if(!result)throw lastError||new Error("No se pudo procesar el lote.");
         processed+=Number(result.processed||rows.length);created+=Number(result.created||0);updated+=Number(result.updated||0);setQueueProgress("employeeImportProgress",processed,total);
       }
-      await loadEmployees();employeeImportRows=[];$("employeeImportFile").value="";$("employeeImportPreviewWrap").classList.add("hidden");
+      await loadEmployees();await loadSubscription();employeeImportRows=[];$("employeeImportFile").value="";$("employeeImportPreviewWrap").classList.add("hidden");
       setStatus("employeeImportStatus",`Importación terminada: ${created} creados y ${updated} actualizados.`,true);
     }catch(err){setStatus("employeeImportStatus",`La cola se detuvo en ${processed} de ${total}: ${err.message}`);}
     finally{$("employeeImportPreviewBtn").disabled=false;$("employeeImportStartBtn").disabled=employeeImportRows.length===0;}
@@ -558,7 +605,7 @@
     if(!body.full_name||body.cuil.length!==11)return setStatus("employeeStatus","Completá nombre y un CUIL válido de 11 dígitos.");
     if(!body.profile.rama||!body.profile.agrup||!body.category)return setStatus("employeeStatus","Seleccioná convenio / rama, agrupamiento y categoría.");
     if(body.profile.cbu&&body.profile.cbu.length!==22)return setStatus("employeeStatus","El CBU debe tener 22 dígitos.");
-    setStatus("employeeStatus","Guardando...");try{await api("employees",{method:"POST",body});clearEmployeeForm();await loadEmployees();setStatus("employeeStatus","Empleado guardado.",true);}catch(err){setStatus("employeeStatus",err.message);}
+    setStatus("employeeStatus","Guardando...");try{await api("employees",{method:"POST",body});clearEmployeeForm();await loadEmployees();await loadSubscription();setStatus("employeeStatus","Empleado guardado.",true);}catch(err){setStatus("employeeStatus",err.message);}
   }
 
   function activePeriod(){return periods.find(item=>String(item.id)===String(activePeriodId))||null;}
@@ -673,7 +720,7 @@
         await api("payrolls",{method:"POST",body:{company_id:company.id,employee_id:employee.id,period:period.period,payroll_type:"monthly",inputs:{engine_params:params,novelties:employeeNovelties,company_snapshot:company,employee_snapshot:employee,period_snapshot:period},result}});completed++;
       }catch(err){errors.push(`${employee.full_name}: ${err.message}`);}setQueueProgress("batchProgress",completed+errors.length,activeEmployees.length);setStatus("batchStatus",`Cola de liquidación: ${completed+errors.length} de ${activeEmployees.length}...`);
     }
-    payrollQueueRunning=false;$("batchRefreshBtn").disabled=false;await loadPayrolls();await loadPeriods();renderPayrolls();setStatus("batchStatus",errors.length?`Cola finalizada. Se calcularon ${completed}. Errores: ${errors.join(" | ")}`:`Cola finalizada: ${completed} empleado${completed===1?"":"s"} y sus recibos quedaron guardados.`,errors.length===0);
+    payrollQueueRunning=false;$("batchRefreshBtn").disabled=false;await loadPayrolls();await loadPeriods();await loadSubscription();renderPayrolls();setStatus("batchStatus",errors.length?`Cola finalizada. Se calcularon ${completed}. Errores: ${errors.join(" | ")}`:`Cola finalizada: ${completed} empleado${completed===1?"":"s"} y sus recibos quedaron guardados.`,errors.length===0);
   }
 
   function normalizeFAECYSConcept(concept){const value=String(concept||"").trim();if(/^FAECYS\b/i.test(value)&&(/0\s*[,\.]\s*5/.test(value)||/Art\.?\s*100/i.test(value)))return "FAECYS 0,5% Art. 100";return value;}
@@ -713,12 +760,13 @@
 
   function renderAdminCompanies(items){
     $("adminCompaniesEmpty").classList.toggle("hidden",items.length>0);$("adminCompaniesWrap").classList.toggle("hidden",items.length===0);
-    $("adminCompaniesTbody").innerHTML=items.map(item=>`<tr data-company="${esc(item.id)}"><td><strong>${esc(item.legal_name)}</strong><br>${esc(item.cuit)}</td><td>${esc(item.owner_name)}<br>${esc(item.owner_email)}</td><td>${esc(item.employee_count)}</td><td>${esc(item.payroll_count)}</td><td><select data-field="plan"><option value="free" ${item.plan_code==="free"?"selected":""}>Gratuito</option><option value="starter" ${item.plan_code==="starter"?"selected":""}>Empresa</option><option value="professional" ${item.plan_code==="professional"?"selected":""}>Profesional</option><option value="studio" ${item.plan_code==="studio"?"selected":""}>Estudio</option></select></td><td><select data-field="status"><option value="trial" ${item.status==="trial"?"selected":""}>Prueba</option><option value="active" ${item.status==="active"?"selected":""}>Activo</option><option value="paused" ${item.status==="paused"?"selected":""}>Pausado</option><option value="closed" ${item.status==="closed"?"selected":""}>Cerrado</option></select></td><td><button type="button" data-save-plan="${esc(item.id)}">Guardar</button></td></tr>`).join("");
+    $("adminCompaniesTbody").innerHTML=items.map(item=>{const expiry=String((item.status==="trial"?item.trial_ends_at:item.subscription_ends_at)||"").slice(0,10);return `<tr data-company="${esc(item.id)}"><td><strong>${esc(item.legal_name)}</strong><br>${esc(item.cuit)}</td><td>${esc(item.owner_name)}<br>${esc(item.owner_email)}</td><td>${esc(item.employee_count)}</td><td>${esc(item.payroll_count)}</td><td>${item.requested_plan?`<span class="pill">${esc(mapPlan(item.requested_plan))}</span>`:"—"}</td><td><select data-field="plan"><option value="free" ${item.plan_code==="free"?"selected":""}>Gratuito</option><option value="starter" ${item.plan_code==="starter"?"selected":""}>Empresa</option><option value="professional" ${item.plan_code==="professional"?"selected":""}>Profesional</option><option value="studio" ${item.plan_code==="studio"?"selected":""}>Estudio</option></select></td><td><select data-field="status"><option value="trial" ${item.status==="trial"?"selected":""}>Prueba</option><option value="active" ${item.status==="active"?"selected":""}>Activo</option><option value="paused" ${item.status==="paused"?"selected":""}>Pausado</option><option value="closed" ${item.status==="closed"?"selected":""}>Cerrado</option></select></td><td><input data-field="expiry" type="date" value="${esc(expiry)}"></td><td><button type="button" data-save-plan="${esc(item.id)}">Guardar</button></td></tr>`}).join("");
   }
 
   async function savePlan(companyId){
-    const row=document.querySelector(`tr[data-company="${CSS.escape(companyId)}"]`);if(!row)return;const plan=row.querySelector('[data-field="plan"]').value;const status=row.querySelector('[data-field="status"]').value;
-    setStatus("adminStatus","Guardando...");try{await api("admin-company-plan",{method:"POST",body:{company_id:companyId,plan_code:plan,status}});await loadAdminCompanies();await loadSession();setStatus("adminStatus","Plan actualizado.",true);}catch(err){setStatus("adminStatus",err.message);}
+    const row=document.querySelector(`tr[data-company="${CSS.escape(companyId)}"]`);if(!row)return;const plan=row.querySelector('[data-field="plan"]').value,status=row.querySelector('[data-field="status"]').value,expiry=row.querySelector('[data-field="expiry"]').value;
+    const body={company_id:companyId,plan_code:plan,status,trial_ends_at:status==="trial"?expiry:"",subscription_ends_at:status==="active"?expiry:""};
+    setStatus("adminStatus","Guardando...");try{await api("admin-company-plan",{method:"POST",body});await loadAdminCompanies();await loadSession();setStatus("adminStatus","Plan actualizado.",true);}catch(err){setStatus("adminStatus",err.message);}
   }
 
   function formatDateTime(value){
@@ -732,7 +780,8 @@
       "period.saved":"Período guardado","period.closed":"Período cerrado","period.reopened":"Período reabierto",
       "novelty.saved":"Novedad guardada","novelties.bulk_saved":"Novedades masivas","novelty.deleted":"Novedad eliminada",
       "payroll.saved":"Liquidación guardada","payroll.deleted":"Liquidación eliminada","arca_mapping.saved":"Concepto ARCA guardado",
-      "team.member_saved":"Colaborador actualizado","team.member_removed":"Colaborador eliminado","company.backup_exported":"Respaldo descargado"
+      "team.member_saved":"Colaborador actualizado","team.member_removed":"Colaborador eliminado","company.backup_exported":"Respaldo descargado",
+      "company.plan_requested":"Plan solicitado","company.subscription.updated":"Suscripcion actualizada"
     })[action]||action||"";
   }
 
@@ -753,14 +802,14 @@
     if(!body.name||!body.email)return setStatus("teamStatus","Completá nombre y email.");
     setStatus("teamStatus","Guardando acceso...");
     try{
-      const data=await api("team-members",{method:"POST",body});$("teamName").value="";$("teamEmail").value="";await loadTeam();await loadAudit();
+      const data=await api("team-members",{method:"POST",body});$("teamName").value="";$("teamEmail").value="";await loadTeam();await loadAudit();await loadSubscription();
       setStatus("teamStatus",data.new_user?(data.invitation_sent?"Invitación enviada por email.":"El acceso fue creado, pero el email no pudo enviarse. Podés intentarlo nuevamente."):"Acceso del colaborador actualizado.",!!data.invitation_sent||!data.new_user);
     }catch(err){setStatus("teamStatus",err.message);}
   }
 
   async function removeTeamMember(userId){
     const company=activeCompany(),member=teamMembers.find(item=>String(item.id)===String(userId));if(!company||!member||!confirm(`¿Quitar el acceso de ${member.name}?`))return;
-    setStatus("teamStatus","Quitando acceso...");try{await api("team-members",{method:"DELETE",body:{company_id:company.id,user_id:userId}});await loadTeam();await loadAudit();setStatus("teamStatus","Acceso eliminado.",true);}catch(err){setStatus("teamStatus",err.message);}
+    setStatus("teamStatus","Quitando acceso...");try{await api("team-members",{method:"DELETE",body:{company_id:company.id,user_id:userId}});await loadTeam();await loadAudit();await loadSubscription();setStatus("teamStatus","Acceso eliminado.",true);}catch(err){setStatus("teamStatus",err.message);}
   }
 
   async function loadSessions(){
@@ -806,13 +855,14 @@
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
-  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadEmployees();await loadPeriods();await loadSecurity();});
+  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadSecurity();});
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
-  $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePeriodId="";renderSession();});
+  $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];subscriptionSummary=null;activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
+  $("planCatalog").addEventListener("click",ev=>{const plan=ev.target?.dataset?.requestPlan;if(plan)requestPlan(plan);});
   $("teamTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.removeMember;if(id)removeTeamMember(id);});
   $("sessionsTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.revokeSession;if(id)revokeSessions(id,false);});
   $("employeesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.editEmployee;if(id)editEmployee(id);});
