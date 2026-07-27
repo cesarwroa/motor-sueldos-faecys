@@ -787,6 +787,7 @@ def calcular_payload(
     faltante_caja: float = 0,
     armado_vidriera: bool = False,
     adelanto_sueldo: float = 0,
+    adelanto_vacaciones: float = 0,
     # SAC (estimación proporcional en mensual)
     sac_prop_mes: bool = False,
     # Empresas: base real tomada de liquidaciones mensuales ya guardadas.
@@ -1139,6 +1140,7 @@ def calcular_payload(
 
     faltante = _fpos(faltante_caja)
     adelanto = _fpos(adelanto_sueldo)
+    adelanto_vacaciones_informado = round2(_fpos(adelanto_vacaciones))
     # El faltante se descuenta ÚNICAMENTE hasta el monto del adicional de Manejo de Caja.
     faltante_desc = round2(min(faltante, caja_exento)) if (faltante and caja_exento) else 0.0
 
@@ -1509,6 +1511,7 @@ def calcular_payload(
         + susp_rem
         + faltante_desc
         + adelanto
+        + adelanto_vacaciones_informado
     )
     neto_pre = round2((rem_total + nr_total + extraordinaria) - ded_pre)
     emb_in = 0.0
@@ -1589,7 +1592,7 @@ def calcular_payload(
         except Exception:
             mensual_sind_fijo_monto = 0.0
 
-    mensual_ded_pre = round2(
+    mensual_ded_sin_vacaciones = round2(
         mensual_jub
         + mensual_pami
         + mensual_os_aporte
@@ -1603,6 +1606,19 @@ def calcular_payload(
         + susp_rem
         + faltante_desc
         + adelanto
+    )
+    disponible_para_adelanto_vacaciones = max(
+        0.0,
+        round2((mensual_rem_total + mensual_nr_total) - mensual_ded_sin_vacaciones),
+    )
+    adelanto_vacaciones_aplicado = round2(
+        min(adelanto_vacaciones_informado, disponible_para_adelanto_vacaciones)
+    )
+    adelanto_vacaciones_pendiente = round2(
+        max(0.0, adelanto_vacaciones_informado - adelanto_vacaciones_aplicado)
+    )
+    mensual_ded_pre = round2(
+        mensual_ded_sin_vacaciones + adelanto_vacaciones_aplicado
     )
     mensual_neto_pre = round2((mensual_rem_total + mensual_nr_total) - mensual_ded_pre)
     mensual_embargo_monto = round2(min(emb_in, max(0.0, mensual_neto_pre))) if emb_in else 0.0
@@ -1907,6 +1923,19 @@ def calcular_payload(
             d=adelanto,
         ))
 
+    if adelanto_vacaciones_aplicado:
+        vacation_advance_item = item(
+            "Adelanto de vacaciones abonado",
+            d=adelanto_vacaciones_aplicado,
+        )
+        vacation_advance_item["metadata"] = {
+            "tipo": "conciliacion_vacaciones",
+            "informado": float(adelanto_vacaciones_informado),
+            "aplicado": float(adelanto_vacaciones_aplicado),
+            "saldo_pendiente": float(adelanto_vacaciones_pendiente),
+        }
+        items.append(vacation_advance_item)
+
     if seguro_vida_cct_trabajador:
         items.append(item(
             "Seguro vida art. 97 CCT 130/75 (1/3)",
@@ -2124,6 +2153,13 @@ def calcular_payload(
         "suma_fija": float(sf),
         "extraordinaria": float(extraordinaria),
 
+        "conciliacion_vacaciones": {
+            "adelanto_informado": float(adelanto_vacaciones_informado),
+            "adelanto_aplicado": float(adelanto_vacaciones_aplicado),
+            "saldo_pendiente": float(adelanto_vacaciones_pendiente),
+            "afecta_aportes": False,
+            "afecta_contribuciones": False,
+        },
         "items": items,
         "totales": {
             "rem": float(mensual_rem_total),
@@ -2546,6 +2582,12 @@ def calcular_final_payload(
     if fe < fi:
         raise ValueError('La fecha de egreso no puede ser anterior a la de ingreso')
     mes_baja = f"{fe.year:04d}-{fe.month:02d}"
+    tipo_n = (tipo or '').strip().upper()
+    despido_sin_causa = tipo_n in (
+        'DESPIDO_SIN_CAUSA',
+        'DESPIDO SIN CAUSA',
+        'SIN_CAUSA',
+    )
 
     # Base mejor salario
     mr = float(mejor_rem or 0.0)
@@ -2701,7 +2743,7 @@ def calcular_final_payload(
         sac_prop_r, sac_prop_n = split_amount(sac_prop_total)
 
     # Integración mes despido (art. 233) – default ON
-    dias_int = max(0, dim - dia_baja) if integracion else 0
+    dias_int = max(0, dim - dia_baja) if (integracion and despido_sin_causa) else 0
     # Integración del mes (mismo criterio de presentismo que el mes de baja)
     frac_int = (dias_int / 30.0) if dias_int else 0.0
     integ_r = round2(base_mes_r * frac_int) if dias_int else 0.0
@@ -2716,7 +2758,7 @@ def calcular_final_payload(
         sac_integ_r, sac_integ_n = 0.0, 0.0
 
     # Preaviso (art. 231/232) – indemnizatorio
-    prev_dias = int(preaviso_dias or 0)
+    prev_dias = int(preaviso_dias or 0) if despido_sin_causa else 0
     prev_total = round2(base_total * (prev_dias / 30.0)) if prev_dias else 0.0
     sac_prev_total = round2(prev_total / 12.0) if (sac_sobre_preaviso and prev_total) else 0.0
 
@@ -2732,8 +2774,7 @@ def calcular_final_payload(
     ind_antig = 0.0
     # Indemnización por fallecimiento (art. 248)
     ind_fall = 0.0
-    tipo_n = (tipo or '').strip().upper()
-    if tipo_n in ('DESPIDO_SIN_CAUSA', 'DESPIDO SIN CAUSA', 'SIN_CAUSA'):
+    if despido_sin_causa:
         ind_antig = round2(base_art245 * float(anios_245 or 0))
 
     if tipo_n == 'FALLECIMIENTO':

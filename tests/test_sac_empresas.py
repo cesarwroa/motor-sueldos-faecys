@@ -70,6 +70,71 @@ class VacacionesEmpresasTest(unittest.TestCase):
         self.assertGreater(result["totales"]["contribuciones_empleador"], 0)
 
 
+    def test_concilia_el_neto_adelantado_sin_duplicar_bases(self):
+        vacation = calcular_vacaciones_payload(
+            rama="GENERAL",
+            agrup="GENERAL",
+            categoria="MAESTRANZA A",
+            mes="2026-07",
+            dias=14,
+            base_rem=1_000_000,
+            base_nr=120_000,
+        )
+        without_advance = calcular_payload(
+            rama="GENERAL",
+            agrup="GENERAL",
+            categoria="MAESTRANZA A",
+            mes="2026-07",
+            vac_goz=14,
+        )
+        with_advance = calcular_payload(
+            rama="GENERAL",
+            agrup="GENERAL",
+            categoria="MAESTRANZA A",
+            mes="2026-07",
+            vac_goz=14,
+            adelanto_vacaciones=vacation["totales"]["neto"],
+        )
+        advance = vacation["totales"]["neto"]
+        self.assertEqual(with_advance["totales"]["rem"], without_advance["totales"]["rem"])
+        self.assertEqual(with_advance["totales"]["nr"], without_advance["totales"]["nr"])
+        self.assertEqual(
+            with_advance["totales"]["contribuciones_empleador"],
+            without_advance["totales"]["contribuciones_empleador"],
+        )
+        self.assertEqual(
+            round(with_advance["totales"]["ded"] - without_advance["totales"]["ded"], 2),
+            advance,
+        )
+        self.assertEqual(
+            round(with_advance["totales"]["neto"] + advance, 2),
+            without_advance["totales"]["neto"],
+        )
+        item = next(
+            row
+            for row in with_advance["items"]
+            if row["concepto"] == "Adelanto de vacaciones abonado"
+        )
+        self.assertEqual(item["d"], advance)
+        self.assertFalse(with_advance["conciliacion_vacaciones"]["afecta_aportes"])
+
+    def test_limita_el_adelanto_al_neto_disponible_e_informa_saldo(self):
+        result = calcular_payload(
+            rama="GENERAL",
+            agrup="GENERAL",
+            categoria="MAESTRANZA A",
+            mes="2026-07",
+            adelanto_vacaciones=99_000_000,
+        )
+        reconciliation = result["conciliacion_vacaciones"]
+        self.assertEqual(result["totales"]["neto"], 0)
+        self.assertGreater(reconciliation["saldo_pendiente"], 0)
+        self.assertLess(
+            reconciliation["adelanto_aplicado"],
+            reconciliation["adelanto_informado"],
+        )
+
+
 class LiquidacionFinalEmpresasTest(unittest.TestCase):
     def test_sac_proporcional_usa_devengado_historico(self):
         result = calcular_final_payload(
@@ -110,6 +175,45 @@ class LiquidacionFinalEmpresasTest(unittest.TestCase):
         self.assertTrue(any("Art. 245" in concept for concept in concepts))
         self.assertTrue(any("Preaviso" in concept for concept in concepts))
         self.assertTrue(any("Integración mes despido" in concept for concept in concepts))
+
+
+    def test_renuncia_no_incluye_art_245_preaviso_ni_integracion(self):
+        result = calcular_final_payload(
+            rama="GENERAL",
+            agrup="GENERAL",
+            categoria="MAESTRANZA A",
+            fecha_ingreso="2020-01-01",
+            fecha_egreso="2026-07-27",
+            tipo="RENUNCIA",
+            mejor_rem=1_000_000,
+            mejor_nr=120_000,
+            sac_devengado_rem=500_000,
+            sac_devengado_nr=60_000,
+            preaviso_dias=60,
+            integracion=True,
+        )
+        concepts = [item["concepto"] for item in result["items"]]
+        self.assertFalse(any("Art. 245" in concept for concept in concepts))
+        self.assertFalse(any("Preaviso" in concept for concept in concepts))
+        self.assertFalse(any("Integración mes despido" in concept for concept in concepts))
+        self.assertGreater(result["totales"]["ind"], 0)
+
+    def test_fallecimiento_incluye_art_248_y_no_art_245(self):
+        result = calcular_final_payload(
+            rama="GENERAL",
+            agrup="GENERAL",
+            categoria="MAESTRANZA A",
+            fecha_ingreso="2020-01-01",
+            fecha_egreso="2026-07-27",
+            tipo="FALLECIMIENTO",
+            mejor_rem=1_000_000,
+            mejor_nr=120_000,
+            sac_devengado_rem=500_000,
+            sac_devengado_nr=60_000,
+        )
+        concepts = [item["concepto"] for item in result["items"]]
+        self.assertTrue(any("Art. 248" in concept for concept in concepts))
+        self.assertFalse(any("Art. 245" in concept for concept in concepts))
 
 
 if __name__ == "__main__":
