@@ -13,6 +13,7 @@
     label{display:block;font-size:13px;font-weight:750;margin:12px 0 6px}input,select,textarea,button{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 12px;font:inherit;background:#fff}textarea{min-height:82px;resize:vertical}button,.button{display:inline-flex;justify-content:center;align-items:center;width:auto;text-decoration:none;cursor:pointer;background:var(--blue);color:#fff;border-color:var(--blue);font-weight:800}.secondary{background:#fff;color:#1e3a8a}.danger{background:#fff;color:var(--red);border-color:#fecaca}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.status{min-height:22px;margin-top:10px;color:#334155;font-size:14px}.pill{display:inline-flex;padding:5px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:850}.pill.active,.pill.open{background:#d1fae5;color:#065f46}.pill.paused,.pill.closed,.pill.terminated,.pill.cancelled{background:#fee2e2;color:#991b1b}.hidden{display:none!important}.summary{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.table-wrap{overflow:auto;margin-top:14px}table{width:100%;border-collapse:collapse;min-width:820px}th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;vertical-align:middle}th{background:#f8fafc}td select{min-width:135px;padding:7px}.empty{padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px;margin-top:14px}.notice{padding:12px 14px;border-radius:12px;background:#eff6ff;color:#1e3a8a;font-size:14px;margin-top:12px}.error{color:var(--red)}.ok{color:var(--green)}
     details{border:1px solid var(--line);border-radius:14px;margin-top:14px;background:#fbfdff}summary{cursor:pointer;padding:14px 16px;font-weight:850;color:#1e3a8a}.detail-body{padding:0 16px 16px}.section-note{font-size:13px;color:var(--muted);margin:0 0 4px}.small-button{padding:7px 10px;font-size:12px}.employee-form-title{margin-top:14px}.subtext{display:block;color:var(--muted);font-size:12px;margin-top:3px}.wide{grid-column:1/-1}.module-title{margin-top:16px}.selected-row{background:#eff6ff}.amount{text-align:right;white-space:nowrap}
     .logo-preview-wrap{display:flex;align-items:center;gap:12px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.logo-preview-wrap img{display:block;width:120px;height:64px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}.logo-preview-wrap button{flex:none}
+    .progress{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:10px}.progress>span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}.check-line{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:14px;font-weight:700}.check-line input{width:auto}.import-summary{margin-top:12px;font-size:14px}.queue-note{font-size:12px;color:var(--muted);margin-top:8px}
     @media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}
   </style>
 </head>
@@ -99,6 +100,20 @@
 
     <article class="card">
       <div class="summary"><div><h2>Nómina de empleados</h2><p class="muted">Ficha completa para recibos, liquidaciones y futuras exportaciones a ARCA.</p></div><span id="employeeCount" class="pill">0 empleados</span></div>
+      <details>
+        <summary>Importar empleados desde Excel</summary>
+        <div class="detail-body">
+          <p class="section-note">Descargá la plantilla, completala sin cambiar los encabezados y revisá la vista previa antes de importar.</p>
+          <div class="actions"><a class="button secondary" href="/plantilla-importacion-empleados.xlsx">Descargar plantilla Excel</a></div>
+          <label for="employeeImportFile">Archivo .xlsx</label><input id="employeeImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+          <div class="actions"><button id="employeeImportPreviewBtn" type="button">Revisar archivo</button><button id="employeeImportStartBtn" class="secondary" type="button" disabled>Importar en cola</button></div>
+          <div id="employeeImportProgress" class="progress hidden"><span></span></div>
+          <div id="employeeImportStatus" class="status"></div>
+          <div id="employeeImportSummary" class="import-summary hidden"></div>
+          <div id="employeeImportPreviewWrap" class="table-wrap hidden"><table><thead><tr><th>Fila</th><th>Legajo</th><th>Empleado</th><th>CUIL</th><th>Rama</th><th>Agrupamiento</th><th>Categoría</th></tr></thead><tbody id="employeeImportPreviewBody"></tbody></table></div>
+          <p class="queue-note">La importación procesa lotes consecutivos de hasta 25 empleados para cuidar el rendimiento.</p>
+        </div>
+      </details>
       <input id="employeeId" type="hidden">
       <h2 id="employeeFormTitle" class="employee-form-title">Nuevo empleado</h2>
       <details open>
@@ -165,7 +180,7 @@
         <div><label for="periodLabel">Descripción</label><input id="periodLabel" maxlength="120" placeholder="Ej.: Julio 2026"></div>
         <div><label for="periodPaymentDate">Fecha de pago</label><input id="periodPaymentDate" type="date"></div>
         <div><label for="periodPaymentPlace">Lugar de pago</label><input id="periodPaymentPlace" maxlength="190"></div>
-        <div><label for="periodStatusSelect">Estado</label><select id="periodStatusSelect"><option value="draft">Borrador</option><option value="open">Abierto</option><option value="closed">Cerrado</option><option value="cancelled">Cancelado</option></select></div>
+        <div><label for="periodStatusSelect">Estado</label><select id="periodStatusSelect"><option value="draft">Borrador</option><option value="open">Abierto</option><option value="cancelled">Cancelado</option></select></div>
         <div class="wide"><label for="periodNotes">Observaciones</label><textarea id="periodNotes" maxlength="255"></textarea></div>
       </div>
       <div class="actions"><button id="periodSaveBtn" type="button">Crear período</button><button id="periodCancelBtn" class="secondary hidden" type="button">Cancelar edición</button></div><div id="periodSaveStatus" class="status"></div>
@@ -186,6 +201,7 @@
           <div><label for="noveltyAmount">Importe informado</label><input id="noveltyAmount" type="number" step="0.01"></div>
           <div><label for="noveltyNotes">Observaciones</label><input id="noveltyNotes" maxlength="255"></div>
         </div>
+        <label class="check-line"><input id="noveltyAllEmployees" type="checkbox"> Aplicar esta novedad a todos los empleados activos</label>
         <div class="actions"><button id="noveltySaveBtn" type="button">Agregar novedad</button><button id="noveltyCancelBtn" class="secondary hidden" type="button">Cancelar edición</button></div><div id="noveltySaveStatus" class="status"></div>
       </div>
       <div id="noveltiesEmpty" class="empty">Seleccioná un período abierto o en borrador.</div>
@@ -195,6 +211,8 @@
     <article id="batchCard" class="card">
       <div class="summary"><div><h2>Liquidación de la nómina</h2><p id="batchPeriodText" class="muted">Seleccioná un período mensual.</p></div><span class="pill">Pasos 4 y 5</span></div>
       <div class="actions"><button id="batchCalculateBtn" type="button">Liquidar nómina</button><button id="batchRefreshBtn" class="secondary" type="button">Actualizar resultados</button><button id="batchPrintAllBtn" class="secondary" type="button" disabled>PDF conjunto</button></div>
+      <div id="batchProgress" class="progress hidden"><span></span></div>
+      <p class="queue-note">La nómina se calcula y guarda en cola, un empleado por vez. Si una ficha falla, el resto continúa.</p>
       <div id="batchStatus" class="status"></div>
       <div id="batchEmpty" class="empty">Todavía no hay liquidaciones calculadas para el período.</div>
       <div id="batchTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Remunerativo</th><th>No remunerativo</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead><tbody id="batchTbody"></tbody></table></div>
@@ -227,6 +245,8 @@
   let activePeriodId = "";
   let payrollMeta = null;
   let companyLogoImage = "";
+  let employeeImportRows = [];
+  let payrollQueueRunning = false;
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -284,7 +304,7 @@
     const headers={"Content-Type":"application/json"};if(auth){if(!token())throw new Error("Iniciá sesión.");headers.Authorization=`Bearer ${token()}`;}
     const response=await fetch(url,{method,headers,...(body?{body:JSON.stringify(body)}:{})});
     let data={};try{data=await response.json()}catch(_){ }
-    if(!response.ok||data.ok===false)throw new Error(data.message||`Error HTTP ${response.status}`);return data;
+    if(!response.ok||data.ok===false){const error=new Error(data.message||`Error HTTP ${response.status}`);error.data=data;throw error;}return data;
   }
 
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
@@ -416,6 +436,54 @@
     $("noveltyEmployee").innerHTML=employees.filter(item=>item.status!=="terminated").map(item=>`<option value="${esc(item.id)}">${esc(item.full_name)}${item.file_number?` · Legajo ${esc(item.file_number)}`:""}</option>`).join("");
   }
 
+  function setQueueProgress(id,current,total){
+    const wrap=$(id),bar=wrap?.querySelector("span");if(!wrap||!bar)return;
+    wrap.classList.toggle("hidden",total<=0);bar.style.width=`${total?Math.min(100,Math.round(current*100/total)):0}%`;
+  }
+
+  async function previewEmployeeImport(){
+    const file=$("employeeImportFile").files?.[0];employeeImportRows=[];$("employeeImportStartBtn").disabled=true;$("employeeImportPreviewWrap").classList.add("hidden");$("employeeImportSummary").classList.add("hidden");
+    if(!file)return setStatus("employeeImportStatus","Seleccioná una planilla .xlsx.");
+    setStatus("employeeImportStatus","Revisando estructura y datos...");
+    try{
+      const form=new FormData();form.append("file",file);
+      const response=await fetch("/employees-import-preview",{method:"POST",body:form});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.detail||data.message||`Error HTTP ${response.status}`);
+      employeeImportRows=data.rows||[];
+      $("employeeImportPreviewBody").innerHTML=employeeImportRows.slice(0,100).map((row,index)=>`<tr><td>${index+2}</td><td>${esc(row.file_number)}</td><td><strong>${esc(row.full_name)}</strong></td><td>${esc(row.cuil)}</td><td>${esc(row.profile?.rama)}</td><td>${esc(row.profile?.agrup)}</td><td>${esc(row.category)}</td></tr>`).join("");
+      $("employeeImportPreviewWrap").classList.toggle("hidden",employeeImportRows.length===0);
+      const errorText=(data.errors||[]).map(item=>`Fila ${item.row}${item.employee?` (${item.employee})`:""}: ${(item.messages||[]).join(" ")}`).join(" | ");
+      const warningText=(data.warnings||[]).map(item=>`Fila ${item.row}: ${item.message}`).join(" | ");
+      $("employeeImportSummary").textContent=`Válidos: ${employeeImportRows.length}. Errores: ${(data.errors||[]).length}.${warningText?` Avisos: ${warningText}`:""}`;
+      $("employeeImportSummary").classList.remove("hidden");
+      $("employeeImportStartBtn").disabled=!employeeImportRows.length||(data.errors||[]).length>0;
+      setStatus("employeeImportStatus",errorText||`Archivo listo: ${employeeImportRows.length} empleado${employeeImportRows.length===1?"":"s"}.`,!errorText);
+    }catch(err){setStatus("employeeImportStatus",err.message);}
+  }
+
+  async function startEmployeeImportQueue(){
+    const company=activeCompany();if(!company)return setStatus("employeeImportStatus","No hay una empresa activa.");
+    if(!employeeImportRows.length)return setStatus("employeeImportStatus","Primero revisá una planilla válida.");
+    const total=employeeImportRows.length,batchSize=25;let processed=0,created=0,updated=0;
+    $("employeeImportStartBtn").disabled=true;$("employeeImportPreviewBtn").disabled=true;setQueueProgress("employeeImportProgress",0,total);
+    try{
+      for(let offset=0;offset<total;offset+=batchSize){
+        const rows=employeeImportRows.slice(offset,offset+batchSize);
+        setStatus("employeeImportStatus",`Cola de importación: ${processed} de ${total}...`);
+        let result=null,lastError=null;
+        for(let attempt=1;attempt<=2;attempt++){
+          try{result=await api("employees-import",{method:"POST",body:{company_id:company.id,rows}});break;}catch(err){lastError=err;}
+        }
+        if(!result)throw lastError||new Error("No se pudo procesar el lote.");
+        processed+=Number(result.processed||rows.length);created+=Number(result.created||0);updated+=Number(result.updated||0);setQueueProgress("employeeImportProgress",processed,total);
+      }
+      await loadEmployees();employeeImportRows=[];$("employeeImportFile").value="";$("employeeImportPreviewWrap").classList.add("hidden");
+      setStatus("employeeImportStatus",`Importación terminada: ${created} creados y ${updated} actualizados.`,true);
+    }catch(err){setStatus("employeeImportStatus",`La cola se detuvo en ${processed} de ${total}: ${err.message}`);}
+    finally{$("employeeImportPreviewBtn").disabled=false;$("employeeImportStartBtn").disabled=employeeImportRows.length===0;}
+  }
+
   const employeeFields=["employeeId","employeeFile","employeeName","employeeCuil","employeeDni","employeeBirth","employeeStart","employeeEnd","employeeRama","employeeAgrup","employeeCategory","employeeAgreement","employeeWeeklyHours","employeeContract","employeeContractCode","employeeEmail","employeePhone","employeeAddress","employeeLocality","employeeProvince","employeeHealthName","employeeHealthCode","employeeHealthMember","employeeHealthStart","employeeUnionName","employeeUnionCode","employeeUnionMember","employeeBank","employeeCbu","employeeAlias"];
   function clearEmployeeForm(){
     employeeFields.forEach(id=>$(id).value="");$("employeeRama").value=payrollMeta?.ramas?.includes("GENERAL")?"GENERAL":payrollMeta?.ramas?.[0]||"";refreshEmployeeAgrups("GENERAL","MAESTRANZA A");$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeeWeeklyHours").value="48";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
@@ -446,7 +514,7 @@
 
   function renderPeriods(){
     $("periodsEmpty").classList.toggle("hidden",periods.length>0);$("periodsTableWrap").classList.toggle("hidden",periods.length===0);
-    $("periodsTbody").innerHTML=periods.map(item=>`<tr class="${String(item.id)===String(activePeriodId)?"selected-row":""}"><td><strong>${esc(item.label||formatPeriod(item.period))}</strong><span class="subtext">${esc(formatPeriod(item.period))}</span></td><td>${esc(mapPeriodType(item.payroll_type))}</td><td>${esc(item.payment_date||"")}</td><td><span class="pill ${esc(item.status)}">${esc(mapPeriodStatus(item.status))}</span></td><td>${esc(item.novelty_count||0)}</td><td>${esc(item.payroll_count||0)}</td><td><div class="actions"><button class="small-button" type="button" data-select-period="${esc(item.id)}">Novedades</button><button class="secondary small-button" type="button" data-edit-period="${esc(item.id)}">Editar</button></div></td></tr>`).join("");
+    $("periodsTbody").innerHTML=periods.map(item=>`<tr class="${String(item.id)===String(activePeriodId)?"selected-row":""}"><td><strong>${esc(item.label||formatPeriod(item.period))}</strong><span class="subtext">${esc(formatPeriod(item.period))}</span></td><td>${esc(mapPeriodType(item.payroll_type))}</td><td>${esc(item.payment_date||"")}</td><td><span class="pill ${esc(item.status)}">${esc(mapPeriodStatus(item.status))}</span></td><td>${esc(item.novelty_count||0)}</td><td>${esc(item.payroll_count||0)}</td><td><div class="actions"><button class="small-button" type="button" data-select-period="${esc(item.id)}">Novedades</button>${item.status!=="closed"?`<button class="secondary small-button" type="button" data-edit-period="${esc(item.id)}">Editar</button>`:""}${!["closed","cancelled"].includes(item.status)?`<button class="secondary small-button" type="button" data-close-period="${esc(item.id)}">Cerrar</button>`:""}${item.status==="closed"?`<button class="secondary small-button" type="button" data-reopen-period="${esc(item.id)}">Reabrir</button>`:""}</div></td></tr>`).join("");
     const current=activePeriod();$("noveltyForm").classList.toggle("hidden",!current||["closed","cancelled"].includes(current.status));$("noveltyPeriodText").textContent=current?`${current.label||formatPeriod(current.period)} · ${mapPeriodType(current.payroll_type)} · ${mapPeriodStatus(current.status)}`:"Seleccioná un período para cargar novedades.";
   }
 
@@ -464,6 +532,21 @@
     if(period.length!==6)return setStatus("periodSaveStatus","Seleccioná un período mensual.");setStatus("periodSaveStatus","Guardando...");try{const data=await api("periods",{method:"POST",body});activePeriodId=data.id;clearPeriodForm();await loadPeriods();setStatus("periodSaveStatus","Período guardado.",true);}catch(err){setStatus("periodSaveStatus",err.message);}
   }
 
+  async function closePeriod(id){
+    const company=activeCompany(),item=periods.find(row=>String(row.id)===String(id));if(!company||!item)return;
+    if(!confirm(`¿Cerrar ${item.label||formatPeriod(item.period)}? Después no se podrán cambiar novedades ni liquidaciones.`))return;
+    setStatus("periodSaveStatus","Validando y cerrando período...");
+    try{await api("period-close",{method:"POST",body:{company_id:company.id,period_id:item.id}});await loadPeriods();setStatus("periodSaveStatus","Período cerrado y liquidaciones consolidadas.",true);}
+    catch(err){const missing=Array.isArray(err.data?.missing_employees)?err.data.missing_employees.map(row=>row.full_name).join(", "):"";setStatus("periodSaveStatus",missing?`${err.message} Faltan: ${missing}.`:err.message);}
+  }
+
+  async function reopenPeriod(id){
+    const company=activeCompany(),item=periods.find(row=>String(row.id)===String(id));if(!company||!item)return;
+    if(!confirm(`¿Reabrir ${item.label||formatPeriod(item.period)} para permitir correcciones?`))return;
+    setStatus("periodSaveStatus","Reabriendo período...");
+    try{await api("period-reopen",{method:"POST",body:{company_id:company.id,period_id:item.id}});await loadPeriods();setStatus("periodSaveStatus","Período reabierto.",true);}catch(err){setStatus("periodSaveStatus",err.message);}
+  }
+
   async function selectPeriod(id){activePeriodId=id;renderPeriods();await loadNovelties();await loadPayrolls();$("noveltiesCard").scrollIntoView({behavior:"smooth",block:"start"});}
 
   async function loadNovelties(){
@@ -477,17 +560,24 @@
   }
 
   function mapNoveltyType(type){return ({overtime_50:"Horas extra 50%",overtime_100:"Horas extra 100%",night_hours:"Horas nocturnas",holiday:"Feriado trabajado",holiday_not_worked:"Feriado no trabajado",absence:"Ausencia injustificada",vacation_days:"Vacaciones gozadas",license:"Licencia sin goce / suspensión",commission:"Comisión",viaticos_nr:"Viáticos no remunerativos",water_connections:"Agua Potable: cantidad de conexiones",funeral_general:"Fúnebres: manipulación de cadáveres",funeral_other:"Fúnebres: resto del personal",funeral_driver:"Fúnebres: chofer / furgonero",funeral_clothing:"Fúnebres: indumentaria",tourism_title_tertiary:"Turismo: título terciario 2,5%",tourism_title_degree:"Turismo: licenciatura 5%",km_driver_under100:"KM chofer: primeros 100",km_driver_over100:"KM chofer: excedente de 100",km_helper_under100:"KM ayudante: primeros 100",km_helper_over100:"KM ayudante: excedente de 100",cash_handling_a:"Manejo de caja A",cash_handling_b:"Manejo de caja B",cash_handling_c:"Manejo de caja C",cash_shortage:"Faltante de caja",window_dressing:"Armado de vidriera",attendance:"Presentismo (registro anterior; no se suma)",advance:"Adelanto de sueldo",garnishment:"Embargo",bonus:"Premio / adicional",other:"Otro concepto"})[type]||type||"";}
-  function clearNoveltyForm(){["noveltyId","noveltyName","noveltyQuantity","noveltyAmount","noveltyNotes"].forEach(id=>$(id).value="");$("noveltyType").value="overtime_50";$("noveltyName").value=mapNoveltyType("overtime_50");$("noveltySaveBtn").textContent="Agregar novedad";$("noveltyCancelBtn").classList.add("hidden");}
-  function editNovelty(id){const item=novelties.find(row=>String(row.id)===String(id));if(!item)return;$("noveltyId").value=item.id;$("noveltyEmployee").value=item.employee_id;$("noveltyType").value=item.concept_type;$("noveltyName").value=item.concept_name;$("noveltyQuantity").value=item.quantity;$("noveltyAmount").value=item.amount;$("noveltyNotes").value=item.notes||"";$("noveltySaveBtn").textContent="Guardar novedad";$("noveltyCancelBtn").classList.remove("hidden");}
+  function clearNoveltyForm(){["noveltyId","noveltyName","noveltyQuantity","noveltyAmount","noveltyNotes"].forEach(id=>$(id).value="");$("noveltyType").value="overtime_50";$("noveltyName").value=mapNoveltyType("overtime_50");$("noveltyAllEmployees").checked=false;$("noveltyAllEmployees").disabled=false;$("noveltyEmployee").disabled=false;$("noveltySaveBtn").textContent="Agregar novedad";$("noveltyCancelBtn").classList.add("hidden");}
+  function editNovelty(id){const item=novelties.find(row=>String(row.id)===String(id));if(!item)return;$("noveltyId").value=item.id;$("noveltyEmployee").value=item.employee_id;$("noveltyType").value=item.concept_type;$("noveltyName").value=item.concept_name;$("noveltyQuantity").value=item.quantity;$("noveltyAmount").value=item.amount;$("noveltyNotes").value=item.notes||"";$("noveltyAllEmployees").checked=false;$("noveltyAllEmployees").disabled=true;$("noveltyEmployee").disabled=false;$("noveltySaveBtn").textContent="Guardar novedad";$("noveltyCancelBtn").classList.remove("hidden");}
   async function saveNovelty(){
     const company=activeCompany(),period=activePeriod();if(!company||!period)return setStatus("noveltySaveStatus","Seleccioná un período.");
+    const allActive=$("noveltyAllEmployees").checked&&!$("noveltyId").value;
     const body={id:$("noveltyId").value||undefined,company_id:company.id,period_id:period.id,employee_id:$("noveltyEmployee").value,concept_type:$("noveltyType").value,concept_name:$("noveltyName").value.trim(),quantity:$("noveltyQuantity").value||0,amount:$("noveltyAmount").value||0,notes:$("noveltyNotes").value.trim()};
-    if(!body.employee_id||!body.concept_name)return setStatus("noveltySaveStatus","Seleccioná empleado y completá el concepto.");
-    const employee=employees.find(item=>String(item.id)===String(body.employee_id)),rama=String(employee?.profile?.rama||"GENERAL").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+    if((!body.employee_id&&!allActive)||!body.concept_name)return setStatus("noveltySaveStatus","Seleccioná empleado y completá el concepto.");
+    const targetEmployees=allActive?employees.filter(item=>item.status==="active"):[employees.find(item=>String(item.id)===String(body.employee_id))].filter(Boolean);
     const required=body.concept_type==="water_connections"?"AGUA POTABLE":body.concept_type.startsWith("funeral_")?"FUNEBRES":body.concept_type.startsWith("tourism_title_")?"TURISMO":"";
-    if(required&&rama!==required)return setStatus("noveltySaveStatus",`Esta novedad corresponde únicamente a la rama ${required}.`);
+    const invalidTarget=required&&targetEmployees.find(item=>String(item?.profile?.rama||"GENERAL").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()!==required);
+    if(invalidTarget)return setStatus("noveltySaveStatus",`Esta novedad corresponde únicamente a la rama ${required}. ${invalidTarget.full_name} pertenece a otra rama.`);
     if(body.concept_type==="water_connections"&&Number(body.quantity||0)<=0)return setStatus("noveltySaveStatus","Informá la cantidad de conexiones en Cantidad / unidades.");
-    setStatus("noveltySaveStatus","Guardando...");try{await api("novelties",{method:"POST",body});clearNoveltyForm();await loadNovelties();await loadPeriods();setStatus("noveltySaveStatus","Novedad guardada.",true);}catch(err){setStatus("noveltySaveStatus",err.message);}
+    setStatus("noveltySaveStatus",allActive?"Aplicando a toda la nómina...":"Guardando...");
+    try{
+      if(allActive){const result=await api("novelties-bulk",{method:"POST",body:{...body,id:undefined,employee_id:undefined,all_active:true}});setStatus("noveltySaveStatus",`Novedad aplicada a ${result.created} empleados.`,true);}
+      else{await api("novelties",{method:"POST",body});setStatus("noveltySaveStatus","Novedad guardada.",true);}
+      clearNoveltyForm();await loadNovelties();await loadPeriods();
+    }catch(err){setStatus("noveltySaveStatus",err.message);}
   }
   async function deleteNovelty(id){const company=activeCompany();if(!company||!confirm("¿Quitar esta novedad del período?"))return;setStatus("noveltySaveStatus","Quitando...");try{await api("novelties",{method:"DELETE",body:{id,company_id:company.id}});await loadNovelties();await loadPeriods();setStatus("noveltySaveStatus","Novedad eliminada.",true);}catch(err){setStatus("noveltySaveStatus",err.message);}}
 
@@ -506,8 +596,12 @@
   function noveltyFlag(items,types){return items.some(item=>types.includes(item.concept_type));}
 
   async function calculateBatch(){
+    if(payrollQueueRunning)return setStatus("batchStatus","La cola de liquidación ya está en curso.");
     const company=activeCompany(),period=activePeriod(),activeEmployees=employees.filter(item=>item.status==="active");if(!company||!period||period.payroll_type!=="monthly")return setStatus("batchStatus","Seleccioná un período mensual.");if(!activeEmployees.length)return setStatus("batchStatus","No hay empleados activos para liquidar.");
-    setStatus("batchStatus",`Calculando 0 de ${activeEmployees.length}...`);let completed=0;const errors=[];
+    const invalid=activeEmployees.filter(item=>digits(item.cuil).length!==11||!item.category||!item.start_date||!item.profile?.rama||!item.profile?.agrup||Number(item.profile?.weekly_hours||0)<=0);
+    if(invalid.length)return setStatus("batchStatus",`Corregí las fichas antes de liquidar: ${invalid.map(item=>item.full_name).join(", ")}. Deben tener CUIL, fecha de ingreso, rama, agrupamiento, categoría y horas semanales.`);
+    payrollQueueRunning=true;$("batchCalculateBtn").disabled=true;$("batchRefreshBtn").disabled=true;setQueueProgress("batchProgress",0,activeEmployees.length);
+    setStatus("batchStatus",`Cola de liquidación: 0 de ${activeEmployees.length}...`);let completed=0;const errors=[];
     for(const employee of activeEmployees){
       try{
         const employeeNovelties=novelties.filter(item=>String(item.employee_id)===String(employee.id));
@@ -520,9 +614,9 @@
         const params={rama:employee.profile?.rama||"GENERAL",agrup:employee.profile?.agrup||"GENERAL",categoria:String(employee.category||"MAESTRANZA A").toUpperCase(),mes:`${String(period.period).slice(0,4)}-${String(period.period).slice(4,6)}`,jornada:Number(employee.profile?.weekly_hours||48),anios_antig:yearsAtPeriod(employee.start_date,period.period),osecac:!!employee.profile?.health_insurance_name,afiliado:!!employee.profile?.union_name,hex50:noveltySum(employeeNovelties,["overtime_50"],"quantity"),hex100:noveltySum(employeeNovelties,["overtime_100"],"quantity"),hs_noct:noveltySum(employeeNovelties,["night_hours"],"quantity"),fer_trab:noveltySum(employeeNovelties,["holiday"],"quantity"),fer_no_trab:noveltySum(employeeNovelties,["holiday_not_worked"],"quantity"),vac_goz:noveltySum(employeeNovelties,["vacation_days"],"quantity"),aus_inj:noveltySum(employeeNovelties,["absence"],"quantity"),susp_dias:noveltySum(employeeNovelties,["license"],"quantity"),embargo:noveltySum(employeeNovelties,["garnishment"]),adelanto_sueldo:noveltySum(employeeNovelties,["advance"]),a_cuenta_rem:customRem,viaticos_nr:noveltySum(employeeNovelties,["viaticos_nr"]),conexiones:Math.max(0,Math.round(noveltySum(employeeNovelties,["water_connections"],"quantity"))),titulo_pct:tourismTitle,fun_adic:funeralIds.join(";"),km_tipo:driverKm?"CH":helperKm?"AY":"",km_menos100:noveltySum(employeeNovelties,["km_driver_under100","km_helper_under100"],"quantity"),km_mas100:noveltySum(employeeNovelties,["km_driver_over100","km_helper_over100"],"quantity"),manejo_caja:!!cashType,cajero_tipo:cashType,faltante_caja:noveltySum(employeeNovelties,["cash_shortage"]),armado_vidriera:noveltyFlag(employeeNovelties,["window_dressing"])};
         const url=new URL("/calcular",location.origin);Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));const response=await fetch(url);const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.detail||result.message||`Error HTTP ${response.status}`);if(customRem>0&&Array.isArray(result.items))result.items=result.items.map(item=>String(item.concepto||"").startsWith("A cuenta futuros")?{...item,concepto:"Comisiones y adicionales informados"}:item);
         await api("payrolls",{method:"POST",body:{company_id:company.id,employee_id:employee.id,period:period.period,payroll_type:"monthly",inputs:{engine_params:params,novelties:employeeNovelties,company_snapshot:company,employee_snapshot:employee,period_snapshot:period},result}});completed++;
-      }catch(err){errors.push(`${employee.full_name}: ${err.message}`);}setStatus("batchStatus",`Calculando ${completed+errors.length} de ${activeEmployees.length}...`);
+      }catch(err){errors.push(`${employee.full_name}: ${err.message}`);}setQueueProgress("batchProgress",completed+errors.length,activeEmployees.length);setStatus("batchStatus",`Cola de liquidación: ${completed+errors.length} de ${activeEmployees.length}...`);
     }
-    await loadPayrolls();await loadPeriods();setStatus("batchStatus",errors.length?`Se calcularon ${completed}. Errores: ${errors.join(" | ")}`:`Nómina calculada: ${completed} empleado${completed===1?"":"s"}.`,errors.length===0);
+    payrollQueueRunning=false;$("batchRefreshBtn").disabled=false;await loadPayrolls();await loadPeriods();renderPayrolls();setStatus("batchStatus",errors.length?`Cola finalizada. Se calcularon ${completed}. Errores: ${errors.join(" | ")}`:`Cola finalizada: ${completed} empleado${completed===1?"":"s"} y sus recibos quedaron guardados.`,errors.length===0);
   }
 
   function normalizeFAECYSConcept(concept){const value=String(concept||"").trim();if(/^FAECYS\b/i.test(value)&&(/0\s*[,\.]\s*5/.test(value)||/Art\.?\s*100/i.test(value)))return "FAECYS 0,5% Art. 100";return value;}
@@ -571,7 +665,7 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
@@ -579,10 +673,11 @@
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
+  $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
   $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
   $("employeesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.editEmployee;if(id)editEmployee(id);});
-  $("periodsTbody").addEventListener("click",ev=>{const selectId=ev.target?.dataset?.selectPeriod,editId=ev.target?.dataset?.editPeriod;if(selectId)selectPeriod(selectId);if(editId)editPeriod(editId);});
+  $("periodsTbody").addEventListener("click",ev=>{const selectId=ev.target?.dataset?.selectPeriod,editId=ev.target?.dataset?.editPeriod,closeId=ev.target?.dataset?.closePeriod,reopenId=ev.target?.dataset?.reopenPeriod;if(selectId)selectPeriod(selectId);if(editId)editPeriod(editId);if(closeId)closePeriod(closeId);if(reopenId)reopenPeriod(reopenId);});
   $("noveltiesTbody").addEventListener("click",ev=>{const editId=ev.target?.dataset?.editNovelty,deleteId=ev.target?.dataset?.deleteNovelty;if(editId)editNovelty(editId);if(deleteId)deleteNovelty(deleteId);});
   $("batchTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.printPayroll;if(id)printPayrolls(id);});
   clearNoveltyForm();

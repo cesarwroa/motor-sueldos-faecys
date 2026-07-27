@@ -2,11 +2,13 @@
 from datetime import datetime, timezone
 import hashlib
 import hmac
+from io import BytesIO
 import json
 import mimetypes
 import os
 import re
 import time
+import unicodedata
 import uuid
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
@@ -16,6 +18,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
+from openpyxl import load_workbook
 from escalas import (
     get_meta,
     get_payload,
@@ -58,6 +61,7 @@ ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", s
 PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
 PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
 COMPANY_PORTAL_FILE = BASE_DIR / "public" / "empresas.html"
+EMPLOYEE_IMPORT_TEMPLATE_FILE = BASE_DIR / "public" / "plantilla_importacion_empleados.xlsx"
 ADMIN_INDEX_FILE = BASE_DIR / "index.html"
 NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
@@ -75,6 +79,42 @@ DEFAULT_FEATURE_ACCESS = {
 }
 DEFAULT_PUBLIC_FEATURES = {
     "liquidacion_final_publica": True,
+}
+
+EMPLOYEE_IMPORT_MAX_BYTES = 3 * 1024 * 1024
+EMPLOYEE_IMPORT_MAX_ROWS = 500
+EMPLOYEE_IMPORT_HEADERS = {
+    "legajo": "file_number",
+    "apellido_y_nombre": "full_name",
+    "cuil": "cuil",
+    "dni": "dni",
+    "fecha_nacimiento": "birth_date",
+    "fecha_ingreso": "start_date",
+    "fecha_egreso": "end_date",
+    "estado": "status",
+    "rama": "rama",
+    "agrupamiento": "agrup",
+    "categoria": "category",
+    "jornada": "workday",
+    "horas_semanales": "weekly_hours",
+    "modalidad_contractual": "contract_modality",
+    "codigo_modalidad_arca": "contract_modality_code",
+    "email": "email",
+    "telefono": "phone",
+    "domicilio": "address",
+    "localidad": "locality",
+    "provincia": "province",
+    "obra_social": "health_insurance_name",
+    "codigo_obra_social_arca": "health_insurance_code",
+    "numero_afiliado_obra_social": "health_insurance_member",
+    "vigencia_obra_social_desde": "health_insurance_start",
+    "sindicato": "union_name",
+    "codigo_sindical": "union_code",
+    "numero_afiliado_sindical": "union_member",
+    "banco": "bank_name",
+    "cbu": "cbu",
+    "alias_bancario": "bank_alias",
+    "forma_pago": "payment_method",
 }
 
 
@@ -734,6 +774,178 @@ def _resolve_active_admin_employee_id(
         return str(company_employees[0].get("id") or "").strip()
     return ""
 
+
+def _employee_import_key(value: Any) -> str:
+    text = unicodedata.normalize("NFD", str(value or "").strip().lower())
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
+    return re.sub(r"[^a-z0-9]+", "_", text).strip("_")
+
+
+def _employee_import_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def _employee_import_digits(value: Any) -> str:
+    return re.sub(r"\D+", "", _employee_import_text(value))
+
+
+def _employee_import_date(value: Any) -> str:
+    if value is None or value == "":
+        return ""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if hasattr(value, "isoformat") and not isinstance(value, str):
+        return str(value.isoformat())[:10]
+    text = _employee_import_text(value)
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt).date().isoformat()
+        except ValueError:
+            continue
+    return text
+
+
+def _catalog_value(value: Any, candidates: List[str]) -> str:
+    wanted = _employee_import_key(value)
+    for candidate in candidates:
+        if _employee_import_key(candidate) == wanted:
+            return candidate
+    return ""
+
+
+def _parse_employee_import(contents: bytes) -> Dict[str, Any]:
+    try:
+        workbook = load_workbook(BytesIO(contents), read_only=True, data_only=True)
+    except Exception as error:
+        raise HTTPException(status_code=400, detail="El archivo no es un Excel .xlsx válido.") from error
+
+    sheet = workbook.worksheets[0]
+    iterator = sheet.iter_rows(values_only=True)
+    raw_headers = next(iterator, None)
+    if not raw_headers:
+        raise HTTPException(status_code=400, detail="La planilla no contiene encabezados.")
+
+    columns: Dict[int, str] = {}
+    for index, header in enumerate(raw_headers):
+        mapped = EMPLOYEE_IMPORT_HEADERS.get(_employee_import_key(header))
+        if mapped:
+            columns[index] = mapped
+    required = {"full_name", "cuil", "rama", "agrup", "category", "start_date"}
+    missing = sorted(required.difference(columns.values()))
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail="Faltan columnas obligatorias: apellido_y_nombre, cuil, fecha_ingreso, rama, agrupamiento y categoria.",
+        )
+
+    meta = get_meta()
+    ramas = list(meta.get("ramas") or [])
+    agrupamientos = dict(meta.get("agrupamientos") or {})
+    categorias = dict(meta.get("categorias") or {})
+    rows: List[Dict[str, Any]] = []
+    errors: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, Any]] = []
+    seen_cuils: set[str] = set()
+
+    for excel_row, raw_row in enumerate(iterator, start=2):
+        if excel_row > EMPLOYEE_IMPORT_MAX_ROWS + 1:
+            raise HTTPException(status_code=400, detail=f"La importación admite hasta {EMPLOYEE_IMPORT_MAX_ROWS} empleados por archivo.")
+        values = {field: raw_row[index] if index < len(raw_row) else None for index, field in columns.items()}
+        if not any(_employee_import_text(value) for value in values.values()):
+            continue
+
+        row_errors: List[str] = []
+        full_name = _employee_import_text(values.get("full_name"))
+        cuil = _employee_import_digits(values.get("cuil"))
+        rama = _catalog_value(values.get("rama"), ramas)
+        agrup = _catalog_value(values.get("agrup"), list(agrupamientos.get(rama) or [])) if rama else ""
+        category = _catalog_value(values.get("category"), list((categorias.get(rama) or {}).get(agrup) or [])) if agrup else ""
+        start_date = _employee_import_date(values.get("start_date"))
+        status_key = _employee_import_key(values.get("status") or "active")
+        status = {"activo": "active", "active": "active", "pausado": "paused", "paused": "paused", "desvinculado": "terminated", "terminated": "terminated"}.get(status_key, "")
+
+        if not full_name:
+            row_errors.append("Falta apellido y nombre.")
+        if len(cuil) != 11:
+            row_errors.append("El CUIL debe tener 11 dígitos.")
+        elif cuil in seen_cuils:
+            row_errors.append("El CUIL está repetido dentro de la planilla.")
+        if not rama:
+            row_errors.append("La rama no existe en el catálogo salarial.")
+        if rama and not agrup:
+            row_errors.append("El agrupamiento no corresponde a la rama.")
+        if agrup and not category:
+            row_errors.append("La categoría no corresponde al agrupamiento.")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", start_date):
+            row_errors.append("La fecha de ingreso no es válida.")
+        if not status:
+            row_errors.append("El estado debe ser Activo, Pausado o Desvinculado.")
+        cbu = _employee_import_digits(values.get("cbu"))
+        if cbu and len(cbu) != 22:
+            row_errors.append("El CBU debe tener 22 dígitos.")
+
+        if cuil:
+            seen_cuils.add(cuil)
+        if row_errors:
+            errors.append({"row": excel_row, "employee": full_name, "messages": row_errors})
+            continue
+
+        weekly_hours_text = _employee_import_text(values.get("weekly_hours"))
+        weekly_hours = float(weekly_hours_text.replace(",", ".")) if re.fullmatch(r"\d+(?:[\.,]\d+)?", weekly_hours_text) else ""
+        if weekly_hours == "":
+            warnings.append({"row": excel_row, "message": "No se informaron horas semanales; se utilizarán 48 horas."})
+            weekly_hours = 48
+
+        rows.append({
+            "file_number": _employee_import_text(values.get("file_number")),
+            "full_name": full_name,
+            "cuil": cuil,
+            "category": category,
+            "start_date": start_date,
+            "status": status,
+            "profile": {
+                "dni": _employee_import_digits(values.get("dni")),
+                "birth_date": _employee_import_date(values.get("birth_date")),
+                "end_date": _employee_import_date(values.get("end_date")),
+                "rama": rama,
+                "agrup": agrup,
+                "agreement": {
+                    "GENERAL": "CCT 130/75", "CEREALES": "CCT 130/75", "FÚNEBRES": "CCT 177/75",
+                    "AGUA POTABLE": "CCT Agua potable", "CALL CENTER": "CCT 781/20", "TURISMO": "CCT 547/08",
+                }.get(rama, ""),
+                "workday": _employee_import_text(values.get("workday")),
+                "weekly_hours": weekly_hours,
+                "contract_modality": _employee_import_text(values.get("contract_modality")),
+                "email": _employee_import_text(values.get("email")).lower(),
+                "phone": _employee_import_text(values.get("phone")),
+                "address": _employee_import_text(values.get("address")),
+                "locality": _employee_import_text(values.get("locality")),
+                "province": _employee_import_text(values.get("province")),
+                "health_insurance_name": _employee_import_text(values.get("health_insurance_name")),
+                "health_insurance_member": _employee_import_text(values.get("health_insurance_member")),
+                "health_insurance_start": _employee_import_date(values.get("health_insurance_start")),
+                "union_name": _employee_import_text(values.get("union_name")),
+                "union_member": _employee_import_text(values.get("union_member")),
+                "bank_name": _employee_import_text(values.get("bank_name")),
+                "cbu": cbu,
+                "bank_alias": _employee_import_text(values.get("bank_alias")),
+                "payment_method": _employee_import_text(values.get("payment_method")) or "Transferencia bancaria",
+            },
+            "arca_profile": {
+                "health_insurance_code": _employee_import_digits(values.get("health_insurance_code")),
+                "contract_modality_code": _employee_import_digits(values.get("contract_modality_code")),
+                "union_code": _employee_import_digits(values.get("union_code")),
+            },
+        })
+
+    workbook.close()
+    return {"ok": not errors, "rows": rows, "errors": errors, "warnings": warnings, "count": len(rows)}
+
+
 # ========= HOME → HTML =========
 @app.get("/", include_in_schema=False)
 def home():
@@ -766,6 +978,29 @@ def company_portal():
     if COMPANY_PORTAL_FILE.exists():
         return FileResponse(COMPANY_PORTAL_FILE, headers=NOINDEX_HEADERS)
     return HTMLResponse("<h1>Portal de empresas no encontrado</h1>", status_code=404, headers=NOINDEX_HEADERS)
+
+
+@app.get("/plantilla-importacion-empleados.xlsx", include_in_schema=False)
+def employee_import_template():
+    if EMPLOYEE_IMPORT_TEMPLATE_FILE.exists():
+        return FileResponse(
+            EMPLOYEE_IMPORT_TEMPLATE_FILE,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="plantilla_importacion_empleados.xlsx",
+            headers=NOINDEX_HEADERS,
+        )
+    raise HTTPException(status_code=404, detail="Plantilla no disponible.")
+
+
+@app.post("/employees-import-preview")
+async def employee_import_preview(file: UploadFile = File(...)):
+    filename = str(file.filename or "")
+    if Path(filename).suffix.lower() != ".xlsx":
+        raise HTTPException(status_code=400, detail="Seleccioná un archivo Excel con extensión .xlsx.")
+    contents = await file.read(EMPLOYEE_IMPORT_MAX_BYTES + 1)
+    if len(contents) > EMPLOYEE_IMPORT_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="El archivo supera el máximo permitido de 3 MB.")
+    return _parse_employee_import(contents)
 
 # ========= HEALTH =========
 @app.get("/health")
