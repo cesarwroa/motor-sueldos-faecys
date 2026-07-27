@@ -225,9 +225,9 @@
 
     <article id="batchCard" class="card">
       <div class="summary"><div><h2>Liquidación de la nómina</h2><p id="batchPeriodText" class="muted">Seleccioná un período mensual.</p></div><span class="pill">Pasos 4 y 5</span></div>
-      <div class="actions"><button id="batchCalculateBtn" type="button">Liquidar nómina</button><button id="batchRefreshBtn" class="secondary" type="button">Actualizar resultados</button><button id="batchPrintAllBtn" class="secondary" type="button" disabled>PDF conjunto</button></div>
+      <div class="actions"><button id="batchCalculateBtn" type="button">Liquidar nómina</button><button id="batchRefreshBtn" class="secondary" type="button">Actualizar resultados</button><button id="batchCancelBtn" class="danger hidden" type="button">Cancelar trabajo</button><button id="batchRetryBtn" class="secondary hidden" type="button">Reintentar errores</button><button id="batchPrintAllBtn" class="secondary" type="button" disabled>PDF conjunto</button></div>
       <div id="batchProgress" class="progress hidden"><span></span></div>
-      <p class="queue-note">La nómina se calcula y guarda en cola, un empleado por vez. Si una ficha falla, el resto continúa.</p>
+      <p class="queue-note">La nómina se procesa en el servidor. Podés cerrar esta página: el trabajo continuará y conservará el progreso.</p>
       <div id="batchStatus" class="status"></div>
       <div id="batchEmpty" class="empty">Todavía no hay liquidaciones calculadas para el período.</div>
       <div id="batchTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Remunerativo</th><th>No remunerativo</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead><tbody id="batchTbody"></tbody></table></div>
@@ -306,6 +306,9 @@
   let companyLogoImage = "";
   let employeeImportRows = [];
   let payrollQueueRunning = false;
+  let activePayrollJob = null;
+  let payrollJobItems = [];
+  let payrollJobPollTimer = null;
   let teamMembers = [];
   let activeSessions = [];
   let auditItems = [];
@@ -611,8 +614,8 @@
   function activePeriod(){return periods.find(item=>String(item.id)===String(activePeriodId))||null;}
 
   async function loadPeriods(){
-    const company=activeCompany();if(!company){periods=[];novelties=[];payrolls=[];activePeriodId="";renderPeriods();renderNovelties();renderPayrolls();return;}
-    try{const data=await api("periods",{params:{company_id:company.id}});periods=data.items||[];if(activePeriodId&&!periods.some(item=>String(item.id)===String(activePeriodId)))activePeriodId="";if(!activePeriodId&&periods.length)activePeriodId=periods[0].id;renderPeriods();if(activePeriodId){await loadNovelties();await loadPayrolls();}else{novelties=[];payrolls=[];renderNovelties();renderPayrolls();}}catch(err){periods=[];renderPeriods();setStatus("periodSaveStatus",err.message);}
+    const company=activeCompany();if(!company){stopPayrollJobPolling();periods=[];novelties=[];payrolls=[];activePayrollJob=null;payrollJobItems=[];activePeriodId="";renderPeriods();renderNovelties();renderPayrollJob();return;}
+    try{const data=await api("periods",{params:{company_id:company.id}});periods=data.items||[];if(activePeriodId&&!periods.some(item=>String(item.id)===String(activePeriodId)))activePeriodId="";if(!activePeriodId&&periods.length)activePeriodId=periods[0].id;renderPeriods();if(activePeriodId){await loadNovelties();await loadPayrolls();await loadPayrollJob();}else{novelties=[];payrolls=[];activePayrollJob=null;payrollJobItems=[];renderNovelties();renderPayrollJob();}}catch(err){periods=[];renderPeriods();setStatus("periodSaveStatus",err.message);}
   }
 
   function renderPeriods(){
@@ -651,7 +654,7 @@
     try{await api("period-reopen",{method:"POST",body:{company_id:company.id,period_id:item.id}});await loadPeriods();setStatus("periodSaveStatus","Período reabierto.",true);}catch(err){setStatus("periodSaveStatus",err.message);}
   }
 
-  async function selectPeriod(id){activePeriodId=id;renderPeriods();await loadNovelties();await loadPayrolls();$("noveltiesCard").scrollIntoView({behavior:"smooth",block:"start"});}
+  async function selectPeriod(id){stopPayrollJobPolling();activePayrollJob=null;payrollJobItems=[];activePeriodId=id;renderPeriods();await loadNovelties();await loadPayrolls();await loadPayrollJob();$("noveltiesCard").scrollIntoView({behavior:"smooth",block:"start"});}
 
   async function loadNovelties(){
     const company=activeCompany(),period=activePeriod();if(!company||!period){novelties=[];renderNovelties();return;}
@@ -691,36 +694,48 @@
   }
 
   function renderPayrolls(){
-    const period=activePeriod(),canPayroll=["owner","admin","payroll"].includes(activeCompany()?.role||""),canCalculate=canPayroll&&period&&period.payroll_type==="monthly"&&!["closed","cancelled"].includes(period.status);$("batchCalculateBtn").disabled=!canCalculate||employees.filter(item=>item.status==="active").length===0;$("batchPrintAllBtn").disabled=payrolls.length===0;$("batchPeriodText").textContent=period?`${period.label||formatPeriod(period.period)} · ${mapPeriodType(period.payroll_type)} · ${mapPeriodStatus(period.status)}`:"Seleccioná un período mensual.";$("batchEmpty").classList.toggle("hidden",payrolls.length>0);$("batchTableWrap").classList.toggle("hidden",payrolls.length===0);
+    const period=activePeriod(),canPayroll=["owner","admin","payroll"].includes(activeCompany()?.role||""),canCalculate=canPayroll&&period&&period.payroll_type==="monthly"&&!["closed","cancelled"].includes(period.status),jobRunning=["pending","processing","retrying"].includes(activePayrollJob?.status||"");$("batchCalculateBtn").disabled=!canCalculate||jobRunning||employees.filter(item=>item.status==="active").length===0;$("batchPrintAllBtn").disabled=payrolls.length===0;$("batchPeriodText").textContent=period?`${period.label||formatPeriod(period.period)} · ${mapPeriodType(period.payroll_type)} · ${mapPeriodStatus(period.status)}`:"Seleccioná un período mensual.";$("batchEmpty").classList.toggle("hidden",payrolls.length>0);$("batchTableWrap").classList.toggle("hidden",payrolls.length===0);
     $("batchTbody").innerHTML=payrolls.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">CUIL ${esc(item.cuil)}</span></td><td class="amount">${money(item.remunerative)}</td><td class="amount">${money(item.non_remunerative)}</td><td class="amount">${money(item.deductions)}</td><td class="amount"><strong>${money(item.net_amount)}</strong></td><td><button class="secondary small-button" type="button" data-print-payroll="${esc(item.id)}">PDF individual</button></td></tr>`).join("");
   }
 
-  function yearsAtPeriod(startDate,period){if(!startDate||String(period).length!==6)return 0;const start=new Date(`${startDate}T00:00:00`),end=new Date(Number(String(period).slice(0,4)),Number(String(period).slice(4,6)),0);if(Number.isNaN(start.getTime()))return 0;let years=end.getFullYear()-start.getFullYear();if(end.getMonth()<start.getMonth()||(end.getMonth()===start.getMonth()&&end.getDate()<start.getDate()))years--;return Math.max(0,years);}
-  function noveltySum(items,types,field="amount"){return items.filter(item=>types.includes(item.concept_type)).reduce((sum,item)=>sum+Number(item[field]||0),0);}
-  function noveltyFlag(items,types){return items.some(item=>types.includes(item.concept_type));}
+  function stopPayrollJobPolling(){if(payrollJobPollTimer){clearTimeout(payrollJobPollTimer);payrollJobPollTimer=null;}}
+  function payrollJobRunning(){return ["pending","processing","retrying"].includes(activePayrollJob?.status||"");}
+  function renderPayrollJob(){
+    const job=activePayrollJob,running=payrollJobRunning(),retryable=["completed_with_errors","failed","cancelled"].includes(job?.status||"")&&payrollJobItems.some(item=>["failed","cancelled"].includes(item.status));
+    $("batchCancelBtn").classList.toggle("hidden",!running);$("batchRetryBtn").classList.toggle("hidden",!retryable);$("batchRefreshBtn").disabled=false;
+    if(!job){setQueueProgress("batchProgress",0,0);renderPayrolls();return;}
+    const total=Number(job.total_items||0),done=Number(job.processed_items||0),ok=Number(job.succeeded_items||0),failed=Number(job.failed_items||0),cancelled=Number(job.cancelled_items||0);
+    setQueueProgress("batchProgress",done,total);
+    const labels={pending:"Pendiente",processing:"Procesando",retrying:"Reintentando",completed:"Finalizado",completed_with_errors:"Finalizado con errores",failed:"Fallido",cancelled:"Cancelado"};
+    const errors=payrollJobItems.filter(item=>item.status==="failed").slice(0,5).map(item=>`${item.full_name||item.entity_id}: ${item.error_message||"Error sin detalle"}`);
+    setStatus("batchStatus",`${labels[job.status]||job.status}: ${done} de ${total}. Correctas: ${ok}${failed?` · errores: ${failed}`:""}${cancelled?` · canceladas: ${cancelled}`:""}${errors.length?` · ${errors.join(" | ")}`:""}`,job.status==="completed");
+    renderPayrolls();
+  }
+  async function loadPayrollJob(jobId=""){
+    stopPayrollJobPolling();
+    const company=activeCompany(),period=activePeriod();if(!company||!period){activePayrollJob=null;payrollJobItems=[];renderPayrollJob();return;}
+    try{
+      const data=await api("job-status",{params:{company_id:company.id,period_id:period.id,job_id:jobId}});
+      activePayrollJob=data.job||null;payrollJobItems=data.items||[];payrollQueueRunning=payrollJobRunning();renderPayrollJob();
+      if(payrollQueueRunning)payrollJobPollTimer=setTimeout(()=>loadPayrollJob(activePayrollJob?.id||""),2500);
+      else if(activePayrollJob){await loadPayrolls();await loadSubscription();}
+    }catch(err){activePayrollJob=null;payrollJobItems=[];payrollQueueRunning=false;renderPayrollJob();if(!/inexistente/i.test(err.message))setStatus("batchStatus",err.message);}
+  }
 
   async function calculateBatch(){
-    if(payrollQueueRunning)return setStatus("batchStatus","La cola de liquidación ya está en curso.");
-    const company=activeCompany(),period=activePeriod(),activeEmployees=employees.filter(item=>item.status==="active");if(!company||!period||period.payroll_type!=="monthly")return setStatus("batchStatus","Seleccioná un período mensual.");if(!activeEmployees.length)return setStatus("batchStatus","No hay empleados activos para liquidar.");
-    const invalid=activeEmployees.filter(item=>digits(item.cuil).length!==11||!item.category||!item.start_date||!item.profile?.rama||!item.profile?.agrup||Number(item.profile?.weekly_hours||0)<=0);
-    if(invalid.length)return setStatus("batchStatus",`Corregí las fichas antes de liquidar: ${invalid.map(item=>item.full_name).join(", ")}. Deben tener CUIL, fecha de ingreso, rama, agrupamiento, categoría y horas semanales.`);
-    payrollQueueRunning=true;$("batchCalculateBtn").disabled=true;$("batchRefreshBtn").disabled=true;setQueueProgress("batchProgress",0,activeEmployees.length);
-    setStatus("batchStatus",`Cola de liquidación: 0 de ${activeEmployees.length}...`);let completed=0;const errors=[];
-    for(const employee of activeEmployees){
-      try{
-        const employeeNovelties=novelties.filter(item=>String(item.employee_id)===String(employee.id));
-        const customRem=noveltySum(employeeNovelties,["commission","bonus","other"]);
-        const driverKm=noveltyFlag(employeeNovelties,["km_driver_under100","km_driver_over100"]);
-        const helperKm=noveltyFlag(employeeNovelties,["km_helper_under100","km_helper_over100"]);
-        const cashType=noveltyFlag(employeeNovelties,["cash_handling_b"])?"B":noveltyFlag(employeeNovelties,["cash_handling_c"])?"C":noveltyFlag(employeeNovelties,["cash_handling_a"])?"A":"";
-        const funeralIds=[["funeral_general","Adicional General (todo el personal, incluidos choferes)"],["funeral_other","Adicional Personal no incluido en inciso 1"],["funeral_driver","Adicional Chofer/Furgonero (vehículos)"],["funeral_clothing","Adicional por Indumentaria"]].filter(([type])=>noveltyFlag(employeeNovelties,[type])).map(([,id])=>id);
-        const tourismTitle=noveltyFlag(employeeNovelties,["tourism_title_degree"])?5:noveltyFlag(employeeNovelties,["tourism_title_tertiary"])?2.5:0;
-        const params={rama:employee.profile?.rama||"GENERAL",agrup:employee.profile?.agrup||"GENERAL",categoria:String(employee.category||"MAESTRANZA A").toUpperCase(),mes:`${String(period.period).slice(0,4)}-${String(period.period).slice(4,6)}`,jornada:Number(employee.profile?.weekly_hours||48),anios_antig:yearsAtPeriod(employee.start_date,period.period),osecac:!!employee.profile?.health_insurance_name,afiliado:!!employee.profile?.union_name,hex50:noveltySum(employeeNovelties,["overtime_50"],"quantity"),hex100:noveltySum(employeeNovelties,["overtime_100"],"quantity"),hs_noct:noveltySum(employeeNovelties,["night_hours"],"quantity"),fer_trab:noveltySum(employeeNovelties,["holiday"],"quantity"),fer_no_trab:noveltySum(employeeNovelties,["holiday_not_worked"],"quantity"),vac_goz:noveltySum(employeeNovelties,["vacation_days"],"quantity"),aus_inj:noveltySum(employeeNovelties,["absence"],"quantity"),susp_dias:noveltySum(employeeNovelties,["license"],"quantity"),embargo:noveltySum(employeeNovelties,["garnishment"]),adelanto_sueldo:noveltySum(employeeNovelties,["advance"]),a_cuenta_rem:customRem,viaticos_nr:noveltySum(employeeNovelties,["viaticos_nr"]),conexiones:Math.max(0,Math.round(noveltySum(employeeNovelties,["water_connections"],"quantity"))),titulo_pct:tourismTitle,fun_adic:funeralIds.join(";"),km_tipo:driverKm?"CH":helperKm?"AY":"",km_menos100:noveltySum(employeeNovelties,["km_driver_under100","km_helper_under100"],"quantity"),km_mas100:noveltySum(employeeNovelties,["km_driver_over100","km_helper_over100"],"quantity"),manejo_caja:!!cashType,cajero_tipo:cashType,faltante_caja:noveltySum(employeeNovelties,["cash_shortage"]),armado_vidriera:noveltyFlag(employeeNovelties,["window_dressing"])};
-        const url=new URL("/calcular",location.origin);Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));const response=await fetch(url);const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.detail||result.message||`Error HTTP ${response.status}`);if(customRem>0&&Array.isArray(result.items))result.items=result.items.map(item=>String(item.concepto||"").startsWith("A cuenta futuros")?{...item,concepto:"Comisiones y adicionales informados"}:item);
-        await api("payrolls",{method:"POST",body:{company_id:company.id,employee_id:employee.id,period:period.period,payroll_type:"monthly",inputs:{engine_params:params,novelties:employeeNovelties,company_snapshot:company,employee_snapshot:employee,period_snapshot:period},result}});completed++;
-      }catch(err){errors.push(`${employee.full_name}: ${err.message}`);}setQueueProgress("batchProgress",completed+errors.length,activeEmployees.length);setStatus("batchStatus",`Cola de liquidación: ${completed+errors.length} de ${activeEmployees.length}...`);
-    }
-    payrollQueueRunning=false;$("batchRefreshBtn").disabled=false;await loadPayrolls();await loadPeriods();await loadSubscription();renderPayrolls();setStatus("batchStatus",errors.length?`Cola finalizada. Se calcularon ${completed}. Errores: ${errors.join(" | ")}`:`Cola finalizada: ${completed} empleado${completed===1?"":"s"} y sus recibos quedaron guardados.`,errors.length===0);
+    if(payrollJobRunning())return setStatus("batchStatus","Ya existe un trabajo de liquidación en curso.");
+    const company=activeCompany(),period=activePeriod();if(!company||!period||period.payroll_type!=="monthly")return setStatus("batchStatus","Seleccioná un período mensual.");
+    payrollQueueRunning=true;$("batchCalculateBtn").disabled=true;$("batchRefreshBtn").disabled=true;setQueueProgress("batchProgress",0,employees.filter(item=>item.status==="active").length);setStatus("batchStatus","Creando trabajo persistente...");
+    try{const data=await api("payroll-job",{method:"POST",body:{company_id:company.id,period_id:period.id}});activePayrollJob=data.job||null;payrollJobItems=[];renderPayrollJob();await loadPayrollJob(activePayrollJob?.id||"");}
+    catch(err){payrollQueueRunning=false;$("batchRefreshBtn").disabled=false;renderPayrolls();setStatus("batchStatus",err.message);}
+  }
+  async function cancelPayrollJob(){
+    const company=activeCompany();if(!company||!activePayrollJob||!confirm("¿Cancelar el trabajo pendiente? Los resultados ya guardados se conservarán."))return;
+    setStatus("batchStatus","Solicitando cancelación...");try{const data=await api("job-cancel",{method:"POST",body:{company_id:company.id,job_id:activePayrollJob.id}});activePayrollJob=data.job||activePayrollJob;await loadPayrollJob(activePayrollJob.id);}catch(err){setStatus("batchStatus",err.message);}
+  }
+  async function retryPayrollJob(){
+    const company=activeCompany();if(!company||!activePayrollJob)return;
+    setStatus("batchStatus","Preparando reintento...");try{const data=await api("job-retry",{method:"POST",body:{company_id:company.id,job_id:activePayrollJob.id}});activePayrollJob=data.job||activePayrollJob;await loadPayrollJob(activePayrollJob.id);}catch(err){setStatus("batchStatus",err.message);}
   }
 
   function normalizeFAECYSConcept(concept){const value=String(concept||"").trim();if(/^FAECYS\b/i.test(value)&&(/0\s*[,\.]\s*5/.test(value)||/Art\.?\s*100/i.test(value)))return "FAECYS 0,5% Art. 100";return value;}
@@ -851,7 +866,7 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",loadPayrolls);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",async()=>{await loadPayrolls();await loadPayrollJob(activePayrollJob?.id||"");});$("batchCancelBtn").addEventListener("click",cancelPayrollJob);$("batchRetryBtn").addEventListener("click",retryPayrollJob);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
@@ -860,7 +875,7 @@
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
-  $("logoutBtn").addEventListener("click",async()=>{try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];subscriptionSummary=null;activePeriodId="";renderSession();});
+  $("logoutBtn").addEventListener("click",async()=>{stopPayrollJobPolling();try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePayrollJob=null;payrollJobItems=[];subscriptionSummary=null;activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
   $("planCatalog").addEventListener("click",ev=>{const plan=ev.target?.dataset?.requestPlan;if(plan)requestPlan(plan);});
   $("teamTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.removeMember;if(id)removeTeamMember(id);});
