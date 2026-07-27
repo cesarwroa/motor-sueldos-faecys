@@ -789,6 +789,12 @@ def calcular_payload(
     adelanto_sueldo: float = 0,
     # SAC (estimación proporcional en mensual)
     sac_prop_mes: bool = False,
+    # Empresas: base real tomada de liquidaciones mensuales ya guardadas.
+    # Los valores negativos conservan el cálculo público basado en escalas.
+    sac_base_rem: float = -1,
+    sac_base_nr: float = -1,
+    sac_factor: float = 1,
+    sac_base_period: str = "",
     # Agua potable: selector A/B/C/D (impacta en básicos y NR). Se mantiene conexiones por compatibilidad.
     conex_cat: str = "",
     conexiones: int = 0,
@@ -1272,15 +1278,22 @@ def calcular_payload(
     except Exception:
         mes_num = 0
 
-    # Base SAC = Base mensual + Presentismo (REM y NR), sin extras/vacaciones.
-    base_sac_rem = round2((bas + zona + antig) + (presentismo if presentismo_habil else 0.0))
-    base_sac_nr = round2((nr_base_total + antig_nr) + (presentismo_nr if presentismo_habil else 0.0))
+    # En la calculadora pública la base continúa saliendo de la escala. En empresas
+    # puede venir del mejor recibo mensual efectivamente guardado en el semestre.
+    sac_historical_override = float(sac_base_rem or 0) >= 0 or float(sac_base_nr or 0) >= 0
+    if sac_historical_override:
+        base_sac_rem = round2(max(0.0, float(sac_base_rem or 0.0)))
+        base_sac_nr = round2(max(0.0, float(sac_base_nr or 0.0)))
+    else:
+        base_sac_rem = round2((bas + zona + antig) + (presentismo if presentismo_habil else 0.0))
+        base_sac_nr = round2((nr_base_total + antig_nr) + (presentismo_nr if presentismo_habil else 0.0))
     sac_row_base = round2(base_sac_rem + base_sac_nr)
 
     if mes_num in (6, 12):
         sac_concepto = "SAC (Junio)" if mes_num == 6 else "SAC (Diciembre)"
-        sac_row_rem = round2(base_sac_rem * 0.5)
-        sac_row_nr = round2(base_sac_nr * 0.5)
+        sac_proration = max(0.0, min(1.0, float(sac_factor or 0.0)))
+        sac_row_rem = round2(base_sac_rem * 0.5 * sac_proration)
+        sac_row_nr = round2(base_sac_nr * 0.5 * sac_proration)
         rem_total = round2(rem_total + sac_row_rem)
         nr_total = round2(nr_total + sac_row_nr)
     elif bool(sac_prop_mes) and (1 <= mes_num <= 12):
@@ -1407,10 +1420,15 @@ def calcular_payload(
 
     # SAC (48hs para base de Obra Social)
     if mes_num in (6, 12):
-        base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
-        base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
-        sac_row_rem_os = round2(base_sac_rem_os * 0.5)
-        sac_row_nr_os = round2(base_sac_nr_os * 0.5)
+        if sac_historical_override:
+            base_sac_rem_os = base_sac_rem
+            base_sac_nr_os = base_sac_nr
+        else:
+            base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
+            base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
+        sac_proration = max(0.0, min(1.0, float(sac_factor or 0.0)))
+        sac_row_rem_os = round2(base_sac_rem_os * 0.5 * sac_proration)
+        sac_row_nr_os = round2(base_sac_nr_os * 0.5 * sac_proration)
         rem_total_os = round2(rem_total_os + sac_row_rem_os)
         nr_total_os = round2(nr_total_os + sac_row_nr_os)
     elif bool(sac_prop_mes) and (1 <= mes_num <= 12):
@@ -2048,6 +2066,36 @@ def calcular_payload(
     total_contribuciones_empleador = round2(sum(float(x.get("importe") or 0.0) for x in contribuciones_empleador_items))
     costo_laboral_total = round2(mensual_rem_total + mensual_nr_total + total_contribuciones_empleador)
 
+    # El recibo SAC empresarial lleva únicamente las contribuciones variables
+    # propias del aguinaldo; no repite importes fijos mensuales.
+    sac_contribuciones_empleador_items: List[Dict[str, Any]] = []
+    if aplica_costo_empleador and sac_habil:
+        if sac_rem_aportes:
+            for label, pct in ss_rates:
+                sac_contribuciones_empleador_items.append(
+                    contrib_item(label, sac_rem_aportes * (pct / 100.0), sac_rem_aportes)
+                )
+        if bool(osecac) and not bool(jubilado) and sac_os_base:
+            sac_contribuciones_empleador_items.append(
+                contrib_item("Obra Social empleador (6%)", sac_os_base * 0.06, sac_os_base)
+            )
+        if art_pct_f and sac_base_fs:
+            sac_contribuciones_empleador_items.append(
+                contrib_item(f"ART variable ({_fmt_pct(art_pct_f)}%)", sac_base_fs * (art_pct_f / 100.0), sac_base_fs)
+            )
+        if rama_norm == "TURISMO" and (sac_rem_total + sac_nr_total):
+            sac_contribuciones_empleador_items.append(
+                contrib_item("INCATUR (1%)", (sac_rem_total + sac_nr_total) * 0.01, sac_rem_total + sac_nr_total)
+            )
+        if rama_norm != "CEREALES" and sac_rem_aportes:
+            sac_contribuciones_empleador_items.append(
+                contrib_item("La Estrella (1,60%)", sac_rem_aportes * 0.016, sac_rem_aportes)
+            )
+    sac_total_contribuciones = round2(
+        sum(float(x.get("importe") or 0.0) for x in sac_contribuciones_empleador_items)
+    )
+    sac_costo_laboral_total = round2(sac_rem_total + sac_nr_total + sac_total_contribuciones)
+
     return {
         "ok": True,
         "rama": base["rama"],
@@ -2104,6 +2152,23 @@ def calcular_payload(
                     "nr": float(sac_nr_total),
                     "ded": float(sac_ded_total),
                     "neto": float(sac_neto),
+                    "contribuciones_empleador": float(sac_total_contribuciones),
+                    "costo_laboral_total": float(sac_costo_laboral_total),
+                },
+                "contribuciones_empleador": {
+                    "regimen": regimen_key,
+                    "regimen_label": regimen_label,
+                    "items": sac_contribuciones_empleador_items,
+                    "total": float(sac_total_contribuciones),
+                    "costo_laboral_total": float(sac_costo_laboral_total),
+                },
+                "base_sac": {
+                    "origen": "liquidaciones_guardadas" if sac_historical_override else "escala",
+                    "periodo": str(sac_base_period or ""),
+                    "remunerativo": float(base_sac_rem),
+                    "no_remunerativo": float(base_sac_nr),
+                    "total": float(sac_row_base),
+                    "factor": float(max(0.0, min(1.0, float(sac_factor or 0.0)))),
                 },
             }
             if sac_habil
