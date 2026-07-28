@@ -15,6 +15,7 @@
     .logo-preview-wrap{display:flex;align-items:center;gap:12px;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.logo-preview-wrap img{display:block;width:120px;height:64px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px}.logo-preview-wrap button{flex:none}
     .progress{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:10px}.progress>span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}.check-line{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:14px;font-weight:700}.check-line input{width:auto}.import-summary{margin-top:12px;font-size:14px}.queue-note{font-size:12px;color:var(--muted);margin-top:8px}
     .usage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.usage-box{padding:12px;border:1px solid var(--line);border-radius:13px;background:#f8fafc}.usage-box strong{display:block;font-size:20px;margin-top:3px}.usage-box span{font-size:12px;color:var(--muted)}.plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.plan-box{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}.plan-box.current{border:2px solid var(--blue);background:#eff6ff}.plan-box h3{margin:0 0 6px;font-size:16px}.plan-box ul{margin:10px 0 14px;padding-left:18px;color:var(--muted);font-size:12px;min-height:75px}.plan-box button{width:100%}.plan-request{margin-top:14px}
+    .arca-table{min-width:1040px}.arca-table input,.arca-table select{padding:7px 8px;font-size:12px}.arca-code{width:112px}.arca-unit{width:92px}.arca-checks{display:grid;grid-template-columns:repeat(2,minmax(190px,1fr));gap:6px 14px;padding:10px 0}.arca-checks label{display:flex;align-items:center;gap:7px;margin:0;font-size:12px;font-weight:650}.arca-checks input{width:auto}.arca-review{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750}.arca-review input{width:auto}.validation-box{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#f8fafc;font-size:13px}.validation-box ul{margin:8px 0 0;padding-left:20px}.validation-box.invalid{background:#fff1f2;border-color:#fecdd3;color:#9f1239}.validation-box.valid{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
     @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -285,9 +286,19 @@
       </details>
     </article>
 
-    <article class="card">
-      <h2>Próxima etapa: exportación y validación ARCA</h2>
-      <p class="muted">Las liquidaciones y recibos ya pueden quedar guardados por período. El próximo módulo parametrizará conceptos y validará el archivo antes de exportarlo al Libro de Sueldos Digital.</p>
+    <article id="arcaConceptsCard" class="card">
+      <div class="summary"><div><span class="pill">Libro de Sueldos Digital</span><h2 style="margin-top:8px">Parametrización de conceptos ARCA</h2><p class="muted">Relacioná cada concepto utilizado en las liquidaciones con el código oficial y sus subsistemas.</p></div><span id="arcaProgressPill" class="pill">Sin revisar</span></div>
+      <div class="notice"><strong>Importante:</strong> las equivalencias se sugieren automáticamente, pero deben ser revisadas por el liquidador. El archivo se genera con registros de 195 caracteres, según el diseño oficial de ARCA.</div>
+      <div id="arcaConceptsEmpty" class="empty">Todavía no hay conceptos liquidados para parametrizar.</div>
+      <div id="arcaConceptsWrap" class="table-wrap hidden">
+        <table class="arca-table">
+          <thead><tr><th>Concepto de la liquidación</th><th>Tipo</th><th>Usos</th><th>Código empleador</th><th>Código ARCA</th><th>Unidad</th><th>Subsistemas</th><th>Revisado</th></tr></thead>
+          <tbody id="arcaConceptsTbody"></tbody>
+        </table>
+      </div>
+      <div class="actions"><button id="arcaSaveBtn" type="button">Guardar parametrización</button><button id="arcaValidateBtn" class="secondary" type="button">Validar archivo</button><button id="arcaExportBtn" class="secondary" type="button">Descargar TXT de conceptos</button><button id="arcaRefreshBtn" class="secondary" type="button">Actualizar conceptos</button></div>
+      <div id="arcaStatus" class="status"></div>
+      <div id="arcaValidation" class="hidden"></div>
     </article>
 
     <article id="platformAdminPanel" class="card hidden">
@@ -322,6 +333,8 @@
   let auditItems = [];
   let planCatalog = [];
   let subscriptionSummary = null;
+  let arcaConcepts = [];
+  let arcaValidation = null;
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -424,7 +437,7 @@
   function applyRolePermissions(company){
     const role=company?.role||"",canAdmin=["owner","admin"].includes(role),canPayroll=canAdmin||role==="payroll";
     $("companySaveBtn").disabled=!canAdmin;
-    ["employeeSaveBtn","employeeImportPreviewBtn","employeeImportStartBtn","periodSaveBtn","noveltySaveBtn","batchCalculateBtn"].forEach(id=>$(id).disabled=!canPayroll);
+    ["employeeSaveBtn","employeeImportPreviewBtn","employeeImportStartBtn","periodSaveBtn","noveltySaveBtn","batchCalculateBtn","arcaSaveBtn","arcaExportBtn"].forEach(id=>$(id).disabled=!canPayroll);
     if(role==="viewer")setStatus("employeeStatus","Tu rol es de consulta: podés revisar información, pero no modificarla.");
   }
 
@@ -440,7 +453,7 @@
 
   async function loadSession(){
     if(!token()){session=null;renderSession();return;}
-    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadSecurity();if(session.is_platform_admin)await loadAdminCompanies();}
+    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(session.is_platform_admin)await loadAdminCompanies();}
     catch(err){setAuth("");session=null;renderSession();setStatus("loginStatus",err.message);}
   }
 
@@ -823,6 +836,122 @@
     if(company?.role!=="owner"&&$("teamRole").value==="admin")$("teamRole").value="payroll";
   }
 
+  const arcaFlagLabels={
+    repeatable:"Permite repetición",
+    sipa_employee:"SIPA - aportes",sipa_employer:"SIPA - contribuciones",
+    inssjp_employee:"INSSJyP - aportes",inssjp_employer:"INSSJyP - contribuciones",
+    health_employee:"Obra social - aportes",health_employer:"Obra social - contribuciones",
+    fsr_employee:"FSR - aportes",fsr_employer:"FSR - contribuciones",
+    renatea_employee:"RENATEA - aportes",renatea_employer:"RENATEA - contribuciones",
+    family_employer:"Asignaciones familiares - contribuciones",
+    employment_employer:"Fondo Nacional de Empleo - contribuciones",
+    lrt_employer:"LRT - contribuciones",
+    differential_employee:"Régimen diferencial - aportes",
+    special_employee:"Régimen especial - aportes"
+  };
+
+  function mapArcaKind(kind){
+    return ({remunerative:"Remunerativo",non_remunerative:"No remunerativo / indemnizatorio",deduction:"Descuento",unknown:"Sin importe"})[kind]||kind||"";
+  }
+
+  function arcaFlagInputs(item,index){
+    const settings=item.settings||{};
+    return Object.entries(arcaFlagLabels).map(([key,label])=>`<label><input type="checkbox" data-arca-flag="${esc(key)}" ${String(settings[key])==="1"?"checked":""}>${esc(label)}</label>`).join("");
+  }
+
+  function renderArcaConcepts(){
+    const total=arcaConcepts.length,saved=arcaConcepts.filter(item=>item.saved).length,reviewed=arcaConcepts.filter(item=>String(item.settings?.reviewed)==="1").length;
+    $("arcaConceptsEmpty").classList.toggle("hidden",total>0);
+    $("arcaConceptsWrap").classList.toggle("hidden",total===0);
+    $("arcaProgressPill").textContent=total?`${saved}/${total} guardados · ${reviewed}/${total} revisados`:"Sin conceptos";
+    $("arcaProgressPill").className=`pill ${total&&saved===total&&reviewed===total?"active":""}`;
+    $("arcaConceptsTbody").innerHTML=arcaConcepts.map((item,index)=>`<tr data-arca-row="${index}" data-concept="${esc(item.concept_name)}">
+      <td><strong>${esc(item.concept_name)}</strong><span class="subtext">${item.saved?"Parametrización guardada":"Sugerencia pendiente de guardar"}</span></td>
+      <td><span class="pill">${esc(mapArcaKind(item.kind))}</span></td>
+      <td>${Number(item.uses_count||0)}</td>
+      <td><input class="arca-code" data-arca-employer maxlength="10" value="${esc(item.employer_code)}"></td>
+      <td><input class="arca-code" data-arca-code inputmode="numeric" maxlength="6" value="${esc(item.arca_code)}"></td>
+      <td><select class="arca-unit" data-arca-unit>${["$","%","D","H","M","A","Q","S",""].map(value=>`<option value="${esc(value)}" ${String(item.unit_code)===value?"selected":""}>${value||"Sin unidad"}</option>`).join("")}</select></td>
+      <td><details><summary>Configurar</summary><div class="arca-checks">${arcaFlagInputs(item,index)}</div></details></td>
+      <td><label class="arca-review"><input type="checkbox" data-arca-reviewed ${String(item.settings?.reviewed)==="1"?"checked":""}>Confirmado</label></td>
+    </tr>`).join("");
+  }
+
+  function readArcaMappings(){
+    return Array.from(document.querySelectorAll("[data-arca-row]")).map(row=>{
+      const settings={};
+      Object.keys(arcaFlagLabels).forEach(key=>{settings[key]=row.querySelector(`[data-arca-flag="${key}"]`)?.checked?"1":"0";});
+      settings.reviewed=row.querySelector("[data-arca-reviewed]")?.checked?"1":"0";
+      return {
+        concept_name:row.dataset.concept||"",
+        employer_code:row.querySelector("[data-arca-employer]")?.value.trim()||"",
+        arca_code:digits(row.querySelector("[data-arca-code]")?.value||""),
+        unit_code:row.querySelector("[data-arca-unit]")?.value??"$",
+        settings
+      };
+    });
+  }
+
+  async function loadArcaConcepts(){
+    const company=activeCompany();arcaValidation=null;renderArcaValidation();
+    if(!company){arcaConcepts=[];renderArcaConcepts();return;}
+    setStatus("arcaStatus","Leyendo conceptos liquidados...");
+    try{
+      const data=await api("arca-concept-candidates",{params:{company_id:company.id}});
+      arcaConcepts=data.items||[];renderArcaConcepts();setStatus("arcaStatus",arcaConcepts.length?"Revisá las sugerencias antes de exportar.":"Primero guardá al menos una liquidación para detectar sus conceptos.",arcaConcepts.length>0);
+    }catch(err){arcaConcepts=[];renderArcaConcepts();setStatus("arcaStatus",err.message);}
+  }
+
+  async function saveArcaMappings(){
+    const company=activeCompany(),mappings=readArcaMappings();if(!company)return;
+    if(!mappings.length)return setStatus("arcaStatus","No hay conceptos para guardar.");
+    setStatus("arcaStatus","Guardando parametrización...");
+    try{
+      const data=await api("arca-mappings-bulk",{method:"POST",body:{company_id:company.id,mappings}});
+      await loadArcaConcepts();await validateArcaConcepts(false);await loadAudit();
+      setStatus("arcaStatus",`${data.saved||mappings.length} conceptos guardados.`,true);
+    }catch(err){setStatus("arcaStatus",err.message);}
+  }
+
+  function renderArcaValidation(){
+    const box=$("arcaValidation"),validation=arcaValidation;
+    if(!validation){box.className="hidden";box.innerHTML="";return;}
+    const errors=validation.errors||[],warnings=validation.warnings||[],ready=validation.ok;
+    box.className=`validation-box ${ready?"valid":"invalid"}`;
+    box.innerHTML=`<strong>${ready?"El TXT supera las validaciones estructurales.":"El TXT todavía no puede generarse."}</strong>
+      <div>${Number(validation.mapped_count||0)} de ${Number(validation.total_count||0)} conceptos parametrizados.</div>
+      ${errors.length?`<ul>${errors.map(item=>`<li>${esc(item)}</li>`).join("")}</ul>`:""}
+      ${warnings.length?`<div style="margin-top:8px"><strong>Advertencias:</strong></div><ul>${warnings.map(item=>`<li>${esc(item)}</li>`).join("")}</ul>`:""}`;
+  }
+
+  async function validateArcaConcepts(showStatus=true){
+    const company=activeCompany();if(!company)return false;
+    if(showStatus)setStatus("arcaStatus","Validando formato ARCA...");
+    try{
+      const data=await api("arca-concepts-validate",{params:{company_id:company.id}});
+      arcaValidation=data.validation||null;renderArcaValidation();
+      if(showStatus)setStatus("arcaStatus",arcaValidation?.ok?"Archivo listo para descargar.":"Corregí los errores indicados.",!!arcaValidation?.ok);
+      return !!arcaValidation?.ok;
+    }catch(err){arcaValidation=null;renderArcaValidation();setStatus("arcaStatus",err.message);return false;}
+  }
+
+  async function downloadArcaConcepts(){
+    const company=activeCompany();if(!company)return;
+    setStatus("arcaStatus","Validando y generando TXT...");
+    try{
+      const url=new URL(API_URL);url.searchParams.set("action","arca-concepts-export");url.searchParams.set("company_id",company.id);
+      const response=await fetch(url,{headers:{Authorization:`Bearer ${token()}`}});
+      if(!response.ok){
+        let data={};try{data=await response.json()}catch(_){}
+        if(data.validation){arcaValidation=data.validation;renderArcaValidation();}
+        throw new Error(data.message||`Error HTTP ${response.status}`);
+      }
+      const blob=await response.blob(),objectUrl=URL.createObjectURL(blob),link=document.createElement("a"),disposition=response.headers.get("Content-Disposition")||"",match=disposition.match(/filename="?([^"]+)"?/i);
+      link.href=objectUrl;link.download=match?.[1]||`LSD_CONCEPTOS_${digits(company.cuit)}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(objectUrl);
+      await loadAudit();setStatus("arcaStatus","TXT de conceptos descargado. Cada registro tiene 195 caracteres.",true);
+    }catch(err){setStatus("arcaStatus",err.message);}
+  }
+
   async function saveTeamMember(){
     const company=activeCompany();if(!company)return;
     const body={company_id:company.id,name:$("teamName").value.trim(),email:$("teamEmail").value.trim(),role:$("teamRole").value};
@@ -878,16 +1007,16 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodType").addEventListener("change",updatePeriodSpecialFields);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",async()=>{await loadPayrolls();await loadPayrollJob(activePayrollJob?.id||"");});$("batchCancelBtn").addEventListener("click",cancelPayrollJob);$("batchRetryBtn").addEventListener("click",retryPayrollJob);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodType").addEventListener("change",updatePeriodSpecialFields);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",async()=>{await loadPayrolls();await loadPayrollJob(activePayrollJob?.id||"");});$("batchCancelBtn").addEventListener("click",cancelPayrollJob);$("batchRetryBtn").addEventListener("click",retryPayrollJob);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("arcaSaveBtn").addEventListener("click",saveArcaMappings);$("arcaValidateBtn").addEventListener("click",()=>validateArcaConcepts(true));$("arcaExportBtn").addEventListener("click",downloadArcaConcepts);$("arcaRefreshBtn").addEventListener("click",loadArcaConcepts);$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
-  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadSecurity();});
+  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();});
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
-  $("logoutBtn").addEventListener("click",async()=>{stopPayrollJobPolling();try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];activePayrollJob=null;payrollJobItems=[];subscriptionSummary=null;activePeriodId="";renderSession();});
+  $("logoutBtn").addEventListener("click",async()=>{stopPayrollJobPolling();try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];arcaConcepts=[];arcaValidation=null;activePayrollJob=null;payrollJobItems=[];subscriptionSummary=null;activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
   $("planCatalog").addEventListener("click",ev=>{const plan=ev.target?.dataset?.requestPlan;if(plan)requestPlan(plan);});
   $("teamTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.removeMember;if(id)removeTeamMember(id);});
