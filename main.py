@@ -11,7 +11,7 @@ import time
 import unicodedata
 import uuid
 
-from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -32,21 +32,36 @@ from escalas import (
     calcular_vacaciones_payload,
 )
 
-app = FastAPI(title="motor-sueldos-faecys")
+app = FastAPI(
+    title="motor-sueldos-faecys",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 # CORS
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "https://app.calculadoradecomercio.com.ar,"
+        "https://calculadoradecomercio.com.ar,"
+        "https://www.calculadoradecomercio.com.ar",
+    ).split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "cesarwroa@gmail.com").strip().lower()
-ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "Dni27941408")
-ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "co-admin-access-2026-change-me")
+ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "").strip().lower()
+ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "")
+ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "")
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
 ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
@@ -57,7 +72,7 @@ ADMIN_LEADS_FILE = BASE_DIR / "data" / "admin_leads.json"
 ADMIN_PAYROLL_HISTORY_FILE = BASE_DIR / "data" / "admin_payroll_history.json"
 ADMIN_ARCA_MAPPINGS_FILE = BASE_DIR / "data" / "admin_arca_mappings.json"
 ADMIN_COMPANY_ASSETS_DIR = BASE_DIR / "data" / "admin_company_assets"
-ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
+ADMIN_COMPANY_ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 ADMIN_COMPANY_ASSET_MAX_BYTES = int(os.getenv("ADMIN_COMPANY_ASSET_MAX_BYTES", str(5 * 1024 * 1024)))
 PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
 PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
@@ -84,6 +99,53 @@ DEFAULT_PUBLIC_FEATURES = {
 
 EMPLOYEE_IMPORT_MAX_BYTES = 3 * 1024 * 1024
 EMPLOYEE_IMPORT_MAX_ROWS = 500
+_RATE_LIMIT_BUCKETS: Dict[str, List[float]] = {}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+        "object-src 'none'; form-action 'self'; "
+        "img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' https://calculadoradecomercio.com.ar"
+    )
+    return response
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = str(request.headers.get("x-forwarded-for") or "").split(",", 1)[0].strip()
+    return forwarded or (request.client.host if request.client else "unknown")
+
+
+def _enforce_rate_limit(request: Request, scope: str, limit: int, window_seconds: int) -> None:
+    now = time.monotonic()
+    key = f"{scope}:{_client_ip(request)}"
+    cutoff = now - window_seconds
+    attempts = [stamp for stamp in _RATE_LIMIT_BUCKETS.get(key, []) if stamp > cutoff]
+    if len(attempts) >= limit:
+        raise HTTPException(status_code=429, detail="Demasiadas solicitudes. Intentá nuevamente más tarde.")
+    attempts.append(now)
+    _RATE_LIMIT_BUCKETS[key] = attempts
+
+
+def _require_admin_security_config() -> None:
+    if (
+        not ADMIN_LOGIN_EMAIL
+        or len(ADMIN_LOGIN_PASSWORD) < 12
+        or len(ADMIN_ACCESS_SECRET.encode("utf-8")) < 32
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="El acceso administrativo no está configurado de forma segura.",
+        )
 EMPLOYEE_IMPORT_HEADERS = {
     "legajo": "file_number",
     "apellido_y_nombre": "full_name",
@@ -994,7 +1056,8 @@ def employee_import_template():
 
 
 @app.post("/employees-import-preview")
-async def employee_import_preview(file: UploadFile = File(...)):
+async def employee_import_preview(request: Request, file: UploadFile = File(...)):
+    _enforce_rate_limit(request, "employee-import", 10, 600)
     filename = str(file.filename or "")
     if Path(filename).suffix.lower() != ".xlsx":
         raise HTTPException(status_code=400, detail="Seleccioná un archivo Excel con extensión .xlsx.")
@@ -1010,7 +1073,8 @@ def health():
 
 
 @app.post("/leads")
-def create_public_lead(payload: PublicLeadCreate):
+def create_public_lead(payload: PublicLeadCreate, request: Request):
+    _enforce_rate_limit(request, "public-leads", 5, 3600)
     nombre = _clean_lead_text(payload.nombre, 160)
     email = _clean_lead_text(payload.email, 220)
     empresa = _clean_lead_text(payload.empresa, 180)
@@ -1044,7 +1108,9 @@ def create_public_lead(payload: PublicLeadCreate):
 
 
 @app.post("/admin/login")
-def admin_login(payload: AdminLoginRequest):
+def admin_login(payload: AdminLoginRequest, request: Request):
+    _require_admin_security_config()
+    _enforce_rate_limit(request, "admin-login", 8, 900)
     email = payload.email.strip().lower()
     password = payload.password
 
