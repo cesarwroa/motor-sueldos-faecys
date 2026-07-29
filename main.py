@@ -78,6 +78,7 @@ PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
 PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
 COMPANY_PORTAL_FILE = BASE_DIR / "public" / "empresas.html"
 EMPLOYEE_IMPORT_TEMPLATE_FILE = BASE_DIR / "public" / "plantilla_importacion_empleados.xlsx"
+COMPANY_PAYROLL_MANUAL_FILE = BASE_DIR / "public" / "manual-liquidacion-recibos-libro-sueldos-digital-arca.pdf"
 ADMIN_INDEX_FILE = BASE_DIR / "index.html"
 NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
@@ -1053,6 +1054,17 @@ def employee_import_template():
             headers=NOINDEX_HEADERS,
         )
     raise HTTPException(status_code=404, detail="Plantilla no disponible.")
+
+
+@app.get("/manual-liquidacion-recibos-libro-sueldos-digital-arca.pdf", include_in_schema=False)
+def company_payroll_manual():
+    if COMPANY_PAYROLL_MANUAL_FILE.exists():
+        return FileResponse(
+            COMPANY_PAYROLL_MANUAL_FILE,
+            media_type="application/pdf",
+            headers=NOINDEX_HEADERS,
+        )
+    raise HTTPException(status_code=404, detail="Manual no disponible.")
 
 
 @app.post("/employees-import-preview")
