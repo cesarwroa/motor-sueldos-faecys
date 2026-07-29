@@ -114,9 +114,13 @@ async def security_headers(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
         "object-src 'none'; form-action 'self'; "
-        "img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "connect-src 'self' https://calculadoradecomercio.com.ar"
+        "img-src 'self' data: blob: "
+        "https://*.google-analytics.com https://*.googletagmanager.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; "
+        "connect-src 'self' https://calculadoradecomercio.com.ar "
+        "https://*.google-analytics.com https://*.analytics.google.com "
+        "https://*.googletagmanager.com"
     )
     return response
 
