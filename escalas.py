@@ -177,6 +177,17 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
     r = _norm(rama).upper()
     mes_k = _mes_to_key(mes)
+    if mes_k >= "2026-07" and r in (
+        "CALL CENTER",
+        "CALLCENTER",
+        "CALL",
+        "CENTRO DE LLAMADAS",
+        "CENTRO DE LLAMADA",
+    ):
+        return {
+            "no_rem": "Aum. NR Suma Fija Acu. Jul 26",
+            "suma_fija": "Recomp. NR Acu. Jul 26",
+        }
     if mes_k >= "2026-05" and r == "TURISMO":
         return {
             "no_rem": "Incr. NR. Acu. May 26",
@@ -3247,6 +3258,17 @@ def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Override final de etiquetas NR para usar nombres actualizados por rama/mes."""
     r = _norm(rama).upper()
     mes_k = _mes_to_key(mes)
+    if mes_k >= "2026-07" and r in (
+        "CALL CENTER",
+        "CALLCENTER",
+        "CALL",
+        "CENTRO DE LLAMADAS",
+        "CENTRO DE LLAMADA",
+    ):
+        return {
+            "no_rem": "Aum. NR Suma Fija Acu. Jul 26",
+            "suma_fija": "Recomp. NR Acu. Jul 26",
+        }
     if mes_k >= "2026-05" and r == "TURISMO":
         return {
             "no_rem": "Incr. NR. Acu. May 26",

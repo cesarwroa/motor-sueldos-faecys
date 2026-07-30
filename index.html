@@ -565,7 +565,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </head>
 <body>
 <div class="container">
-<div class="co-update-stamp no-print" id="coUpdateStamp" role="status">Paritaria CCT 130/75 · JUL 26 · ACTUALIZADA</div>
+<div class="co-update-stamp no-print" id="coUpdateStamp" role="status">Paritaria CCT 130/75 y CCT 781/20 JUL 26 ACTUALIZADA</div>
 <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h1 style="margin:0">Calculadora de Comercio</h1>
   <a class="co-home-btn" href="https://www.calculadoradecomercio.com/" title="Volver a la web principal">
@@ -3198,7 +3198,7 @@ function toggleManejoCajaUI(){
     if(r === "GENERAL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05"];
     if(r === "FUNEBRES" || r === "FUNEBRE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05"];
     if(r === "AGUA POTABLE" || r === "AGUA" || r === "AGUAPOTABLE") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
-    if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"];
+    if(r === "CALL CENTER" || r === "CENTRO DE LLAMADAS" || r === "CENTRO DE LLAMADA" || r === "CALL") return ["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10","2026-11","2026-12","2027-01","2027-02","2027-03","2027-04","2027-05"];
     // Fallback: desde 2026-01 en adelante (hasta lo disponible)
     return (ALL_MESES||[]).filter(m => /^2026-/.test(m));
   }
@@ -4341,7 +4341,7 @@ const p = await fetchJSON(url.toString());
       }
 
       setText("status", "Calculado.");
-      trackAnalyticsEvent("calculo_mensual_realizado", currentAnalyticsContext({
+      trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
         tipo_calculo: "mensual",
         jornada: String(jornada),
         con_osecac: osecac ? "si" : "no",
@@ -4351,6 +4351,9 @@ const p = await fetchJSON(url.toString());
       console.error(err);
       alert("Error al calcular (API). Revisá conexión o datos.");
       setText("status", "Error al calcular.");
+      trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
+        tipo_calculo: "mensual"
+      }));
     }
   }
 
@@ -4859,15 +4862,9 @@ const p = await fetchJSON(url.toString());
     // Construye el printArea ANTES de imprimir.
     try{
       const t = tab || 'mensual';
-      if(t === "mensual"){
-        trackAnalyticsEvent("pdf_mensual_generado", currentAnalyticsContext({
-          tipo_calculo: "mensual"
-        }));
-      }else if(t === "final"){
-        trackAnalyticsEvent("pdf_liquidacion_final_generado", currentAnalyticsContext({
-          tipo_calculo: "liquidacion_final"
-        }));
-      }
+      trackAnalyticsEvent("imprimir_pdf", currentAnalyticsContext({
+        tipo_calculo: t
+      }));
       buildPrintAreaEnhanced(t);
 
       // Forzar reflow para que el navegador “vea” el contenido
@@ -5982,7 +5979,7 @@ function switchTab(tab){
       renderAdminPreview('final', data);
 
       setText('diagFinal', 'Calculado.');
-      trackAnalyticsEvent("liquidacion_final_realizada", currentAnalyticsContext({
+      trackAnalyticsEvent("calculo_realizado", currentAnalyticsContext({
         tipo_calculo: "liquidacion_final",
         tipo_baja: tipo
       }));
@@ -5991,6 +5988,9 @@ function switchTab(tab){
       console.error(err);
       alert('Error al calcular Liquidación Final (API).');
       setText('diagFinal', 'Error al calcular.');
+      trackAnalyticsEvent("calculo_error", currentAnalyticsContext({
+        tipo_calculo: "liquidacion_final"
+      }));
     }
   };
 
