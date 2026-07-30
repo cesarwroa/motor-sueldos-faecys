@@ -755,6 +755,7 @@ def calcular_payload(
     basico_manual: float = 0,
     anios_antig: float = 0,
     osecac: bool = True,
+    obra_social_sobre_no_rem: bool = True,
     afiliado: bool = False,
     sind_pct: float = 0,
     sind_fijo: float = 0,
@@ -1168,11 +1169,11 @@ def calcular_payload(
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
-    # Presentismo sobre NR: misma lógica que REM (12ava parte), incluyendo Antigüedad NR
-    # y también horas extra/nocturnas NR.
+    # Presentismo sobre NR: 8,33% sobre los importes NR base y variables.
+    # La antigüedad NR se liquida por separado y no vuelve a integrar esta base.
     # Se pierde si hay 2+ ausencias injustificadas.
-    base_pres_nr = round2(nr_base_total + antig_nr + hex50_nr + hex100_nr + noct_nr)
-    presentismo_nr = round2(base_pres_nr / 12.0) if (base_pres_nr and presentismo_habil) else 0.0
+    base_pres_nr = round2(nr_base_total + hex50_nr + hex100_nr + noct_nr)
+    presentismo_nr = round2(base_pres_nr * 0.0833) if (base_pres_nr and presentismo_habil) else 0.0
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr + hex50_nr + hex100_nr + noct_nr)
 
@@ -1359,7 +1360,7 @@ def calcular_payload(
 
     antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
     presentismo_nr_os = (
-        round2((nr_base_total_os + antig_nr_os + hex50_nr_os + hex100_nr_os + noct_nr_os) / 12.0)
+        round2((nr_base_total_os + hex50_nr_os + hex100_nr_os + noct_nr_os) * 0.0833)
         if (nr_base_total_os and presentismo_habil)
         else 0.0
     )
@@ -1451,11 +1452,11 @@ def calcular_payload(
 
     # Obra social y aporte fijo: para JUBILADO se anulan, aun si está tildado OSECAC.
     if bool(jubilado):
-        os_base = round2(rem_aportes_os + nr_total_os)
+        os_base = round2(rem_aportes_os + (nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         os_aporte = 0.0
         osecac_100 = 0.0
     else:
-        os_base = round2((rem_aportes_os + nr_total_os) if bool(osecac) else rem_aportes_os)
+        os_base = round2(rem_aportes_os + (nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
         osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
 
@@ -1556,18 +1557,18 @@ def calcular_payload(
     if bool(jubilado):
         mensual_pami = 0.0
         sac_pami = 0.0
-        mensual_os_base = round2(mensual_rem_aportes_os + mensual_nr_total_os)
+        mensual_os_base = round2(mensual_rem_aportes_os + (mensual_nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         mensual_os_aporte = 0.0
         mensual_osecac_100 = 0.0
-        sac_os_base = round2(sac_row_rem_os + sac_row_nr_os) if sac_habil else 0.0
+        sac_os_base = round2(sac_row_rem_os + (sac_row_nr_os if bool(obra_social_sobre_no_rem) else 0.0)) if sac_habil else 0.0
         sac_os_aporte = 0.0
     else:
         mensual_pami = round2(mensual_rem_aportes * 0.03)
         sac_pami = round2(sac_rem_aportes * 0.03) if sac_habil else 0.0
-        mensual_os_base = round2((mensual_rem_aportes_os + mensual_nr_total_os) if bool(osecac) else mensual_rem_aportes_os)
+        mensual_os_base = round2(mensual_rem_aportes_os + (mensual_nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         mensual_os_aporte = round2(mensual_os_base * 0.03) if bool(osecac) else 0.0
         mensual_osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
-        sac_os_base = round2((sac_row_rem_os + sac_row_nr_os) if bool(osecac) else sac_row_rem_os) if sac_habil else 0.0
+        sac_os_base = round2(sac_row_rem_os + (sac_row_nr_os if bool(obra_social_sobre_no_rem) else 0.0)) if sac_habil else 0.0
         sac_os_aporte = round2(sac_os_base * 0.03) if (bool(osecac) and sac_habil) else 0.0
 
     mensual_faecys = round2(mensual_base_fs * 0.005) if mensual_base_fs else 0.0
@@ -1641,6 +1642,16 @@ def calcular_payload(
     mensual_neto = round2(mensual_neto_pre - mensual_embargo_monto)
     sac_ded_total = round2(sac_ded_pre + sac_embargo_monto)
     sac_neto = round2(sac_neto_pre - sac_embargo_monto)
+    mensual_neto_entero = float(
+        Decimal(str(mensual_neto)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    )
+    mensual_redondeo = round2(mensual_neto_entero - mensual_neto)
+    if mensual_redondeo > 0:
+        mensual_nr_total = round2(mensual_nr_total + mensual_redondeo)
+        mensual_neto = round2(mensual_neto + mensual_redondeo)
+    elif mensual_redondeo < 0:
+        mensual_ded_total = round2(mensual_ded_total + abs(mensual_redondeo))
+        mensual_neto = round2(mensual_neto + mensual_redondeo)
 
     def item(
         concepto: str,
@@ -1965,6 +1976,10 @@ def calcular_payload(
         sind_val=mensual_sind,
         sind_fijo_val=mensual_sind_fijo_monto,
     )
+    if mensual_redondeo > 0:
+        items.append(item("Redondeo", n=mensual_redondeo))
+    elif mensual_redondeo < 0:
+        items.append(item("Redondeo", d=abs(mensual_redondeo)))
 
     sac_items: List[Dict[str, Any]] = []
     if sac_habil:
@@ -2086,10 +2101,10 @@ def calcular_payload(
             if incagro_base:
                 contribuciones_empleador_items.append(contrib_item("INCAGRO (1%)", incagro_base * 0.01, incagro_base))
 
-    if aplica_costo_empleador:
+    if aplica_costo_empleador and bool(osecac_adicional_patronal):
         contribuciones_empleador_items.append(contrib_item("OSECAC contribucion patronal adicional", 28000.0))
 
-    if aplica_costo_empleador and rama_norm != "CEREALES" and mensual_rem_aportes:
+    if aplica_costo_empleador and bool(la_estrella) and rama_norm != "CEREALES" and mensual_rem_aportes:
         contribuciones_empleador_items.append(contrib_item("La Estrella (1,60%)", mensual_rem_aportes * 0.016, mensual_rem_aportes))
 
     total_contribuciones_empleador = round2(sum(float(x.get("importe") or 0.0) for x in contribuciones_empleador_items))
@@ -2134,6 +2149,7 @@ def calcular_payload(
         "jornada": j,
         "anios_antig": float(anios_antig or 0),
         "osecac": bool(osecac),
+        "obra_social_sobre_no_rem": bool(obra_social_sobre_no_rem),
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
         "sind_fijo": float(sind_fijo or 0),
