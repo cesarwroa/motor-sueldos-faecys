@@ -17,7 +17,8 @@
     .progress{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:10px}.progress>span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}.check-line{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:14px;font-weight:700}.check-line input{width:auto}.import-summary{margin-top:12px;font-size:14px}.queue-note{font-size:12px;color:var(--muted);margin-top:8px}
     .usage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.usage-box{padding:12px;border:1px solid var(--line);border-radius:13px;background:#f8fafc}.usage-box strong{display:block;font-size:20px;margin-top:3px}.usage-box span{font-size:12px;color:var(--muted)}.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.plan-box{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}.plan-box.current{border:2px solid var(--blue);background:#eff6ff}.plan-box h3{margin:0 0 6px;font-size:16px}.plan-box ul{margin:10px 0 14px;padding-left:18px;color:var(--muted);font-size:12px;min-height:75px}.plan-box button{width:100%}.plan-request{margin-top:14px}
     .arca-table{min-width:1040px}.arca-table input,.arca-table select{padding:7px 8px;font-size:12px}.arca-code{width:112px}.arca-unit{width:92px}.arca-checks{display:grid;grid-template-columns:repeat(2,minmax(190px,1fr));gap:6px 14px;padding:10px 0}.arca-checks label{display:flex;align-items:center;gap:7px;margin:0;font-size:12px;font-weight:650}.arca-checks input{width:auto}.arca-review{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750}.arca-review input{width:auto}.validation-box{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#f8fafc;font-size:13px}.validation-box ul{margin:8px 0 0;padding-left:20px}.validation-box.invalid{background:#fff1f2;border-color:#fecdd3;color:#9f1239}.validation-box.valid{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
-    @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
+    .workspace-sticky{position:sticky;top:0;z-index:20;padding:10px 0 2px;background:linear-gradient(180deg,var(--bg) 78%,rgba(244,247,251,0));margin-bottom:14px}.company-switcher-card{padding:14px 16px;margin-bottom:10px}.company-switcher-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.company-tabs,.workspace-nav{display:flex;align-items:stretch;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:2px 2px 8px}.company-tab,.workspace-nav button{flex:0 0 auto;background:#fff;color:#334155;border:1px solid var(--line);box-shadow:none;white-space:nowrap}.company-tab{display:grid;gap:2px;min-width:190px;text-align:left;justify-content:start;padding:10px 12px}.company-tab strong{font-size:13px}.company-tab span{font-size:11px;color:var(--muted)}.company-tab.active{background:#eff6ff;border-color:#60a5fa;color:#1d4ed8}.company-tab.active span{color:#1d4ed8}.workspace-nav{padding:0 2px 10px}.workspace-nav button{padding:9px 14px;border-radius:999px;font-size:13px}.workspace-nav button.active{background:var(--blue);border-color:var(--blue);color:#fff}.company-select-fallback{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}.workspace-context{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.health-guidance{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+    @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}.workspace-sticky{top:0}.company-tab{min-width:165px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -66,13 +67,27 @@
       <div class="actions"><a class="button" href="/">Abrir calculadora</a><button id="logoutBtn" class="danger" type="button">Cerrar sesión</button></div>
     </article>
 
-    <article class="card">
-      <div class="summary"><div><h2>Empresa activa</h2><p class="muted">Datos, plan y acceso a la nómina.</p></div><div><span id="planPill" class="pill"></span> <span id="companyStatusPill" class="pill"></span></div></div>
-      <label for="companySelect">Empresa</label><select id="companySelect"></select>
-      <div id="companyDetail" class="notice"></div>
-    </article>
+    <div class="workspace-sticky">
+      <article class="card company-switcher-card">
+        <div class="company-switcher-head">
+          <div><h2>Empresas</h2><p class="muted">Cambiá de empresa sin salir del módulo en el que estás trabajando.</p></div>
+          <div class="workspace-context"><span id="planPill" class="pill"></span><span id="companyStatusPill" class="pill"></span></div>
+        </div>
+        <select id="companySelect" class="company-select-fallback" aria-label="Empresa activa"></select>
+        <div id="companyTabs" class="company-tabs" role="tablist" aria-label="Empresas disponibles"></div>
+        <div id="companyDetail" class="notice"></div>
+      </article>
+      <nav id="workspaceNav" class="workspace-nav" aria-label="Módulos de gestión">
+        <button type="button" data-workspace-target="overview">Resumen</button>
+        <button type="button" data-workspace-target="company">Empresa</button>
+        <button type="button" data-workspace-target="employees">Empleados</button>
+        <button type="button" data-workspace-target="payroll">Liquidaciones</button>
+        <button type="button" data-workspace-target="arca">Libro Digital ARCA</button>
+        <button type="button" data-workspace-target="security">Seguridad</button>
+      </nav>
+    </div>
 
-    <article id="payrollManualCard" class="card">
+    <article id="payrollManualCard" class="card" data-workspace-module="overview">
       <div class="summary">
         <div>
           <span class="pill">Manual PDF</span>
@@ -86,7 +101,7 @@
       </div>
     </article>
 
-    <article id="subscriptionCard" class="card">
+    <article id="subscriptionCard" class="card" data-workspace-module="overview">
       <div class="summary"><div><h2>Plan y consumo</h2><p id="subscriptionPeriodText" class="muted">Consultando vigencia y limites...</p></div><span id="subscriptionPlanPill" class="pill"></span></div>
       <div id="subscriptionUsage" class="usage-grid"></div>
       <details>
@@ -100,7 +115,7 @@
       </details>
     </article>
 
-    <details id="companyDetailsCard" class="card company-details">
+    <details id="companyDetailsCard" class="card company-details" data-workspace-module="company" open>
       <summary><div class="summary"><div><h2>Ficha de la empresa</h2><p class="muted">Información que se utilizará en recibos y liquidaciones.</p></div><span class="pill">Paso 1</span></div></summary>
       <div class="detail-body">
       <div class="grid">
@@ -116,6 +131,11 @@
         <div><label for="companyProvince">Provincia</label><input id="companyProvince" maxlength="120"></div>
         <div><label for="companyActivity">Actividad</label><input id="companyActivity" maxlength="190"></div>
         <div><label for="companyAgreement">Convenio</label><input id="companyAgreement" maxlength="120" value="CCT 130/75"></div>
+        <div><label for="companyHealthType">Tipo de cobertura habitual</label><select id="companyHealthType"><option value="osecac">OSECAC</option><option value="other_health">Otra obra social</option><option value="prepaid">Prepaga</option></select></div>
+        <div><label for="companyHealthName">Nombre de la cobertura</label><input id="companyHealthName" maxlength="190" placeholder="Ej.: OSDE, Swiss Medical, OSECAC"></div>
+        <div><label for="companyHealthCode">Código obra social ARCA/LSD</label><input id="companyHealthCode" inputmode="numeric" maxlength="6" placeholder="6 dígitos; OSDE: 400800"></div>
+        <div class="wide"><label class="check-line"><input id="companyHealthOnNonRem" type="checkbox"> Aplicar obra social sobre conceptos no remunerativos</label><span class="subtext">Se usa como valor inicial al crear empleados; cada ficha puede tener una excepción.</span></div>
+        <div class="wide notice health-guidance"><strong>Regla CCT de la empresa:</strong> la cobertura habitual puede ser cualquier obra social o prepaga y se informa con su código LSD. Es independiente del aporte patronal extraordinario OSECAC de <strong>$28.000 por empleado</strong>. No se descuenta un aporte fijo OSECAC al trabajador.</div>
         <div><label for="companyPaymentPlace">Lugar de pago</label><input id="companyPaymentPlace" maxlength="190"></div>
         <div><label for="companyEstablishment">Establecimiento / sucursal</label><input id="companyEstablishment" maxlength="120"></div>
         <div><label for="companyEmployerRegistration">N.º inscripción empleador</label><input id="companyEmployerRegistration" maxlength="80"></div>
@@ -131,7 +151,7 @@
       </div>
     </details>
 
-    <article class="card">
+    <article id="employeesCard" class="card" data-workspace-module="employees">
       <div class="summary"><div><h2>Nómina de empleados</h2><p class="muted">Ficha completa para recibos, liquidaciones y futuras exportaciones a ARCA.</p></div><span id="employeeCount" class="pill">0 empleados</span></div>
       <details>
         <summary>Importar empleados desde Excel</summary>
@@ -176,14 +196,15 @@
         </div></div>
       </details>
       <details>
-        <summary>Obra social y afiliaciones</summary>
+        <summary>Cobertura médica y afiliaciones</summary>
         <div class="detail-body">
-          <p class="section-note">Datos opcionales. El código se utilizará más adelante para validar exportaciones.</p>
+          <div class="notice health-guidance"><strong>Configuración individual:</strong> al dar de alta un empleado se completa la cobertura habitual definida en la empresa. Modificá estos datos sólo si el trabajador tiene una cobertura diferente. La contribución patronal OSECAC de $28.000 se genera igualmente por estar incluido en CCT.</div>
           <div class="grid">
-            <div><label for="employeeHealthName">Obra social</label><input id="employeeHealthName" maxlength="190"></div>
-            <div><label for="employeeHealthCode">Código obra social ARCA</label><input id="employeeHealthCode" inputmode="numeric" maxlength="12"></div>
+            <div><label for="employeeHealthName">Obra social / agente de salud</label><input id="employeeHealthName" maxlength="190" placeholder="Ej.: OSDE"></div>
+            <div><label for="employeeHealthCode">Código obra social ARCA (6 dígitos)</label><input id="employeeHealthCode" inputmode="numeric" maxlength="6" placeholder="OSDE: 400800"></div>
             <div><label for="employeeHealthMember">Número de afiliado</label><input id="employeeHealthMember" maxlength="80"></div>
             <div><label for="employeeHealthStart">Vigencia desde</label><input id="employeeHealthStart" type="date"></div>
+            <div class="wide"><label class="check-line"><input id="employeeHealthOnNonRem" type="checkbox"> Aplicar aporte y contribución de obra social sobre conceptos no remunerativos</label><span class="subtext">Para el caso OSDE del recibo de prueba debe quedar desmarcado.</span></div>
             <div><label for="employeeUnionName">Sindicato</label><input id="employeeUnionName" maxlength="190"></div>
             <div><label for="employeeUnionCode">Código sindical</label><input id="employeeUnionCode" inputmode="numeric" maxlength="12"></div>
             <div><label for="employeeUnionMember">Número de afiliado sindical</label><input id="employeeUnionMember" maxlength="80"></div>
@@ -250,7 +271,7 @@
       <div id="employeesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Legajo</th><th>Empleado</th><th>Categoría</th><th>Obra social</th><th>Ingreso</th><th>Estado</th><th></th></tr></thead><tbody id="employeesTbody"></tbody></table></div>
     </article>
 
-    <article class="card">
+    <article id="periodsCard" class="card" data-workspace-module="payroll">
       <div class="summary"><div><h2>Períodos de liquidación</h2><p class="muted">Creá el mes, tipo de liquidación y fecha de pago.</p></div><span class="pill">Paso 2</span></div>
       <input id="periodId" type="hidden">
       <div class="grid">
@@ -289,7 +310,7 @@
       <div id="periodsTableWrap" class="table-wrap hidden"><table><thead><tr><th>Período</th><th>Tipo</th><th>Fecha de pago</th><th>Estado</th><th>Novedades</th><th>Liquidaciones</th><th></th></tr></thead><tbody id="periodsTbody"></tbody></table></div>
     </article>
 
-    <article id="noveltiesCard" class="card">
+    <article id="noveltiesCard" class="card" data-workspace-module="payroll">
       <div class="summary"><div><h2>Novedades del período</h2><p id="noveltyPeriodText" class="muted">Seleccioná un período para cargar novedades.</p></div><span class="pill">Paso 3</span></div>
       <div class="notice"><strong>Presentismo automático:</strong> se cobra con hasta 1 ausencia injustificada. Con más de 1, el motor lo elimina. Agua Potable toma la cantidad de conexiones; Fúnebres aplica sus adicionales mensuales; y Turismo admite título terciario o licenciatura.</div>
       <input id="noveltyId" type="hidden">
@@ -309,7 +330,7 @@
       <div id="noveltiesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Concepto</th><th>Cantidad</th><th>Importe</th><th>Observaciones</th><th></th></tr></thead><tbody id="noveltiesTbody"></tbody></table></div>
     </article>
 
-    <article id="batchCard" class="card">
+    <article id="batchCard" class="card" data-workspace-module="payroll">
       <div class="summary"><div><h2>Liquidación de la nómina</h2><p id="batchPeriodText" class="muted">Seleccioná un período mensual o SAC.</p></div><span class="pill">Pasos 4 y 5</span></div>
       <div class="actions"><button id="batchCalculateBtn" type="button">Liquidar nómina</button><button id="batchRefreshBtn" class="secondary" type="button">Actualizar resultados</button><button id="batchCancelBtn" class="danger hidden" type="button">Cancelar trabajo</button><button id="batchRetryBtn" class="secondary hidden" type="button">Reintentar errores</button><button id="batchPrintAllBtn" class="secondary" type="button" disabled>PDF conjunto</button></div>
       <div id="batchProgress" class="progress hidden"><span></span></div>
@@ -319,7 +340,7 @@
       <div id="batchTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Remunerativo</th><th>No remunerativo</th><th>Indemnizatorio</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead><tbody id="batchTbody"></tbody></table></div>
     </article>
 
-    <article id="securityCard" class="card">
+    <article id="securityCard" class="card" data-workspace-module="security">
       <div class="summary"><div><h2>Seguridad y colaboradores</h2><p class="muted">Controlá quién accede, revisá la actividad y descargá un respaldo empresarial.</p></div><span id="currentRolePill" class="pill"></span></div>
       <div id="teamAdminSection">
         <details open>
@@ -363,7 +384,7 @@
       </details>
     </article>
 
-    <article id="arcaConceptsCard" class="card">
+    <article id="arcaConceptsCard" class="card" data-workspace-module="arca">
       <div class="summary"><div><span class="pill">Libro de Sueldos Digital</span><h2 style="margin-top:8px">Parametrización de conceptos ARCA</h2><p class="muted">Relacioná cada concepto utilizado en las liquidaciones con el código oficial y sus subsistemas.</p></div><span id="arcaProgressPill" class="pill">Sin revisar</span></div>
       <div class="notice"><strong>Importante:</strong> las equivalencias se sugieren automáticamente, pero deben ser revisadas por el liquidador. El archivo se genera con registros de 195 caracteres, según el diseño oficial de ARCA.</div>
       <div id="arcaConceptsEmpty" class="empty">Todavía no hay conceptos liquidados para parametrizar.</div>
@@ -378,7 +399,7 @@
       <div id="arcaValidation" class="hidden"></div>
     </article>
 
-    <article id="arcaLiquidationCard" class="card">
+    <article id="arcaLiquidationCard" class="card" data-workspace-module="arca">
       <div class="summary"><div><span class="pill">Libro de Sueldos Digital</span><h2 style="margin-top:8px">Exportación de liquidaciones ARCA</h2><p class="muted">Generá los registros 01, 02, 03 y 04 desde los recibos guardados del período seleccionado.</p></div><span id="arcaLiquidationPill" class="pill">Sin validar</span></div>
       <div class="notice"><strong>Período seleccionado:</strong> <span id="arcaLiquidationPeriod">Seleccioná un período con liquidaciones.</span></div>
       <div class="actions"><button id="arcaLiquidationValidateBtn" type="button">Validar liquidación</button><button id="arcaLiquidationExportBtn" class="secondary" type="button">Descargar TXT de liquidación</button></div>
@@ -386,7 +407,7 @@
       <div id="arcaLiquidationValidation" class="hidden"></div>
     </article>
 
-    <article id="platformAdminPanel" class="card hidden">
+    <article id="platformAdminPanel" class="card hidden" data-workspace-module="overview">
       <div class="summary"><div><span class="pill">Administrador</span><h2 style="margin-top:8px">Planes y habilitación de empresas</h2><p class="muted">Aprobá pruebas, activá suscripciones o pausá cuentas.</p></div><button id="adminRefreshBtn" class="secondary" type="button">Actualizar</button></div>
       <div id="adminCompaniesEmpty" class="empty">No hay empresas registradas.</div>
       <div id="adminCompaniesWrap" class="table-wrap hidden"><table><thead><tr><th>Empresa</th><th>Responsable</th><th>Empleados</th><th>Liquidaciones</th><th>Solicitud</th><th>Plan</th><th>Estado</th><th>Vencimiento</th><th></th></tr></thead><tbody id="adminCompaniesTbody"></tbody></table></div>
@@ -399,6 +420,7 @@
   const API_URL = "https://calculadoradecomercio.com.ar/api/";
   const TOKEN_KEY = "co_company_portal_token_v1";
   const COMPANY_KEY = "co_company_portal_company_v1";
+  const WORKSPACE_MODULE_KEY = "co_company_portal_module_v1";
   const $ = id => document.getElementById(id);
   let session = null;
   let employees = [];
@@ -421,6 +443,7 @@
   let arcaConcepts = [];
   let arcaLiquidationValidation = null;
   let arcaValidation = null;
+  let workspaceModule = (()=>{try{return localStorage.getItem(WORKSPACE_MODULE_KEY)||"overview"}catch(_){return"overview"}})();
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -489,6 +512,32 @@
   }
 
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
+  function applyWorkspaceNavigation(){
+    const allowed=["overview","company","employees","payroll","arca","security"];
+    if(!allowed.includes(workspaceModule))workspaceModule="overview";
+    document.querySelectorAll("[data-workspace-module]").forEach(element=>{
+      const visible=element.dataset.workspaceModule===workspaceModule;
+      const platformHidden=element.id==="platformAdminPanel"&&!session?.is_platform_admin;
+      element.classList.toggle("hidden",!visible||platformHidden);
+    });
+    document.querySelectorAll("[data-workspace-target]").forEach(button=>{
+      const active=button.dataset.workspaceTarget===workspaceModule;
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-current",active?"page":"false");
+    });
+  }
+  function setWorkspaceModule(module){
+    workspaceModule=module||"overview";
+    try{localStorage.setItem(WORKSPACE_MODULE_KEY,workspaceModule)}catch(_){}
+    applyWorkspaceNavigation();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  async function switchCompany(companyId){
+    if(!companyId||String(companyId)===String(activeCompany()?.id||""))return;
+    setAuth(token(),companyId);activePeriodId="";arcaLiquidationValidation=null;
+    renderSession();renderCompanyForm();
+    await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();
+  }
   function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado",expired:"Vencido"})[status]||status||"";}
   function mapPlan(plan){return ({starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Sin plan";}
   function mapRole(role){return ({owner:"Titular",admin:"Administrador",payroll:"Liquidador",viewer:"Consulta"})[role]||role||"";}
@@ -539,9 +588,10 @@
     $("welcomeText").textContent=`Hola, ${session.user.name||""}`;$("accountText").textContent=session.user.email||"";
     const companies=session.companies||[];const current=activeCompany();
     $("companySelect").innerHTML=companies.map(item=>`<option value="${esc(item.id)}">${esc(item.legal_name)}</option>`).join("");
+    $("companyTabs").innerHTML=companies.map(item=>`<button type="button" role="tab" class="company-tab ${String(item.id)===String(current?.id)?"active":""}" data-company-tab="${esc(item.id)}" aria-selected="${String(item.id)===String(current?.id)?"true":"false"}"><strong>${esc(item.legal_name)}</strong><span>${item.cuit?`CUIT ${esc(item.cuit)} · `:""}${esc(mapStatus(item.status))} · ${esc(mapRole(item.role))}</span></button>`).join("");
     if(current){$("companySelect").value=current.id;setAuth(token(),current.id);$("planPill").textContent=`Plan ${mapPlan(current.plan_code)}`;$("companyStatusPill").textContent=mapStatus(current.status);$("companyStatusPill").className=`pill ${esc(current.status)}`;$("companyDetail").innerHTML=`<strong>${esc(current.legal_name)}</strong>${current.cuit?` · CUIT ${esc(current.cuit)}`:""}<br>Tu acceso está en estado <strong>${esc(mapStatus(current.status))}</strong>.`;$("currentRolePill").textContent=mapRole(current.role);const canManage=["owner","admin"].includes(current.role);$("teamAdminSection").classList.toggle("hidden",!canManage);$("teamRole").querySelector('option[value="admin"]').disabled=current.role!=="owner";applyRolePermissions(current);}
     else{$("companyDetail").textContent="La cuenta todavía no tiene una empresa vinculada.";}
-    $("platformAdminPanel").classList.toggle("hidden",!session.is_platform_admin);
+    applyWorkspaceNavigation();
   }
 
   async function loadSession(){
@@ -599,8 +649,9 @@
 
   function renderCompanyForm(){
     const company=activeCompany();if(!company)return;const address=company.address||{},settings=company.settings||{};
-    const values={companyLegalName:company.legal_name,companyCuit:company.cuit,companyEmail:company.email,companyPhone:company.phone,companyStreet:address.street,companyNumber:address.number,companyFloor:address.floor,companyPostal:address.postal_code,companyCity:address.city,companyProvince:address.province,companyActivity:settings.activity,companyAgreement:settings.agreement||"CCT 130/75",companyPaymentPlace:settings.payment_place,companyEstablishment:settings.establishment,companyEmployerRegistration:settings.employer_registration,companyReceiptLegend:settings.receipt_legend};
+    const values={companyLegalName:company.legal_name,companyCuit:company.cuit,companyEmail:company.email,companyPhone:company.phone,companyStreet:address.street,companyNumber:address.number,companyFloor:address.floor,companyPostal:address.postal_code,companyCity:address.city,companyProvince:address.province,companyActivity:settings.activity,companyAgreement:settings.agreement||"CCT 130/75",companyHealthType:settings.health_insurance_type||"osecac",companyHealthName:settings.health_insurance_name,companyHealthCode:settings.health_insurance_code,companyPaymentPlace:settings.payment_place,companyEstablishment:settings.establishment,companyEmployerRegistration:settings.employer_registration,companyReceiptLegend:settings.receipt_legend};
     Object.entries(values).forEach(([id,value])=>$(id).value=value||"");
+    $("companyHealthOnNonRem").checked=settings.health_contribution_on_non_remunerative===true||String(settings.health_contribution_on_non_remunerative)==="1";
     companyLogoImage=settings.logo_image||"";
     $("companyLogoFile").value="";
     renderCompanyLogo(companyLogoImage||settings.logo_url||"");
@@ -639,8 +690,9 @@
 
   async function saveCompany(){
     const company=activeCompany();if(!company)return setStatus("companySaveStatus","No hay una empresa activa.");
-    const body={id:company.id,legal_name:$("companyLegalName").value.trim(),cuit:digits($("companyCuit").value),email:$("companyEmail").value.trim(),phone:$("companyPhone").value.trim(),address:{street:$("companyStreet").value.trim(),number:$("companyNumber").value.trim(),floor:$("companyFloor").value.trim(),postal_code:$("companyPostal").value.trim(),city:$("companyCity").value.trim(),province:$("companyProvince").value.trim()},settings:{activity:$("companyActivity").value.trim(),agreement:$("companyAgreement").value.trim(),payment_place:$("companyPaymentPlace").value.trim(),establishment:$("companyEstablishment").value.trim(),employer_registration:$("companyEmployerRegistration").value.trim(),logo_image:companyLogoImage,logo_url:companyLogoImage?"":String(company.settings?.logo_url||""),receipt_legend:$("companyReceiptLegend").value.trim()}};
+    const body={id:company.id,legal_name:$("companyLegalName").value.trim(),cuit:digits($("companyCuit").value),email:$("companyEmail").value.trim(),phone:$("companyPhone").value.trim(),address:{street:$("companyStreet").value.trim(),number:$("companyNumber").value.trim(),floor:$("companyFloor").value.trim(),postal_code:$("companyPostal").value.trim(),city:$("companyCity").value.trim(),province:$("companyProvince").value.trim()},settings:{activity:$("companyActivity").value.trim(),agreement:$("companyAgreement").value.trim(),health_insurance_type:$("companyHealthType").value,health_insurance_name:$("companyHealthName").value.trim(),health_insurance_code:digits($("companyHealthCode").value),health_contribution_on_non_remunerative:$("companyHealthOnNonRem").checked,payment_place:$("companyPaymentPlace").value.trim(),establishment:$("companyEstablishment").value.trim(),employer_registration:$("companyEmployerRegistration").value.trim(),logo_image:companyLogoImage,logo_url:companyLogoImage?"":String(company.settings?.logo_url||""),receipt_legend:$("companyReceiptLegend").value.trim()}};
     if(!body.legal_name||!validTaxId(body.cuit))return setStatus("companySaveStatus","Completá razón social y un CUIT válido, incluido su dígito verificador.");
+    if(body.settings.health_insurance_name&&!/^\d{6}$/.test(body.settings.health_insurance_code))return setStatus("companySaveStatus","La cobertura médica habitual debe tener un código ARCA/LSD de 6 dígitos.");
     setStatus("companySaveStatus","Guardando...");try{await api("companies",{method:"POST",body});await loadCompanies();renderSession();renderCompanyForm();$("companyDetailsCard").open=false;setStatus("companySaveStatus","Datos de la empresa guardados.",true);}catch(err){setStatus("companySaveStatus",err.message);}
   }
 
@@ -707,19 +759,19 @@
 
   const employeeFields=["employeeId","employeeFile","employeeName","employeeCuil","employeeDni","employeeBirth","employeeStart","employeeEnd","employeeRama","employeeAgrup","employeeCategory","employeeAgreement","employeeWeeklyHours","employeeContract","employeeContractCode","employeeEmail","employeePhone","employeeAddress","employeeLocality","employeeProvince","employeeHealthName","employeeHealthCode","employeeHealthMember","employeeHealthStart","employeeUnionName","employeeUnionCode","employeeUnionMember","employeeBank","employeeCbu","employeeAlias","employeeArcaSituation","employeeArcaCondition","employeeArcaActivity","employeeArcaSinister","employeeArcaLocality","employeeArcaChildren","employeeArcaEmployerType","employeeArcaOperation","employeeArcaSituation1","employeeArcaSituationDay1","employeeArcaSituation2","employeeArcaSituationDay2","employeeArcaSituation3","employeeArcaSituationDay3","employeeArcaHealthAdherents","employeeArcaCapDays","employeeArcaSsAdditionalPct","employeeArcaDifferentialPct","employeeArcaHealthAdditionalEmployee","employeeArcaHealthAdditionalEmployer","employeeArcaHealthDiffEmployee","employeeArcaHealthDiffEmployer","employeeArcaLrtDiff","employeeArcaSsDiffEmployee","employeeArcaSsDiffEmployer","employeeArcaMaternity"];
   function clearEmployeeForm(){
-    employeeFields.forEach(id=>$(id).value="");$("employeeRama").value=payrollMeta?.ramas?.includes("GENERAL")?"GENERAL":payrollMeta?.ramas?.[0]||"";refreshEmployeeAgrups("GENERAL","MAESTRANZA A");$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeeWeeklyHours").value="48";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeContractCode").value="008";$("employeeArcaSituation").value="01";$("employeeArcaCondition").value="01";$("employeeArcaActivity").value="049";$("employeeArcaSinister").value="00";$("employeeArcaLocality").value="00";$("employeeArcaChildren").value="0";$("employeeArcaOperation").value="0";$("employeeArcaSituation1").value="01";$("employeeArcaSituationDay1").value="1";$("employeeArcaSituationDay2").value="0";$("employeeArcaSituationDay3").value="0";$("employeeArcaHealthAdherents").value="0";$("employeeArcaCapDays").value="0";["employeeArcaSsAdditionalPct","employeeArcaDifferentialPct","employeeArcaHealthAdditionalEmployee","employeeArcaHealthAdditionalEmployer","employeeArcaHealthDiffEmployee","employeeArcaHealthDiffEmployer","employeeArcaLrtDiff","employeeArcaSsDiffEmployee","employeeArcaSsDiffEmployer","employeeArcaMaternity"].forEach(id=>$(id).value="0");$("employeeArcaSpouse").checked=false;$("employeeArcaCct").checked=true;$("employeeArcaScvo").checked=true;$("employeeArcaReduction").checked=false;$("employeeArcaReviewed").checked=false;$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
+    employeeFields.forEach(id=>$(id).value="");const companySettings=activeCompany()?.settings||{};$("employeeHealthName").value=companySettings.health_insurance_name||"";$("employeeHealthCode").value=companySettings.health_insurance_code||"";$("employeeRama").value=payrollMeta?.ramas?.includes("GENERAL")?"GENERAL":payrollMeta?.ramas?.[0]||"";refreshEmployeeAgrups("GENERAL","MAESTRANZA A");$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeeWeeklyHours").value="48";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeContractCode").value="008";$("employeeArcaSituation").value="01";$("employeeArcaCondition").value="01";$("employeeArcaActivity").value="049";$("employeeArcaSinister").value="00";$("employeeArcaLocality").value="00";$("employeeArcaChildren").value="0";$("employeeArcaOperation").value="0";$("employeeArcaSituation1").value="01";$("employeeArcaSituationDay1").value="1";$("employeeArcaSituationDay2").value="0";$("employeeArcaSituationDay3").value="0";$("employeeArcaHealthAdherents").value="0";$("employeeArcaCapDays").value="0";["employeeArcaSsAdditionalPct","employeeArcaDifferentialPct","employeeArcaHealthAdditionalEmployee","employeeArcaHealthAdditionalEmployer","employeeArcaHealthDiffEmployee","employeeArcaHealthDiffEmployer","employeeArcaLrtDiff","employeeArcaSsDiffEmployee","employeeArcaSsDiffEmployer","employeeArcaMaternity"].forEach(id=>$(id).value="0");$("employeeHealthOnNonRem").checked=companySettings.health_contribution_on_non_remunerative===true||String(companySettings.health_contribution_on_non_remunerative)==="1";$("employeeArcaSpouse").checked=false;$("employeeArcaCct").checked=true;$("employeeArcaScvo").checked=true;$("employeeArcaReduction").checked=false;$("employeeArcaReviewed").checked=false;$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
   }
 
   function editEmployee(id){
     const item=employees.find(row=>String(row.id)===String(id));if(!item)return;const p=item.profile||{},a=item.arca_profile||{};
     const rama=p.rama||"GENERAL",agrup=p.agrup||"GENERAL";$("employeeRama").value=payrollMeta?.ramas?.includes(rama)?rama:"GENERAL";refreshEmployeeAgrups(agrup,item.category);
     const values={employeeId:item.id,employeeFile:item.file_number,employeeName:item.full_name,employeeCuil:item.cuil,employeeDni:p.dni,employeeBirth:p.birth_date,employeeStart:item.start_date,employeeEnd:p.end_date,employeeAgreement:p.agreement||agreementForRama(rama),employeeWeeklyHours:p.weekly_hours,employeeContract:p.contract_modality,employeeContractCode:a.contract_modality_code||"008",employeeEmail:p.email,employeePhone:p.phone,employeeAddress:p.address,employeeLocality:p.locality,employeeProvince:p.province,employeeHealthName:p.health_insurance_name,employeeHealthCode:a.health_insurance_code,employeeHealthMember:p.health_insurance_member,employeeHealthStart:p.health_insurance_start,employeeUnionName:p.union_name,employeeUnionCode:a.union_code,employeeUnionMember:p.union_member,employeeBank:p.bank_name,employeeCbu:p.cbu,employeeAlias:p.bank_alias,employeeArcaSituation:a.situation_code||"01",employeeArcaCondition:a.condition_code||"01",employeeArcaActivity:a.activity_code||"049",employeeArcaSinister:a.sinister_code||"00",employeeArcaLocality:a.locality_code||"00",employeeArcaChildren:a.children??0,employeeArcaEmployerType:a.employer_type||"",employeeArcaOperation:a.operation_code||"0",employeeArcaSituation1:a.situation_1||a.situation_code||"01",employeeArcaSituationDay1:a.situation_day_1||1,employeeArcaSituation2:a.situation_2||"",employeeArcaSituationDay2:a.situation_day_2||0,employeeArcaSituation3:a.situation_3||"",employeeArcaSituationDay3:a.situation_day_3||0,employeeArcaHealthAdherents:a.health_adherents||0,employeeArcaCapDays:a.cap_days||0,employeeArcaSsAdditionalPct:a.social_security_additional_pct||0,employeeArcaDifferentialPct:a.differential_contribution_pct||0,employeeArcaHealthAdditionalEmployee:a.health_additional_employee||0,employeeArcaHealthAdditionalEmployer:a.health_additional_employer||0,employeeArcaHealthDiffEmployee:a.health_differential_employee_base||0,employeeArcaHealthDiffEmployer:a.health_differential_employer_base||0,employeeArcaLrtDiff:a.lrt_differential_base||0,employeeArcaSsDiffEmployee:a.social_security_differential_employee_base||0,employeeArcaSsDiffEmployer:a.social_security_differential_employer_base||0,employeeArcaMaternity:a.maternity_amount||0};
-    Object.entries(values).forEach(([id,value])=>$(id).value=value??"");$("employeeArcaSpouse").checked=String(a.spouse)==="1";$("employeeArcaCct").checked=a.cct===undefined||String(a.cct)==="1";$("employeeArcaScvo").checked=a.scvo===undefined||String(a.scvo)==="1";$("employeeArcaReduction").checked=String(a.reduction)==="1";$("employeeArcaReviewed").checked=String(a.reviewed)==="1";$("employeeStatusSelect").value=item.status||"active";$("employeeWorkday").value=p.workday||"";$("employeePaymentMethod").value=p.payment_method||"Transferencia bancaria";$("employeeFormTitle").textContent=`Editar: ${item.full_name}`;$("employeeSaveBtn").textContent="Guardar cambios";$("employeeCancelBtn").classList.remove("hidden");$("employeeFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
+    Object.entries(values).forEach(([id,value])=>$(id).value=value??"");$("employeeHealthOnNonRem").checked=p.health_contribution_on_non_remunerative===true||String(p.health_contribution_on_non_remunerative)==="1";$("employeeArcaSpouse").checked=String(a.spouse)==="1";$("employeeArcaCct").checked=a.cct===undefined||String(a.cct)==="1";$("employeeArcaScvo").checked=a.scvo===undefined||String(a.scvo)==="1";$("employeeArcaReduction").checked=String(a.reduction)==="1";$("employeeArcaReviewed").checked=String(a.reviewed)==="1";$("employeeStatusSelect").value=item.status||"active";$("employeeWorkday").value=p.workday||"";$("employeePaymentMethod").value=p.payment_method||"Transferencia bancaria";$("employeeFormTitle").textContent=`Editar: ${item.full_name}`;$("employeeSaveBtn").textContent="Guardar cambios";$("employeeCancelBtn").classList.remove("hidden");$("employeeFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
   }
 
   async function saveEmployee(){
     const company=activeCompany();if(!company)return setStatus("employeeStatus","No hay una empresa activa.");
-    const body={id:$("employeeId").value||undefined,company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:"",start_date:$("employeeStart").value,status:$("employeeStatusSelect").value,profile:{dni:digits($("employeeDni").value),birth_date:$("employeeBirth").value,address:$("employeeAddress").value.trim(),locality:$("employeeLocality").value.trim(),province:$("employeeProvince").value.trim(),phone:$("employeePhone").value.trim(),email:$("employeeEmail").value.trim(),end_date:$("employeeEnd").value,rama:$("employeeRama").value,agrup:$("employeeAgrup").value,agreement:$("employeeAgreement").value.trim(),workday:$("employeeWorkday").value,weekly_hours:$("employeeWeeklyHours").value,contract_modality:$("employeeContract").value.trim(),health_insurance_name:$("employeeHealthName").value.trim(),health_insurance_member:$("employeeHealthMember").value.trim(),health_insurance_start:$("employeeHealthStart").value,union_name:$("employeeUnionName").value.trim(),union_member:$("employeeUnionMember").value.trim(),bank_name:$("employeeBank").value.trim(),cbu:digits($("employeeCbu").value),bank_alias:$("employeeAlias").value.trim(),payment_method:$("employeePaymentMethod").value},arca_profile:{health_insurance_code:digits($("employeeHealthCode").value),contract_modality_code:digits($("employeeContractCode").value),union_code:digits($("employeeUnionCode").value),spouse:$("employeeArcaSpouse").checked?"1":"0",children:Number($("employeeArcaChildren").value||0),cct:$("employeeArcaCct").checked?"1":"0",scvo:$("employeeArcaScvo").checked?"1":"0",reduction:$("employeeArcaReduction").checked?"1":"0",employer_type:$("employeeArcaEmployerType").value.trim(),operation_code:$("employeeArcaOperation").value,situation_code:digits($("employeeArcaSituation").value),condition_code:digits($("employeeArcaCondition").value),activity_code:digits($("employeeArcaActivity").value),sinister_code:digits($("employeeArcaSinister").value),locality_code:digits($("employeeArcaLocality").value),situation_1:digits($("employeeArcaSituation1").value),situation_day_1:Number($("employeeArcaSituationDay1").value||1),situation_2:digits($("employeeArcaSituation2").value),situation_day_2:Number($("employeeArcaSituationDay2").value||0),situation_3:digits($("employeeArcaSituation3").value),situation_day_3:Number($("employeeArcaSituationDay3").value||0),health_adherents:Number($("employeeArcaHealthAdherents").value||0),cap_days:Number($("employeeArcaCapDays").value||0),social_security_additional_pct:Number($("employeeArcaSsAdditionalPct").value||0),differential_contribution_pct:Number($("employeeArcaDifferentialPct").value||0),health_additional_employee:Number($("employeeArcaHealthAdditionalEmployee").value||0),health_additional_employer:Number($("employeeArcaHealthAdditionalEmployer").value||0),health_differential_employee_base:Number($("employeeArcaHealthDiffEmployee").value||0),health_differential_employer_base:Number($("employeeArcaHealthDiffEmployer").value||0),lrt_differential_base:Number($("employeeArcaLrtDiff").value||0),social_security_differential_employee_base:Number($("employeeArcaSsDiffEmployee").value||0),social_security_differential_employer_base:Number($("employeeArcaSsDiffEmployer").value||0),maternity_amount:Number($("employeeArcaMaternity").value||0),reviewed:$("employeeArcaReviewed").checked?"1":"0"}};
+    const body={id:$("employeeId").value||undefined,company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:"",start_date:$("employeeStart").value,status:$("employeeStatusSelect").value,profile:{dni:digits($("employeeDni").value),birth_date:$("employeeBirth").value,address:$("employeeAddress").value.trim(),locality:$("employeeLocality").value.trim(),province:$("employeeProvince").value.trim(),phone:$("employeePhone").value.trim(),email:$("employeeEmail").value.trim(),end_date:$("employeeEnd").value,rama:$("employeeRama").value,agrup:$("employeeAgrup").value,agreement:$("employeeAgreement").value.trim(),workday:$("employeeWorkday").value,weekly_hours:$("employeeWeeklyHours").value,contract_modality:$("employeeContract").value.trim(),health_insurance_name:$("employeeHealthName").value.trim(),health_insurance_member:$("employeeHealthMember").value.trim(),health_insurance_start:$("employeeHealthStart").value,health_contribution_on_non_remunerative:$("employeeHealthOnNonRem").checked,union_name:$("employeeUnionName").value.trim(),union_member:$("employeeUnionMember").value.trim(),bank_name:$("employeeBank").value.trim(),cbu:digits($("employeeCbu").value),bank_alias:$("employeeAlias").value.trim(),payment_method:$("employeePaymentMethod").value},arca_profile:{health_insurance_code:digits($("employeeHealthCode").value),contract_modality_code:digits($("employeeContractCode").value),union_code:digits($("employeeUnionCode").value),spouse:$("employeeArcaSpouse").checked?"1":"0",children:Number($("employeeArcaChildren").value||0),cct:$("employeeArcaCct").checked?"1":"0",scvo:$("employeeArcaScvo").checked?"1":"0",reduction:$("employeeArcaReduction").checked?"1":"0",employer_type:$("employeeArcaEmployerType").value.trim(),operation_code:$("employeeArcaOperation").value,situation_code:digits($("employeeArcaSituation").value),condition_code:digits($("employeeArcaCondition").value),activity_code:digits($("employeeArcaActivity").value),sinister_code:digits($("employeeArcaSinister").value),locality_code:digits($("employeeArcaLocality").value),situation_1:digits($("employeeArcaSituation1").value),situation_day_1:Number($("employeeArcaSituationDay1").value||1),situation_2:digits($("employeeArcaSituation2").value),situation_day_2:Number($("employeeArcaSituationDay2").value||0),situation_3:digits($("employeeArcaSituation3").value),situation_day_3:Number($("employeeArcaSituationDay3").value||0),health_adherents:Number($("employeeArcaHealthAdherents").value||0),cap_days:Number($("employeeArcaCapDays").value||0),social_security_additional_pct:Number($("employeeArcaSsAdditionalPct").value||0),differential_contribution_pct:Number($("employeeArcaDifferentialPct").value||0),health_additional_employee:Number($("employeeArcaHealthAdditionalEmployee").value||0),health_additional_employer:Number($("employeeArcaHealthAdditionalEmployer").value||0),health_differential_employee_base:Number($("employeeArcaHealthDiffEmployee").value||0),health_differential_employer_base:Number($("employeeArcaHealthDiffEmployer").value||0),lrt_differential_base:Number($("employeeArcaLrtDiff").value||0),social_security_differential_employee_base:Number($("employeeArcaSsDiffEmployee").value||0),social_security_differential_employer_base:Number($("employeeArcaSsDiffEmployer").value||0),maternity_amount:Number($("employeeArcaMaternity").value||0),reviewed:$("employeeArcaReviewed").checked?"1":"0"}};
     if(!body.full_name||!validTaxId(body.cuil))return setStatus("employeeStatus","Completá nombre y un CUIL válido, incluido su dígito verificador.");
     if(!body.profile.rama||!body.profile.agrup||!body.category)return setStatus("employeeStatus","Seleccioná convenio / rama, agrupamiento y categoría.");
     if(body.profile.cbu&&body.profile.cbu.length!==22)return setStatus("employeeStatus","El CBU debe tener 22 dígitos.");
@@ -1152,9 +1204,13 @@
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
-  $("companySelect").addEventListener("change",async ev=>{setAuth(token(),ev.target.value);activePeriodId="";arcaLiquidationValidation=null;renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();});
+  $("companyHealthName").addEventListener("blur",()=>{if(/\bOSDE\b/i.test($("companyHealthName").value)){$("companyHealthType").value="prepaid";if(!digits($("companyHealthCode").value))$("companyHealthCode").value="400800";$("companyHealthOnNonRem").checked=false;}});
+  $("companySelect").addEventListener("change",ev=>switchCompany(ev.target.value));
+  $("companyTabs").addEventListener("click",ev=>{const companyId=ev.target.closest("[data-company-tab]")?.dataset?.companyTab;if(companyId)switchCompany(companyId);});
+  $("workspaceNav").addEventListener("click",ev=>{const module=ev.target.closest("[data-workspace-target]")?.dataset?.workspaceTarget;if(module)setWorkspaceModule(module);});
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
+  $("employeeHealthName").addEventListener("blur",()=>{if(/\bOSDE\b/i.test($("employeeHealthName").value)){if(!digits($("employeeHealthCode").value))$("employeeHealthCode").value="400800";$("employeeHealthOnNonRem").checked=false;}});
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);});
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
   $("logoutBtn").addEventListener("click",async()=>{stopPayrollJobPolling();try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];arcaConcepts=[];arcaValidation=null;arcaLiquidationValidation=null;activePayrollJob=null;payrollJobItems=[];subscriptionSummary=null;activePeriodId="";renderSession();});
