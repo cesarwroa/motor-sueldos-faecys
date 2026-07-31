@@ -24,7 +24,7 @@
 <body>
 <main class="wrap">
   <header class="top">
-    <div><span class="pill">Piloto profesional</span><h1>Gestión de empresas y nómina</h1><p class="muted">Registrá tu empresa y prepará la nómina que utilizará el motor de la calculadora.</p></div>
+    <div><span class="pill">Piloto profesional</span><h1>Gestión de empresas y nómina</h1><p class="muted">Registrá tus empresas y prepará las nóminas que utilizará el motor de la calculadora.</p></div>
     <a class="button secondary" href="/">Volver a la calculadora</a>
   </header>
 
@@ -70,8 +70,8 @@
     <div class="workspace-sticky">
       <article class="card company-switcher-card">
         <div class="company-switcher-head">
-          <div><h2>Empresas</h2><p class="muted">Cambiá de empresa sin salir del módulo en el que estás trabajando.</p></div>
-          <div class="workspace-context"><span id="planPill" class="pill"></span><span id="companyStatusPill" class="pill"></span></div>
+          <div><h2>Empresas</h2><p class="muted">Cambiá de empresa o registrá una nueva sin cerrar sesión.</p></div>
+          <div class="workspace-context"><button id="newCompanyBtn" class="secondary" type="button">+ Nueva empresa</button><span id="planPill" class="pill"></span><span id="companyStatusPill" class="pill"></span></div>
         </div>
         <select id="companySelect" class="company-select-fallback" aria-label="Empresa activa"></select>
         <div id="companyTabs" class="company-tabs" role="tablist" aria-label="Empresas disponibles"></div>
@@ -147,7 +147,7 @@
         </div>
         <div class="wide"><label for="companyReceiptLegend">Leyenda para el recibo</label><textarea id="companyReceiptLegend" maxlength="255"></textarea></div>
       </div>
-      <div class="actions"><button id="companySaveBtn" type="button">Guardar empresa</button></div><div id="companySaveStatus" class="status"></div>
+      <div class="actions"><button id="companySaveBtn" type="button">Guardar empresa</button><button id="companyCancelCreateBtn" class="secondary hidden" type="button">Cancelar alta</button></div><div id="companySaveStatus" class="status"></div>
       </div>
     </details>
 
@@ -443,6 +443,7 @@
   let arcaConcepts = [];
   let arcaLiquidationValidation = null;
   let arcaValidation = null;
+  let creatingCompany = false;
   let workspaceModule = (()=>{try{return localStorage.getItem(WORKSPACE_MODULE_KEY)||"overview"}catch(_){return"overview"}})();
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -533,7 +534,10 @@
     window.scrollTo({top:0,behavior:"smooth"});
   }
   async function switchCompany(companyId){
-    if(!companyId||String(companyId)===String(activeCompany()?.id||""))return;
+    if(!companyId||(!creatingCompany&&String(companyId)===String(activeCompany()?.id||"")))return;
+    creatingCompany=false;
+    $("companyCancelCreateBtn").classList.add("hidden");
+    $("companySaveBtn").textContent="Guardar empresa";
     setAuth(token(),companyId);activePeriodId="";arcaLiquidationValidation=null;
     renderSession();renderCompanyForm();
     await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();
@@ -648,6 +652,7 @@
   }
 
   function renderCompanyForm(){
+    if(creatingCompany)return;
     const company=activeCompany();if(!company)return;const address=company.address||{},settings=company.settings||{};
     const values={companyLegalName:company.legal_name,companyCuit:company.cuit,companyEmail:company.email,companyPhone:company.phone,companyStreet:address.street,companyNumber:address.number,companyFloor:address.floor,companyPostal:address.postal_code,companyCity:address.city,companyProvince:address.province,companyActivity:settings.activity,companyAgreement:settings.agreement||"CCT 130/75",companyHealthType:settings.health_insurance_type||"osecac",companyHealthName:settings.health_insurance_name,companyHealthCode:settings.health_insurance_code,companyPaymentPlace:settings.payment_place,companyEstablishment:settings.establishment,companyEmployerRegistration:settings.employer_registration,companyReceiptLegend:settings.receipt_legend};
     Object.entries(values).forEach(([id,value])=>$(id).value=value||"");
@@ -656,6 +661,37 @@
     $("companyLogoFile").value="";
     renderCompanyLogo(companyLogoImage||settings.logo_url||"");
     if(!$("periodPaymentPlace").value)$("periodPaymentPlace").value=settings.payment_place||address.city||"";
+  }
+
+  function clearCompanyForm(){
+    ["companyLegalName","companyCuit","companyEmail","companyPhone","companyStreet","companyNumber","companyFloor","companyPostal","companyCity","companyProvince","companyActivity","companyHealthName","companyHealthCode","companyPaymentPlace","companyEstablishment","companyEmployerRegistration","companyReceiptLegend"].forEach(id=>$(id).value="");
+    $("companyAgreement").value="CCT 130/75";
+    $("companyHealthType").value="osecac";
+    $("companyHealthOnNonRem").checked=false;
+    companyLogoImage="";
+    $("companyLogoFile").value="";
+    renderCompanyLogo("");
+  }
+
+  function startNewCompany(){
+    creatingCompany=true;
+    clearCompanyForm();
+    setWorkspaceModule("company");
+    $("companyDetailsCard").open=true;
+    $("companySaveBtn").disabled=false;
+    $("companySaveBtn").textContent="Crear empresa";
+    $("companyCancelCreateBtn").classList.remove("hidden");
+    setStatus("companySaveStatus","Completá los datos de la nueva empresa. Al guardarla quedará seleccionada.",true);
+    $("companyLegalName").focus();
+  }
+
+  function cancelNewCompany(){
+    creatingCompany=false;
+    $("companyCancelCreateBtn").classList.add("hidden");
+    $("companySaveBtn").textContent="Guardar empresa";
+    renderCompanyForm();
+    applyRolePermissions(activeCompany());
+    setStatus("companySaveStatus","");
   }
 
   function renderCompanyLogo(source=""){
@@ -689,11 +725,11 @@
   }
 
   async function saveCompany(){
-    const company=activeCompany();if(!company)return setStatus("companySaveStatus","No hay una empresa activa.");
-    const body={id:company.id,legal_name:$("companyLegalName").value.trim(),cuit:digits($("companyCuit").value),email:$("companyEmail").value.trim(),phone:$("companyPhone").value.trim(),address:{street:$("companyStreet").value.trim(),number:$("companyNumber").value.trim(),floor:$("companyFloor").value.trim(),postal_code:$("companyPostal").value.trim(),city:$("companyCity").value.trim(),province:$("companyProvince").value.trim()},settings:{activity:$("companyActivity").value.trim(),agreement:$("companyAgreement").value.trim(),health_insurance_type:$("companyHealthType").value,health_insurance_name:$("companyHealthName").value.trim(),health_insurance_code:digits($("companyHealthCode").value),health_contribution_on_non_remunerative:$("companyHealthOnNonRem").checked,payment_place:$("companyPaymentPlace").value.trim(),establishment:$("companyEstablishment").value.trim(),employer_registration:$("companyEmployerRegistration").value.trim(),logo_image:companyLogoImage,logo_url:companyLogoImage?"":String(company.settings?.logo_url||""),receipt_legend:$("companyReceiptLegend").value.trim()}};
+    const company=activeCompany();if(!company&&!creatingCompany)return setStatus("companySaveStatus","No hay una empresa activa.");
+    const body={...(creatingCompany?{}:{id:company.id}),legal_name:$("companyLegalName").value.trim(),cuit:digits($("companyCuit").value),email:$("companyEmail").value.trim(),phone:$("companyPhone").value.trim(),address:{street:$("companyStreet").value.trim(),number:$("companyNumber").value.trim(),floor:$("companyFloor").value.trim(),postal_code:$("companyPostal").value.trim(),city:$("companyCity").value.trim(),province:$("companyProvince").value.trim()},settings:{activity:$("companyActivity").value.trim(),agreement:$("companyAgreement").value.trim(),health_insurance_type:$("companyHealthType").value,health_insurance_name:$("companyHealthName").value.trim(),health_insurance_code:digits($("companyHealthCode").value),health_contribution_on_non_remunerative:$("companyHealthOnNonRem").checked,payment_place:$("companyPaymentPlace").value.trim(),establishment:$("companyEstablishment").value.trim(),employer_registration:$("companyEmployerRegistration").value.trim(),logo_image:companyLogoImage,logo_url:companyLogoImage?"":String(company?.settings?.logo_url||""),receipt_legend:$("companyReceiptLegend").value.trim()}};
     if(!body.legal_name||!validTaxId(body.cuit))return setStatus("companySaveStatus","Completá razón social y un CUIT válido, incluido su dígito verificador.");
     if(body.settings.health_insurance_name&&!/^\d{6}$/.test(body.settings.health_insurance_code))return setStatus("companySaveStatus","La cobertura médica habitual debe tener un código ARCA/LSD de 6 dígitos.");
-    setStatus("companySaveStatus","Guardando...");try{await api("companies",{method:"POST",body});await loadCompanies();renderSession();renderCompanyForm();$("companyDetailsCard").open=false;setStatus("companySaveStatus","Datos de la empresa guardados.",true);}catch(err){setStatus("companySaveStatus",err.message);}
+    setStatus("companySaveStatus",creatingCompany?"Creando empresa...":"Guardando...");try{const saved=await api("companies",{method:"POST",body});if(creatingCompany&&saved.id)setAuth(token(),saved.id);creatingCompany=false;$("companyCancelCreateBtn").classList.add("hidden");$("companySaveBtn").textContent="Guardar empresa";await loadCompanies();renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();$("companyDetailsCard").open=false;setStatus("companySaveStatus","Datos de la empresa guardados.",true);}catch(err){setStatus("companySaveStatus",err.message);}
   }
 
   async function loadEmployees(){
@@ -1218,6 +1254,8 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
+  $("newCompanyBtn").addEventListener("click",startNewCompany);
+  $("companyCancelCreateBtn").addEventListener("click",cancelNewCompany);
   $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodType").addEventListener("change",updatePeriodSpecialFields);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",async()=>{await loadPayrolls();await loadPayrollJob(activePayrollJob?.id||"");});$("batchCancelBtn").addEventListener("click",cancelPayrollJob);$("batchRetryBtn").addEventListener("click",retryPayrollJob);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("arcaSaveBtn").addEventListener("click",saveArcaMappings);$("arcaValidateBtn").addEventListener("click",()=>validateArcaConcepts(true));$("arcaExportBtn").addEventListener("click",()=>downloadArcaConcepts("all"));$("arcaPendingExportBtn").addEventListener("click",()=>downloadArcaConcepts("pending"));$("arcaRefreshBtn").addEventListener("click",loadArcaConcepts);$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("arcaLiquidationValidateBtn").addEventListener("click",()=>validateArcaLiquidation(true));$("arcaLiquidationExportBtn").addEventListener("click",downloadArcaLiquidation);
   $("arcaConceptsTbody").addEventListener("input",ev=>{if(ev.target.matches("[data-arca-employer],[data-arca-code]"))setArcaRegistrationState(ev.target.closest("[data-arca-row]"),false);});
