@@ -386,15 +386,15 @@
 
     <article id="arcaConceptsCard" class="card" data-workspace-module="arca">
       <div class="summary"><div><span class="pill">Libro de Sueldos Digital</span><h2 style="margin-top:8px">Parametrización de conceptos ARCA</h2><p class="muted">Relacioná cada concepto utilizado en las liquidaciones con el código oficial y sus subsistemas.</p></div><span id="arcaProgressPill" class="pill">Sin revisar</span></div>
-      <div class="notice"><strong>Importante:</strong> las equivalencias se sugieren automáticamente, pero deben ser revisadas por el liquidador. El archivo se genera con registros de 195 caracteres, según el diseño oficial de ARCA.</div>
+      <div class="notice"><strong>Importante:</strong> las equivalencias se sugieren automáticamente, pero deben ser revisadas por el liquidador. Un concepto nuevo queda <strong>pendiente de alta</strong>: descargá su TXT, presentalo en ARCA y recién después marcá “Registrado en ARCA”. Mientras haya conceptos pendientes, el sistema no permite generar el TXT de liquidación.</div>
       <div id="arcaConceptsEmpty" class="empty">Todavía no hay conceptos liquidados para parametrizar.</div>
       <div id="arcaConceptsWrap" class="table-wrap hidden">
         <table class="arca-table">
-          <thead><tr><th>Concepto de la liquidación</th><th>Tipo</th><th>Usos</th><th>Código empleador</th><th>Código ARCA</th><th>Unidad</th><th>Subsistemas</th><th>Revisado</th></tr></thead>
+          <thead><tr><th>Concepto de la liquidación</th><th>Tipo</th><th>Usos</th><th>Código empleador</th><th>Código ARCA</th><th>Unidad</th><th>Subsistemas</th><th>Revisado</th><th>Estado ARCA</th></tr></thead>
           <tbody id="arcaConceptsTbody"></tbody>
         </table>
       </div>
-      <div class="actions"><button id="arcaSaveBtn" type="button">Guardar parametrización</button><button id="arcaValidateBtn" class="secondary" type="button">Validar archivo</button><button id="arcaExportBtn" class="secondary" type="button">Descargar TXT de conceptos</button><button id="arcaRefreshBtn" class="secondary" type="button">Actualizar conceptos</button></div>
+      <div class="actions"><button id="arcaSaveBtn" type="button">Guardar parametrización</button><button id="arcaValidateBtn" class="secondary" type="button">Validar archivo</button><button id="arcaPendingExportBtn" class="secondary" type="button">Descargar altas nuevas</button><button id="arcaExportBtn" class="secondary" type="button">Descargar todos</button><button id="arcaRefreshBtn" class="secondary" type="button">Actualizar conceptos</button></div>
       <div id="arcaStatus" class="status"></div>
       <div id="arcaValidation" class="hidden"></div>
     </article>
@@ -579,7 +579,7 @@
   function applyRolePermissions(company){
     const role=company?.role||"",canAdmin=["owner","admin"].includes(role),canPayroll=canAdmin||role==="payroll";
     $("companySaveBtn").disabled=!canAdmin;
-    ["employeeSaveBtn","employeeImportPreviewBtn","employeeImportStartBtn","periodSaveBtn","noveltySaveBtn","batchCalculateBtn","arcaSaveBtn","arcaExportBtn"].forEach(id=>$(id).disabled=!canPayroll);
+    ["employeeSaveBtn","employeeImportPreviewBtn","employeeImportStartBtn","periodSaveBtn","noveltySaveBtn","batchCalculateBtn","arcaSaveBtn","arcaExportBtn","arcaPendingExportBtn"].forEach(id=>$(id).disabled=!canPayroll);
     if(role==="viewer")setStatus("employeeStatus","Tu rol es de consulta: podés revisar información, pero no modificarla.");
   }
 
@@ -1006,13 +1006,29 @@
     return Object.entries(arcaFlagLabels).map(([key,label])=>`<label><input type="checkbox" data-arca-flag="${esc(key)}" ${String(settings[key])==="1"?"checked":""}>${esc(label)}</label>`).join("");
   }
 
+  function arcaRegistrationDate(value){
+    return value?String(value).slice(0,10):"";
+  }
+
+  function setArcaRegistrationState(row,registered,date=""){
+    if(!row)return;
+    const input=row.querySelector("[data-arca-registered]");
+    if(input)input.checked=!!registered;
+    row.dataset.registeredAt=registered?(date||new Date().toISOString().slice(0,19).replace("T"," ")):"";
+    const label=row.querySelector("[data-arca-registration-label]");
+    if(label){label.textContent=registered?"Registrado":"Pendiente";label.className=`pill ${registered?"active":"paused"}`;}
+    const detail=row.querySelector("[data-arca-registration-date]");
+    if(detail)detail.textContent=registered?`Alta: ${arcaRegistrationDate(row.dataset.registeredAt)}`:"Debe darse de alta antes de liquidar";
+    arcaLiquidationValidation=null;renderArcaLiquidation();
+  }
+
   function renderArcaConcepts(){
-    const total=arcaConcepts.length,saved=arcaConcepts.filter(item=>item.saved).length,reviewed=arcaConcepts.filter(item=>String(item.settings?.reviewed)==="1").length;
+    const total=arcaConcepts.length,saved=arcaConcepts.filter(item=>item.saved).length,reviewed=arcaConcepts.filter(item=>String(item.settings?.reviewed)==="1").length,registered=arcaConcepts.filter(item=>String(item.registered_in_arca)==="1").length,pending=total-registered;
     $("arcaConceptsEmpty").classList.toggle("hidden",total>0);
     $("arcaConceptsWrap").classList.toggle("hidden",total===0);
-    $("arcaProgressPill").textContent=total?`${saved}/${total} guardados · ${reviewed}/${total} revisados`:"Sin conceptos";
-    $("arcaProgressPill").className=`pill ${total&&saved===total&&reviewed===total?"active":""}`;
-    $("arcaConceptsTbody").innerHTML=arcaConcepts.map((item,index)=>`<tr data-arca-row="${index}" data-concept="${esc(item.concept_name)}">
+    $("arcaProgressPill").textContent=total?`${saved}/${total} guardados · ${reviewed}/${total} revisados · ${registered} registrados · ${pending} pendientes`:"Sin conceptos";
+    $("arcaProgressPill").className=`pill ${total&&saved===total&&reviewed===total&&pending===0?"active":""}`;
+    $("arcaConceptsTbody").innerHTML=arcaConcepts.map((item,index)=>{const isRegistered=String(item.registered_in_arca)==="1",registeredAt=item.registered_at||"";return `<tr data-arca-row="${index}" data-concept="${esc(item.concept_name)}" data-registered-at="${esc(registeredAt)}">
       <td><strong>${esc(item.concept_name)}</strong><span class="subtext">${item.saved?"Parametrización guardada":"Sugerencia pendiente de guardar"}</span></td>
       <td><span class="pill">${esc(mapArcaKind(item.kind))}</span></td>
       <td>${Number(item.uses_count||0)}</td>
@@ -1021,7 +1037,8 @@
       <td><select class="arca-unit" data-arca-unit>${["$","%","D","H","M","A","Q","S",""].map(value=>`<option value="${esc(value)}" ${String(item.unit_code)===value?"selected":""}>${value||"Sin unidad"}</option>`).join("")}</select></td>
       <td><details><summary>Configurar</summary><div class="arca-checks">${arcaFlagInputs(item,index)}</div></details></td>
       <td><label class="arca-review"><input type="checkbox" data-arca-reviewed ${String(item.settings?.reviewed)==="1"?"checked":""}>Confirmado</label></td>
-    </tr>`).join("");
+      <td><label class="arca-review"><input type="checkbox" data-arca-registered ${isRegistered?"checked":""}><span data-arca-registration-label class="pill ${isRegistered?"active":"paused"}">${isRegistered?"Registrado":"Pendiente"}</span></label><span data-arca-registration-date class="subtext">${isRegistered?`Alta: ${esc(arcaRegistrationDate(registeredAt))}`:"Debe darse de alta antes de liquidar"}</span></td>
+    </tr>`}).join("");
   }
 
   function readArcaMappings(){
@@ -1034,6 +1051,8 @@
         employer_code:row.querySelector("[data-arca-employer]")?.value.trim()||"",
         arca_code:digits(row.querySelector("[data-arca-code]")?.value||""),
         unit_code:row.querySelector("[data-arca-unit]")?.value??"$",
+        registered_in_arca:row.querySelector("[data-arca-registered]")?.checked?"1":"0",
+        registered_at:row.dataset.registeredAt||"",
         settings
       };
     });
@@ -1066,7 +1085,7 @@
     const errors=validation.errors||[],warnings=validation.warnings||[],ready=validation.ok;
     box.className=`validation-box ${ready?"valid":"invalid"}`;
     box.innerHTML=`<strong>${ready?"El TXT supera las validaciones estructurales.":"El TXT todavía no puede generarse."}</strong>
-      <div>${Number(validation.mapped_count||0)} de ${Number(validation.total_count||0)} conceptos parametrizados.</div>
+      <div>${Number(validation.mapped_count||0)} de ${Number(validation.total_count||0)} conceptos parametrizados · ${Number(validation.registered_count||0)} registrados · ${Number(validation.pending_count||0)} pendientes de alta.</div>
       ${errors.length?`<ul>${errors.map(item=>`<li>${esc(item)}</li>`).join("")}</ul>`:""}
       ${warnings.length?`<div style="margin-top:8px"><strong>Advertencias:</strong></div><ul>${warnings.map(item=>`<li>${esc(item)}</li>`).join("")}</ul>`:""}`;
   }
@@ -1082,11 +1101,11 @@
     }catch(err){arcaValidation=null;renderArcaValidation();setStatus("arcaStatus",err.message);return false;}
   }
 
-  async function downloadArcaConcepts(){
+  async function downloadArcaConcepts(scope="all"){
     const company=activeCompany();if(!company)return;
     setStatus("arcaStatus","Validando y generando TXT...");
     try{
-      const url=new URL(API_URL);url.searchParams.set("action","arca-concepts-export");url.searchParams.set("company_id",company.id);
+      const url=new URL(API_URL);url.searchParams.set("action","arca-concepts-export");url.searchParams.set("company_id",company.id);url.searchParams.set("scope",scope);
       const response=await fetch(url,{headers:{Authorization:`Bearer ${token()}`}});
       if(!response.ok){
         let data={};try{data=await response.json()}catch(_){}
@@ -1094,8 +1113,8 @@
         throw new Error(data.message||`Error HTTP ${response.status}`);
       }
       const blob=await response.blob(),objectUrl=URL.createObjectURL(blob),link=document.createElement("a"),disposition=response.headers.get("Content-Disposition")||"",match=disposition.match(/filename="?([^"]+)"?/i);
-      link.href=objectUrl;link.download=match?.[1]||`LSD_CONCEPTOS_${digits(company.cuit)}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(objectUrl);
-      await loadAudit();setStatus("arcaStatus","TXT de conceptos descargado. Cada registro tiene 195 caracteres.",true);
+      link.href=objectUrl;link.download=match?.[1]||(scope==="pending"?`LSD_ALTAS_NUEVAS_${digits(company.cuit)}.txt`:`LSD_CONCEPTOS_${digits(company.cuit)}.txt`);document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(objectUrl);
+      await loadAudit();setStatus("arcaStatus",scope==="pending"?"TXT descargado sólo con los conceptos pendientes de alta.":"TXT completo de conceptos descargado. Cada registro tiene 195 caracteres.",true);
     }catch(err){setStatus("arcaStatus",err.message);}
   }
 
@@ -1199,8 +1218,10 @@
   }
 
   $("loginBtn").addEventListener("click",async()=>{setStatus("loginStatus","Ingresando...");try{await login($("loginEmail").value.trim(),$("loginPassword").value);$("loginPassword").value="";setStatus("loginStatus","",true);}catch(err){setStatus("loginStatus",err.message);}});
-  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodType").addEventListener("change",updatePeriodSpecialFields);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",async()=>{await loadPayrolls();await loadPayrollJob(activePayrollJob?.id||"");});$("batchCancelBtn").addEventListener("click",cancelPayrollJob);$("batchRetryBtn").addEventListener("click",retryPayrollJob);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("arcaSaveBtn").addEventListener("click",saveArcaMappings);$("arcaValidateBtn").addEventListener("click",()=>validateArcaConcepts(true));$("arcaExportBtn").addEventListener("click",downloadArcaConcepts);$("arcaRefreshBtn").addEventListener("click",loadArcaConcepts);$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
+  $("registerBtn").addEventListener("click",register);$("companySaveBtn").addEventListener("click",saveCompany);$("employeeSaveBtn").addEventListener("click",saveEmployee);$("employeeCancelBtn").addEventListener("click",()=>{clearEmployeeForm();setStatus("employeeStatus","");});$("employeeImportPreviewBtn").addEventListener("click",previewEmployeeImport);$("employeeImportStartBtn").addEventListener("click",startEmployeeImportQueue);$("periodType").addEventListener("change",updatePeriodSpecialFields);$("periodSaveBtn").addEventListener("click",savePeriod);$("periodCancelBtn").addEventListener("click",()=>{clearPeriodForm();setStatus("periodSaveStatus","");});$("noveltySaveBtn").addEventListener("click",saveNovelty);$("noveltyCancelBtn").addEventListener("click",()=>{clearNoveltyForm();setStatus("noveltySaveStatus","");});$("batchCalculateBtn").addEventListener("click",calculateBatch);$("batchRefreshBtn").addEventListener("click",async()=>{await loadPayrolls();await loadPayrollJob(activePayrollJob?.id||"");});$("batchCancelBtn").addEventListener("click",cancelPayrollJob);$("batchRetryBtn").addEventListener("click",retryPayrollJob);$("batchPrintAllBtn").addEventListener("click",()=>printPayrolls());$("arcaSaveBtn").addEventListener("click",saveArcaMappings);$("arcaValidateBtn").addEventListener("click",()=>validateArcaConcepts(true));$("arcaExportBtn").addEventListener("click",()=>downloadArcaConcepts("all"));$("arcaPendingExportBtn").addEventListener("click",()=>downloadArcaConcepts("pending"));$("arcaRefreshBtn").addEventListener("click",loadArcaConcepts);$("teamInviteBtn").addEventListener("click",saveTeamMember);$("auditRefreshBtn").addEventListener("click",loadAudit);$("companyBackupBtn").addEventListener("click",downloadCompanyBackup);$("sessionsRefreshBtn").addEventListener("click",loadSessions);$("sessionsRevokeOthersBtn").addEventListener("click",()=>revokeSessions("",true));$("adminRefreshBtn").addEventListener("click",loadAdminCompanies);
   $("arcaLiquidationValidateBtn").addEventListener("click",()=>validateArcaLiquidation(true));$("arcaLiquidationExportBtn").addEventListener("click",downloadArcaLiquidation);
+  $("arcaConceptsTbody").addEventListener("input",ev=>{if(ev.target.matches("[data-arca-employer],[data-arca-code]"))setArcaRegistrationState(ev.target.closest("[data-arca-row]"),false);});
+  $("arcaConceptsTbody").addEventListener("change",ev=>{const row=ev.target.closest("[data-arca-row]");if(ev.target.matches("[data-arca-unit],[data-arca-flag]"))setArcaRegistrationState(row,false);if(ev.target.matches("[data-arca-registered]"))setArcaRegistrationState(row,ev.target.checked,row?.dataset.registeredAt||"");});
   $("forgotOpenBtn").addEventListener("click",()=>showForgotPassword(true));$("forgotCancelBtn").addEventListener("click",()=>showForgotPassword(false));$("forgotSendBtn").addEventListener("click",requestPasswordReset);$("resetPasswordBtn").addEventListener("click",confirmPasswordReset);
   $("companyLogoFile").addEventListener("change",async ev=>{const file=ev.target.files?.[0];if(!file)return;setStatus("companySaveStatus","Procesando logo...");try{companyLogoImage=await readCompanyLogo(file);renderCompanyLogo(companyLogoImage);setStatus("companySaveStatus","Logo listo. Guardá la empresa para conservarlo.",true);}catch(err){ev.target.value="";setStatus("companySaveStatus",err.message);}});
   $("companyLogoRemoveBtn").addEventListener("click",()=>{companyLogoImage="";$("companyLogoFile").value="";renderCompanyLogo("");setStatus("companySaveStatus","Logo quitado. Guardá la empresa para confirmar.",true);});
