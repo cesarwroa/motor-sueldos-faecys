@@ -1194,7 +1194,8 @@
         throw new Error(data.message||`Error HTTP ${response.status}`);
       }
       const blob=await response.blob(),objectUrl=URL.createObjectURL(blob),link=document.createElement("a"),disposition=response.headers.get("Content-Disposition")||"",match=disposition.match(/filename="?([^"]+)"?/i);
-      link.href=objectUrl;link.download=match?.[1]||`LSD_LIQUIDACION_${digits(company.cuit)}_${period.period}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(objectUrl);
+      const liquidationNumber=String(Number(period.parameters?.arca_liquidation_number||0)).padStart(5,"0");
+      link.href=objectUrl;link.download=match?.[1]||`Cuit.${digits(company.cuit)}.Periodo.${period.period}.Liquidacion.${liquidationNumber}.txt`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(objectUrl);
       await loadAudit();setStatus("arcaLiquidationStatus","TXT de liquidación descargado.",true);
     }catch(err){setStatus("arcaLiquidationStatus",err.message);}
   }
