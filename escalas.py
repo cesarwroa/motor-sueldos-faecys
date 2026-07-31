@@ -1792,6 +1792,7 @@ def calcular_payload(
         items.append(item(
             "A cuenta futuros aumentos (REM)",
             r=a_cuenta,
+            unidad=unidad_dias_basico,
         ))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
