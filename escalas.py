@@ -516,10 +516,10 @@ def get_payload(
         except Exception:
             f = 1.0
         if f and f != 1.0:
-            out["basico"] = _round2(out.get("basico", 0.0) * f)
-            out["no_rem"] = _round2(out.get("no_rem", 0.0) * f)
-            out["suma_fija"] = _round2(out.get("suma_fija", 0.0) * f)
-            out["extraordinaria"] = _round2(out.get("extraordinaria", 0.0) * f)
+            out["basico"] = round2(out.get("basico", 0.0) * f)
+            out["no_rem"] = round2(out.get("no_rem", 0.0) * f)
+            out["suma_fija"] = round2(out.get("suma_fija", 0.0) * f)
+            out["extraordinaria"] = round2(out.get("extraordinaria", 0.0) * f)
             out["conex_cat"] = _norm(conex_cat).upper() if conex_cat else ""
             out["conexiones"] = int(conexiones or 0)
 
@@ -1149,7 +1149,12 @@ def calcular_payload(
     caja_rem = 0.0
     caja_rem_os = 0.0
 
-    vid_base = _basico_ref(rama, mes, ["VENDEDOR B", "Vendedor B", "VENDEDOR  B"], agrup) if bool(armado_vidriera) else 0.0
+    vid_base = _basico_ref(
+        rama,
+        mes,
+        ["VENDEDOR B", "Vendedor B", "VENDEDOR  B", "VENDEDORES B", "VENDEDORES  B"],
+        agrup,
+    ) if bool(armado_vidriera) else 0.0
     vid_pct = 0.0383
     vid_rem = round2(vid_base * vid_pct * factor) if (vid_base and bool(armado_vidriera)) else 0.0
     vid_rem_os = round2(vid_base * vid_pct) if (vid_base and bool(armado_vidriera)) else 0.0
