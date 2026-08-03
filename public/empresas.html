@@ -18,6 +18,7 @@
     .usage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.usage-box{padding:12px;border:1px solid var(--line);border-radius:13px;background:#f8fafc}.usage-box strong{display:block;font-size:20px;margin-top:3px}.usage-box span{font-size:12px;color:var(--muted)}.plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.plan-box{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff}.plan-box.current{border:2px solid var(--blue);background:#eff6ff}.plan-box h3{margin:0 0 6px;font-size:16px}.plan-box ul{margin:10px 0 14px;padding-left:18px;color:var(--muted);font-size:12px;min-height:75px}.plan-box button{width:100%}.plan-request{margin-top:14px}
     .arca-table{min-width:1040px}.arca-table input,.arca-table select{padding:7px 8px;font-size:12px}.arca-code{width:112px}.arca-unit{width:92px}.arca-checks{display:grid;grid-template-columns:repeat(2,minmax(190px,1fr));gap:6px 14px;padding:10px 0}.arca-checks label{display:flex;align-items:center;gap:7px;margin:0;font-size:12px;font-weight:650}.arca-checks input{width:auto}.arca-review{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750}.arca-review input{width:auto}.validation-box{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#f8fafc;font-size:13px}.validation-box ul{margin:8px 0 0;padding-left:20px}.validation-box.invalid{background:#fff1f2;border-color:#fecdd3;color:#9f1239}.validation-box.valid{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
     .workspace-sticky{position:static;padding:0;margin-bottom:14px}.company-switcher-card{padding:14px 16px;margin-bottom:10px}.company-switcher-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.company-tabs,.workspace-nav{display:flex;align-items:stretch;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:2px 2px 8px}.company-tab,.workspace-nav button{flex:0 0 auto;background:#fff;color:#334155;border:1px solid var(--line);box-shadow:none;white-space:nowrap}.company-tab{display:grid;gap:2px;min-width:190px;text-align:left;justify-content:start;padding:10px 12px}.company-tab strong{font-size:13px}.company-tab span{font-size:11px;color:var(--muted)}.company-tab.active{background:#eff6ff;border-color:#60a5fa;color:#1d4ed8}.company-tab.active span{color:#1d4ed8}.workspace-nav{padding:0 2px 10px}.workspace-nav button{padding:9px 14px;border-radius:999px;font-size:13px}.workspace-nav button.active{background:var(--blue);border-color:var(--blue);color:#fff}.company-select-fallback{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}.workspace-context{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.health-guidance{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+    .company-form-tabs{display:flex;gap:8px;overflow-x:auto;margin:2px 0 16px;padding:4px;border:1px solid var(--line);border-radius:14px;background:#f8fafc}.company-form-tabs button{flex:0 0 auto;background:transparent;color:#475569;border-color:transparent;box-shadow:none;padding:9px 14px}.company-form-tabs button.active{background:#fff;color:#1d4ed8;border-color:#bfdbfe;box-shadow:0 3px 10px rgba(37,99,235,.09)}.company-form-panel{min-height:260px}.company-form-panel .grid{align-content:start}.company-form-panel[hidden]{display:none}.company-fieldset-title{margin:0 0 4px;font-size:17px}.union-guidance{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
     @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}.company-tab{min-width:165px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -118,6 +119,13 @@
     <details id="companyDetailsCard" class="card company-details" data-workspace-module="company" open>
       <summary><div class="summary"><div><h2>Ficha de la empresa</h2><p class="muted">Información que se utilizará en recibos y liquidaciones.</p></div><span class="pill">Paso 1</span></div></summary>
       <div class="detail-body">
+      <div id="companyFormTabs" class="company-form-tabs" role="tablist" aria-label="Secciones de la empresa">
+        <button type="button" role="tab" data-company-form-target="identity">Datos generales</button>
+        <button type="button" role="tab" data-company-form-target="coverage">Convenio y aportes</button>
+        <button type="button" role="tab" data-company-form-target="receipt">Pago y recibo</button>
+      </div>
+      <section class="company-form-panel" data-company-form-panel="identity">
+      <h3 class="company-fieldset-title">Identificación y domicilio</h3><p class="section-note">Datos legales y de contacto de la empresa.</p>
       <div class="grid">
         <div><label for="companyLegalName">Razón social *</label><input id="companyLegalName" maxlength="190"></div>
         <div><label for="companyCuit">CUIT *</label><input id="companyCuit" inputmode="numeric" maxlength="13"></div>
@@ -130,12 +138,26 @@
         <div><label for="companyCity">Localidad</label><input id="companyCity" maxlength="120"></div>
         <div><label for="companyProvince">Provincia</label><input id="companyProvince" maxlength="120"></div>
         <div><label for="companyActivity">Actividad</label><input id="companyActivity" maxlength="190"></div>
+      </div>
+      </section>
+      <section class="company-form-panel" data-company-form-panel="coverage" hidden>
+      <h3 class="company-fieldset-title">Convenio, cobertura y aportes locales</h3><p class="section-note">Reglas que se usarán como valor inicial para la nómina de esta empresa.</p>
+      <div class="grid">
         <div><label for="companyAgreement">Convenio</label><input id="companyAgreement" maxlength="120" value="CCT 130/75"></div>
         <div><label for="companyHealthType">Tipo de cobertura habitual</label><select id="companyHealthType"><option value="osecac">OSECAC</option><option value="other_health">Otra obra social</option><option value="prepaid">Prepaga</option></select></div>
         <div><label for="companyHealthName">Nombre de la cobertura</label><input id="companyHealthName" maxlength="190" placeholder="Ej.: OSDE, Swiss Medical, OSECAC"></div>
         <div><label for="companyHealthCode">Código obra social ARCA/LSD</label><input id="companyHealthCode" inputmode="numeric" maxlength="6" placeholder="6 dígitos; OSDE: 400800"></div>
         <div class="wide"><label class="check-line"><input id="companyHealthOnNonRem" type="checkbox"> Aplicar obra social sobre conceptos no remunerativos</label><span class="subtext">Se usa como valor inicial al crear empleados; cada ficha puede tener una excepción.</span></div>
         <div class="wide notice health-guidance"><strong>Regla CCT de la empresa:</strong> la cobertura habitual puede ser cualquier obra social o prepaga y se informa con su código LSD. Es independiente del aporte patronal extraordinario OSECAC de <strong>$28.000 por empleado</strong>. No se descuenta un aporte fijo OSECAC al trabajador.</div>
+        <div class="wide"><label class="check-line"><input id="companyRegionalUnionEnabled" type="checkbox"> Aplicar aporte sindical zonal obligatorio aunque el trabajador no esté afiliado</label></div>
+        <div><label for="companyRegionalUnionName">Nombre del concepto</label><input id="companyRegionalUnionName" maxlength="190" value="Resolución 3/76 - Sindicato Zona Norte"></div>
+        <div><label for="companyRegionalUnionPct">Porcentaje</label><input id="companyRegionalUnionPct" type="number" min="0" max="10" step="0.01" value="1"></div>
+        <div class="wide notice union-guidance"><strong>Ejemplo Zona Norte:</strong> Resolución 3/76 al 1% sobre la base sindical aportable. Es adicional al 2% solidario y no depende de la afiliación.</div>
+      </div>
+      </section>
+      <section class="company-form-panel" data-company-form-panel="receipt" hidden>
+      <h3 class="company-fieldset-title">Pago y presentación del recibo</h3><p class="section-note">Información operativa, logo y leyenda que aparecerán en los comprobantes.</p>
+      <div class="grid">
         <div><label for="companyPaymentPlace">Lugar de pago</label><input id="companyPaymentPlace" maxlength="190"></div>
         <div><label for="companyEstablishment">Establecimiento / sucursal</label><input id="companyEstablishment" maxlength="120"></div>
         <div><label for="companyEmployerRegistration">N.º inscripción empleador</label><input id="companyEmployerRegistration" maxlength="80"></div>
@@ -147,6 +169,7 @@
         </div>
         <div class="wide"><label for="companyReceiptLegend">Leyenda para el recibo</label><textarea id="companyReceiptLegend" maxlength="255"></textarea></div>
       </div>
+      </section>
       <div class="actions"><button id="companySaveBtn" type="button">Guardar empresa</button><button id="companyCancelCreateBtn" class="secondary hidden" type="button">Cancelar alta</button></div><div id="companySaveStatus" class="status"></div>
       </div>
     </details>
@@ -290,8 +313,8 @@
           <div class="grid">
             <div><label for="periodArcaNumber">Número de liquidación ARCA</label><input id="periodArcaNumber" type="number" min="1" max="99999" step="1"></div>
             <div><label for="periodArcaFrequency">Frecuencia</label><select id="periodArcaFrequency"><option value="M">M - Mensual</option><option value="Q">Q - Quincenal</option><option value="S">S - Semanal</option></select></div>
-            <div><label for="periodArcaMaxBase">Tope máximo mensual ANSES *</label><input id="periodArcaMaxBase" type="number" min="0" step="0.01"></div>
-            <div><label for="periodArcaMaxSacBase">Tope máximo SAC ANSES *</label><input id="periodArcaMaxSacBase" type="number" min="0" step="0.01"></div>
+            <div><label for="periodArcaMaxBase">Tope máximo mensual ANSES *</label><input id="periodArcaMaxBase" type="number" min="0" step="0.01"><span class="subtext">Limita Jubilación e INSSJP en el recibo y las Remuneraciones 1, 4 y 5 del TXT.</span></div>
+            <div><label for="periodArcaMaxSacBase">Tope máximo SAC ANSES *</label><input id="periodArcaMaxSacBase" type="number" min="0" step="0.01"><span class="subtext">Se aplica por separado al SAC.</span></div>
             <div><label for="periodArcaMinBase">Base mínima previsional ANSES</label><input id="periodArcaMinBase" type="number" min="0" step="0.01" value="0"></div>
             <div><label for="periodArcaDetraction">Importe a detraer Ley 27.541</label><input id="periodArcaDetraction" type="number" min="0" step="0.01" value="0"></div>
           </div>
@@ -445,6 +468,7 @@
   let arcaValidation = null;
   let creatingCompany = false;
   let workspaceModule = (()=>{try{return localStorage.getItem(WORKSPACE_MODULE_KEY)||"overview"}catch(_){return"overview"}})();
+  let companyFormSection = "identity";
 
   const esc = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const digits = value => String(value || "").replace(/\D/g, "");
@@ -532,6 +556,19 @@
     try{localStorage.setItem(WORKSPACE_MODULE_KEY,workspaceModule)}catch(_){}
     applyWorkspaceNavigation();
     window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function setCompanyFormSection(section){
+    const allowed=["identity","coverage","receipt"];
+    companyFormSection=allowed.includes(section)?section:"identity";
+    document.querySelectorAll("[data-company-form-panel]").forEach(panel=>{
+      panel.hidden=panel.dataset.companyFormPanel!==companyFormSection;
+    });
+    document.querySelectorAll("[data-company-form-target]").forEach(button=>{
+      const active=button.dataset.companyFormTarget===companyFormSection;
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-selected",active?"true":"false");
+      button.tabIndex=active?0:-1;
+    });
   }
   async function switchCompany(companyId){
     if(!companyId||(!creatingCompany&&String(companyId)===String(activeCompany()?.id||"")))return;
@@ -654,9 +691,10 @@
   function renderCompanyForm(){
     if(creatingCompany)return;
     const company=activeCompany();if(!company)return;const address=company.address||{},settings=company.settings||{};
-    const values={companyLegalName:company.legal_name,companyCuit:company.cuit,companyEmail:company.email,companyPhone:company.phone,companyStreet:address.street,companyNumber:address.number,companyFloor:address.floor,companyPostal:address.postal_code,companyCity:address.city,companyProvince:address.province,companyActivity:settings.activity,companyAgreement:settings.agreement||"CCT 130/75",companyHealthType:settings.health_insurance_type||"osecac",companyHealthName:settings.health_insurance_name,companyHealthCode:settings.health_insurance_code,companyPaymentPlace:settings.payment_place,companyEstablishment:settings.establishment,companyEmployerRegistration:settings.employer_registration,companyReceiptLegend:settings.receipt_legend};
+    const values={companyLegalName:company.legal_name,companyCuit:company.cuit,companyEmail:company.email,companyPhone:company.phone,companyStreet:address.street,companyNumber:address.number,companyFloor:address.floor,companyPostal:address.postal_code,companyCity:address.city,companyProvince:address.province,companyActivity:settings.activity,companyAgreement:settings.agreement||"CCT 130/75",companyHealthType:settings.health_insurance_type||"osecac",companyHealthName:settings.health_insurance_name,companyHealthCode:settings.health_insurance_code,companyRegionalUnionName:settings.regional_union_contribution_name||"Resolución 3/76 - Sindicato Zona Norte",companyRegionalUnionPct:settings.regional_union_contribution_pct||1,companyPaymentPlace:settings.payment_place,companyEstablishment:settings.establishment,companyEmployerRegistration:settings.employer_registration,companyReceiptLegend:settings.receipt_legend};
     Object.entries(values).forEach(([id,value])=>$(id).value=value||"");
     $("companyHealthOnNonRem").checked=settings.health_contribution_on_non_remunerative===true||String(settings.health_contribution_on_non_remunerative)==="1";
+    $("companyRegionalUnionEnabled").checked=settings.regional_union_contribution_enabled===true||String(settings.regional_union_contribution_enabled)==="1";
     companyLogoImage=settings.logo_image||"";
     $("companyLogoFile").value="";
     renderCompanyLogo(companyLogoImage||settings.logo_url||"");
@@ -668,6 +706,9 @@
     $("companyAgreement").value="CCT 130/75";
     $("companyHealthType").value="osecac";
     $("companyHealthOnNonRem").checked=false;
+    $("companyRegionalUnionEnabled").checked=false;
+    $("companyRegionalUnionName").value="Resolución 3/76 - Sindicato Zona Norte";
+    $("companyRegionalUnionPct").value="1";
     companyLogoImage="";
     $("companyLogoFile").value="";
     renderCompanyLogo("");
@@ -677,6 +718,7 @@
     creatingCompany=true;
     clearCompanyForm();
     setWorkspaceModule("company");
+    setCompanyFormSection("identity");
     $("companyDetailsCard").open=true;
     $("companySaveBtn").disabled=false;
     $("companySaveBtn").textContent="Crear empresa";
@@ -726,9 +768,10 @@
 
   async function saveCompany(){
     const company=activeCompany();if(!company&&!creatingCompany)return setStatus("companySaveStatus","No hay una empresa activa.");
-    const body={...(creatingCompany?{}:{id:company.id}),legal_name:$("companyLegalName").value.trim(),cuit:digits($("companyCuit").value),email:$("companyEmail").value.trim(),phone:$("companyPhone").value.trim(),address:{street:$("companyStreet").value.trim(),number:$("companyNumber").value.trim(),floor:$("companyFloor").value.trim(),postal_code:$("companyPostal").value.trim(),city:$("companyCity").value.trim(),province:$("companyProvince").value.trim()},settings:{activity:$("companyActivity").value.trim(),agreement:$("companyAgreement").value.trim(),health_insurance_type:$("companyHealthType").value,health_insurance_name:$("companyHealthName").value.trim(),health_insurance_code:digits($("companyHealthCode").value),health_contribution_on_non_remunerative:$("companyHealthOnNonRem").checked,payment_place:$("companyPaymentPlace").value.trim(),establishment:$("companyEstablishment").value.trim(),employer_registration:$("companyEmployerRegistration").value.trim(),logo_image:companyLogoImage,logo_url:companyLogoImage?"":String(company?.settings?.logo_url||""),receipt_legend:$("companyReceiptLegend").value.trim()}};
+    const body={...(creatingCompany?{}:{id:company.id}),legal_name:$("companyLegalName").value.trim(),cuit:digits($("companyCuit").value),email:$("companyEmail").value.trim(),phone:$("companyPhone").value.trim(),address:{street:$("companyStreet").value.trim(),number:$("companyNumber").value.trim(),floor:$("companyFloor").value.trim(),postal_code:$("companyPostal").value.trim(),city:$("companyCity").value.trim(),province:$("companyProvince").value.trim()},settings:{activity:$("companyActivity").value.trim(),agreement:$("companyAgreement").value.trim(),health_insurance_type:$("companyHealthType").value,health_insurance_name:$("companyHealthName").value.trim(),health_insurance_code:digits($("companyHealthCode").value),health_contribution_on_non_remunerative:$("companyHealthOnNonRem").checked,regional_union_contribution_enabled:$("companyRegionalUnionEnabled").checked,regional_union_contribution_name:$("companyRegionalUnionName").value.trim(),regional_union_contribution_pct:Number($("companyRegionalUnionPct").value||0),payment_place:$("companyPaymentPlace").value.trim(),establishment:$("companyEstablishment").value.trim(),employer_registration:$("companyEmployerRegistration").value.trim(),logo_image:companyLogoImage,logo_url:companyLogoImage?"":String(company?.settings?.logo_url||""),receipt_legend:$("companyReceiptLegend").value.trim()}};
     if(!body.legal_name||!validTaxId(body.cuit))return setStatus("companySaveStatus","Completá razón social y un CUIT válido, incluido su dígito verificador.");
     if(body.settings.health_insurance_name&&!/^\d{6}$/.test(body.settings.health_insurance_code))return setStatus("companySaveStatus","La cobertura médica habitual debe tener un código ARCA/LSD de 6 dígitos.");
+    if(body.settings.regional_union_contribution_enabled&&(!body.settings.regional_union_contribution_name||body.settings.regional_union_contribution_pct<=0))return setStatus("companySaveStatus","Completá el nombre y un porcentaje mayor a cero para el aporte sindical zonal.");
     setStatus("companySaveStatus",creatingCompany?"Creando empresa...":"Guardando...");try{const saved=await api("companies",{method:"POST",body});if(creatingCompany&&saved.id)setAuth(token(),saved.id);creatingCompany=false;$("companyCancelCreateBtn").classList.add("hidden");$("companySaveBtn").textContent="Guardar empresa";await loadCompanies();renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadArcaConcepts();await loadSecurity();$("companyDetailsCard").open=false;setStatus("companySaveStatus","Datos de la empresa guardados.",true);}catch(err){setStatus("companySaveStatus",err.message);}
   }
 
@@ -1268,6 +1311,7 @@
   $("companySelect").addEventListener("change",ev=>switchCompany(ev.target.value));
   $("companyTabs").addEventListener("click",ev=>{const companyId=ev.target.closest("[data-company-tab]")?.dataset?.companyTab;if(companyId)switchCompany(companyId);});
   $("workspaceNav").addEventListener("click",ev=>{const module=ev.target.closest("[data-workspace-target]")?.dataset?.workspaceTarget;if(module)setWorkspaceModule(module);});
+  $("companyFormTabs").addEventListener("click",ev=>{const section=ev.target.closest("[data-company-form-target]")?.dataset?.companyFormTarget;if(section)setCompanyFormSection(section);});
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("employeeHealthName").addEventListener("blur",()=>{if(/\bOSDE\b/i.test($("employeeHealthName").value)){if(!digits($("employeeHealthCode").value))$("employeeHealthCode").value="400800";$("employeeHealthOnNonRem").checked=false;}});
@@ -1283,6 +1327,7 @@
   $("noveltiesTbody").addEventListener("click",ev=>{const editId=ev.target?.dataset?.editNovelty,deleteId=ev.target?.dataset?.deleteNovelty;if(editId)editNovelty(editId);if(deleteId)deleteNovelty(deleteId);});
   $("batchTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.printPayroll;if(id)printPayrolls(id);});
   clearNoveltyForm();
+  setCompanyFormSection("identity");
   if(resetToken())$("resetPasswordView").classList.remove("hidden");
   loadPayrollMeta().then(loadSession);
 })();
