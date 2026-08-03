@@ -41,6 +41,16 @@ class TopesYAporteZonalTest(unittest.TestCase):
         self.assertEqual(item["unidad"], "1%")
         self.assertEqual(item["d"], round(item["base"] * 0.01, 2))
 
+    def test_afiliacion_admite_porcentaje_y_suma_fija_adicionales(self):
+        result = self._calcular(afiliado=True, sind_pct=2, sind_fijo=1500)
+        items = {item["concepto"]: item for item in result["items"]}
+        percentage = items["Sindicato Afiliación 2%"]
+        fixed = items["Sindicato Afiliación"]
+
+        self.assertEqual(percentage["unidad"], "2%")
+        self.assertEqual(percentage["d"], round(percentage["base"] * 0.02, 2))
+        self.assertEqual(fixed["d"], 1500)
+
 
 if __name__ == "__main__":
     unittest.main()
