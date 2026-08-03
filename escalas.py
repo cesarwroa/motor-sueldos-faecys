@@ -516,10 +516,10 @@ def get_payload(
         except Exception:
             f = 1.0
         if f and f != 1.0:
-            out["basico"] = round2(out.get("basico", 0.0) * f)
-            out["no_rem"] = round2(out.get("no_rem", 0.0) * f)
-            out["suma_fija"] = round2(out.get("suma_fija", 0.0) * f)
-            out["extraordinaria"] = round2(out.get("extraordinaria", 0.0) * f)
+            out["basico"] = _round2(out.get("basico", 0.0) * f)
+            out["no_rem"] = _round2(out.get("no_rem", 0.0) * f)
+            out["suma_fija"] = _round2(out.get("suma_fija", 0.0) * f)
+            out["extraordinaria"] = _round2(out.get("extraordinaria", 0.0) * f)
             out["conex_cat"] = _norm(conex_cat).upper() if conex_cat else ""
             out["conexiones"] = int(conexiones or 0)
 
@@ -770,6 +770,10 @@ def calcular_payload(
     afiliado: bool = False,
     sind_pct: float = 0,
     sind_fijo: float = 0,
+    aporte_zonal_nombre: str = "",
+    aporte_zonal_pct: float = 0,
+    tope_aportes_mensual: float = 0,
+    tope_aportes_sac: float = 0,
     titulo_pct: float = 0,
     zona_pct: float = 0,
     fer_no_trab: int = 0,
@@ -1340,8 +1344,17 @@ def calcular_payload(
     #   - Sindicato 2%
     #   - Afiliación 2% (solo si está marcado Afiliado)
     # y NO se descuenta PAMI/OS/OSECAC.
-    jub = round2(rem_aportes * 0.11)
-    pami = 0.0 if bool(jubilado) else round2(rem_aportes * 0.03)
+    try:
+        tope_mensual_f = max(0.0, float(tope_aportes_mensual or 0.0))
+    except Exception:
+        tope_mensual_f = 0.0
+    try:
+        tope_sac_f = max(0.0, float(tope_aportes_sac or 0.0))
+    except Exception:
+        tope_sac_f = 0.0
+    base_aportes_previsional = min(rem_aportes, tope_mensual_f) if tope_mensual_f > 0 else rem_aportes
+    jub = round2(base_aportes_previsional * 0.11)
+    pami = 0.0 if bool(jubilado) else round2(base_aportes_previsional * 0.03)
     # Obra Social (OSECAC): BASE JORNADA COMPLETA (48hs), sin prorrateo por jornada.
     # Importante: no "desprorrateamos" totales, porque eso infla importes fijos (p.ej. a-cuenta).
     # Recalculamos una simulación a 48hs manteniendo el resto de parámetros (antig., zona, feriados, ausencias, etc.).
@@ -1480,6 +1493,12 @@ def calcular_payload(
     base_fs = round2(rem_aportes + nr_aportable_real)
     faecys = round2(base_fs * 0.005) if base_fs else 0.0
     sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
+    try:
+        aporte_zonal_pct_f = max(0.0, float(aporte_zonal_pct or 0.0))
+    except Exception:
+        aporte_zonal_pct_f = 0.0
+    aporte_zonal_nombre_txt = str(aporte_zonal_nombre or "").strip()
+    aporte_zonal = round2(base_fs * (aporte_zonal_pct_f / 100.0)) if (base_fs and aporte_zonal_nombre_txt and aporte_zonal_pct_f > 0) else 0.0
     sind_af = 0.0
 
     sind = 0.0
@@ -1515,6 +1534,7 @@ def calcular_payload(
         + osecac_100
         + faecys
         + sind_solid
+        + aporte_zonal
         + sind_af
         + sind
         + sind_fijo_monto
@@ -1562,8 +1582,10 @@ def calcular_payload(
     sac_nr_aportable = sac_nr_total
     sac_base_fs = round2(sac_rem_aportes + sac_nr_aportable)
 
-    mensual_jub = round2(mensual_rem_aportes * 0.11)
-    sac_jub = round2(sac_rem_aportes * 0.11) if sac_habil else 0.0
+    mensual_base_previsional = min(mensual_rem_aportes, tope_mensual_f) if tope_mensual_f > 0 else mensual_rem_aportes
+    sac_base_previsional = min(sac_rem_aportes, tope_sac_f) if (sac_habil and tope_sac_f > 0) else sac_rem_aportes
+    mensual_jub = round2(mensual_base_previsional * 0.11)
+    sac_jub = round2(sac_base_previsional * 0.11) if sac_habil else 0.0
 
     if bool(jubilado):
         mensual_pami = 0.0
@@ -1574,8 +1596,8 @@ def calcular_payload(
         sac_os_base = round2(sac_row_rem_os + (sac_row_nr_os if bool(obra_social_sobre_no_rem) else 0.0)) if sac_habil else 0.0
         sac_os_aporte = 0.0
     else:
-        mensual_pami = round2(mensual_rem_aportes * 0.03)
-        sac_pami = round2(sac_rem_aportes * 0.03) if sac_habil else 0.0
+        mensual_pami = round2(mensual_base_previsional * 0.03)
+        sac_pami = round2(sac_base_previsional * 0.03) if sac_habil else 0.0
         mensual_os_base = round2(mensual_rem_aportes_os + (mensual_nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         mensual_os_aporte = round2(mensual_os_base * 0.03) if bool(osecac) else 0.0
         mensual_osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
@@ -1584,8 +1606,10 @@ def calcular_payload(
 
     mensual_faecys = round2(mensual_base_fs * 0.005) if mensual_base_fs else 0.0
     mensual_sind_solid = round2(mensual_base_fs * 0.02) if mensual_base_fs else 0.0
+    mensual_aporte_zonal = round2(mensual_base_fs * (aporte_zonal_pct_f / 100.0)) if (mensual_base_fs and aporte_zonal_nombre_txt and aporte_zonal_pct_f > 0) else 0.0
     sac_faecys = round2(sac_base_fs * 0.005) if (sac_habil and sac_base_fs) else 0.0
     sac_sind_solid = round2(sac_base_fs * 0.02) if (sac_habil and sac_base_fs) else 0.0
+    sac_aporte_zonal = round2(sac_base_fs * (aporte_zonal_pct_f / 100.0)) if (sac_habil and sac_base_fs and aporte_zonal_nombre_txt and aporte_zonal_pct_f > 0) else 0.0
 
     mensual_sind = 0.0
     sac_sind = 0.0
@@ -1611,6 +1635,7 @@ def calcular_payload(
         + mensual_osecac_100
         + mensual_faecys
         + mensual_sind_solid
+        + mensual_aporte_zonal
         + mensual_sind
         + mensual_sind_fijo_monto
         + seguro_vida_cct_trabajador
@@ -1641,6 +1666,7 @@ def calcular_payload(
         + sac_os_aporte
         + sac_faecys
         + sac_sind_solid
+        + sac_aporte_zonal
         + sac_sind
         + sac_sind_fijo_monto
     )
@@ -1697,6 +1723,7 @@ def calcular_payload(
         osecac_fijo_val: float,
         faecys_val: float,
         sind_solid_val: float,
+        aporte_zonal_val: float,
         sind_val: float,
         sind_fijo_val: float,
     ) -> None:
@@ -1704,6 +1731,8 @@ def calcular_payload(
             target.append(item("Jubilación 11% (Jubilado)", d=jub_val, base_num=rem_base, unidad=_fmt_unidad_pct(11)))
             target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
             target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
+            if aporte_zonal_val:
+                target.append(item(aporte_zonal_nombre_txt, d=aporte_zonal_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(aporte_zonal_pct_f)))
             if sind_val:
                 target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(sind_pct)))
             if sind_fijo_val:
@@ -1722,6 +1751,8 @@ def calcular_payload(
 
         target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
         target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
+        if aporte_zonal_val:
+            target.append(item(aporte_zonal_nombre_txt, d=aporte_zonal_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(aporte_zonal_pct_f)))
 
         if sind_val:
             target.append(item(f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", d=sind_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(sind_pct)))
@@ -1976,7 +2007,7 @@ def calcular_payload(
 
     append_aporte_items(
         items,
-        rem_base=mensual_rem_aportes,
+        rem_base=mensual_base_previsional,
         fs_base_val=mensual_base_fs,
         os_base_val=mensual_os_base,
         jub_val=mensual_jub,
@@ -1985,6 +2016,7 @@ def calcular_payload(
         osecac_fijo_val=mensual_osecac_100,
         faecys_val=mensual_faecys,
         sind_solid_val=mensual_sind_solid,
+        aporte_zonal_val=mensual_aporte_zonal,
         sind_val=mensual_sind,
         sind_fijo_val=mensual_sind_fijo_monto,
     )
@@ -2010,7 +2042,7 @@ def calcular_payload(
             ))
         append_aporte_items(
             sac_items,
-            rem_base=sac_rem_aportes,
+            rem_base=sac_base_previsional,
             fs_base_val=sac_base_fs,
             os_base_val=sac_os_base,
             jub_val=sac_jub,
@@ -2019,6 +2051,7 @@ def calcular_payload(
             osecac_fijo_val=0.0,
             faecys_val=sac_faecys,
             sind_solid_val=sac_sind_solid,
+            aporte_zonal_val=sac_aporte_zonal,
             sind_val=sac_sind,
             sind_fijo_val=sac_sind_fijo_monto,
         )
