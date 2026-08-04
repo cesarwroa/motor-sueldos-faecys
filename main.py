@@ -1091,7 +1091,15 @@ def admin_app(admin_token: str = Query(default="")):
 @app.get("/empresas/", include_in_schema=False)
 def company_portal():
     if COMPANY_PORTAL_FILE.exists():
-        return FileResponse(COMPANY_PORTAL_FILE, headers=NOINDEX_HEADERS)
+        return FileResponse(
+            COMPANY_PORTAL_FILE,
+            headers={
+                **NOINDEX_HEADERS,
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
     return HTMLResponse("<h1>Portal de empresas no encontrado</h1>", status_code=404, headers=NOINDEX_HEADERS)
 
 
