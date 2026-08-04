@@ -9,6 +9,9 @@ import os
 import re
 import time
 import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
@@ -63,6 +66,10 @@ ADMIN_LOGIN_EMAIL = os.getenv("ADMIN_LOGIN_EMAIL", "").strip().lower()
 ADMIN_LOGIN_PASSWORD = os.getenv("ADMIN_LOGIN_PASSWORD", "")
 ADMIN_ACCESS_SECRET = os.getenv("ADMIN_ACCESS_SECRET", "")
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "43200"))
+COMPANY_API_URL = os.getenv(
+    "COMPANY_API_URL",
+    "https://calculadoradecomercio.com.ar/api/",
+).strip()
 ADMIN_FEATURES_FILE = BASE_DIR / "data" / "admin_features.json"
 ADMIN_COMPANIES_FILE = BASE_DIR / "data" / "admin_companies.json"
 ADMIN_COMPANY_STATE_FILE = BASE_DIR / "data" / "admin_company_state.json"
@@ -142,15 +149,55 @@ def _enforce_rate_limit(request: Request, scope: str, limit: int, window_seconds
 
 
 def _require_admin_security_config() -> None:
-    if (
-        not ADMIN_LOGIN_EMAIL
-        or len(ADMIN_LOGIN_PASSWORD) < 12
-        or len(ADMIN_ACCESS_SECRET.encode("utf-8")) < 32
-    ):
+    legacy_login_ready = bool(ADMIN_LOGIN_EMAIL and len(ADMIN_LOGIN_PASSWORD) >= 12)
+    company_login_ready = COMPANY_API_URL.startswith(("https://", "http://"))
+    if len(ADMIN_ACCESS_SECRET.encode("utf-8")) < 32 or not (legacy_login_ready or company_login_ready):
         raise HTTPException(
             status_code=503,
             detail="El acceso administrativo no está configurado de forma segura.",
         )
+
+
+def _company_api_request(
+    action: str,
+    *,
+    method: str = "GET",
+    payload: Optional[Dict[str, Any]] = None,
+    token: str = "",
+) -> Dict[str, Any]:
+    query = urllib.parse.urlencode({"action": action})
+    separator = "&" if "?" in COMPANY_API_URL else "?"
+    url = f"{COMPANY_API_URL}{separator}{query}"
+    headers = {"Accept": "application/json"}
+    body = None
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
+        body = json.dumps(payload).encode("utf-8")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, data=body, headers=headers, method=method)
+    with urllib.request.urlopen(request, timeout=12) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Respuesta inválida del servicio de empresas.")
+    return data
+
+
+def _authenticate_platform_admin(email: str, password: str) -> bool:
+    try:
+        login = _company_api_request(
+            "login",
+            method="POST",
+            payload={"email": email, "password": password},
+        )
+        company_token = str(login.get("token") or "")
+        if not company_token:
+            return False
+        session = _company_api_request("me", token=company_token)
+        user_email = str((session.get("user") or {}).get("email") or "").strip().lower()
+        return bool(session.get("is_platform_admin")) and hmac.compare_digest(user_email, email)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, json.JSONDecodeError):
+        return False
 EMPLOYEE_IMPORT_HEADERS = {
     "legajo": "file_number",
     "apellido_y_nombre": "full_name",
@@ -1130,16 +1177,19 @@ def admin_login(payload: AdminLoginRequest, request: Request):
     email = payload.email.strip().lower()
     password = payload.password
 
-    valid_email = hmac.compare_digest(email, ADMIN_LOGIN_EMAIL)
-    valid_password = hmac.compare_digest(password, ADMIN_LOGIN_PASSWORD)
-
+    valid_email = bool(ADMIN_LOGIN_EMAIL) and hmac.compare_digest(email, ADMIN_LOGIN_EMAIL)
+    valid_password = bool(ADMIN_LOGIN_PASSWORD) and hmac.compare_digest(password, ADMIN_LOGIN_PASSWORD)
+    valid_platform_admin = False
     if not (valid_email and valid_password):
+        valid_platform_admin = _authenticate_platform_admin(email, password)
+
+    if not ((valid_email and valid_password) or valid_platform_admin):
         raise HTTPException(status_code=401, detail="Credenciales de administrador inválidas.")
 
     return {
         "ok": True,
         "token": _issue_admin_token(email),
-        "email": ADMIN_LOGIN_EMAIL,
+        "email": email,
         "role": "admin",
         "expires_in": ADMIN_TOKEN_TTL_SECONDS,
     }
