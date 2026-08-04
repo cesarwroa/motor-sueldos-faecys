@@ -19,7 +19,8 @@
     .arca-table{min-width:1040px}.arca-table input,.arca-table select{padding:7px 8px;font-size:12px}.arca-code{width:112px}.arca-unit{width:92px}.arca-checks{display:grid;grid-template-columns:repeat(2,minmax(190px,1fr));gap:6px 14px;padding:10px 0}.arca-checks label{display:flex;align-items:center;gap:7px;margin:0;font-size:12px;font-weight:650}.arca-checks input{width:auto}.arca-review{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750}.arca-review input{width:auto}.validation-box{margin-top:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#f8fafc;font-size:13px}.validation-box ul{margin:8px 0 0;padding-left:20px}.validation-box.invalid{background:#fff1f2;border-color:#fecdd3;color:#9f1239}.validation-box.valid{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
     .workspace-sticky{position:static;padding:0;margin-bottom:14px}.company-switcher-card{padding:14px 16px;margin-bottom:10px}.company-switcher-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.company-tabs,.workspace-nav{display:flex;align-items:stretch;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:2px 2px 8px}.company-tab,.workspace-nav button{flex:0 0 auto;background:#fff;color:#334155;border:1px solid var(--line);box-shadow:none;white-space:nowrap}.company-tab{display:grid;gap:2px;min-width:190px;text-align:left;justify-content:start;padding:10px 12px}.company-tab strong{font-size:13px}.company-tab span{font-size:11px;color:var(--muted)}.company-tab.active{background:#eff6ff;border-color:#60a5fa;color:#1d4ed8}.company-tab.active span{color:#1d4ed8}.workspace-nav{padding:0 2px 10px}.workspace-nav button{padding:9px 14px;border-radius:999px;font-size:13px}.workspace-nav button.active{background:var(--blue);border-color:var(--blue);color:#fff}.company-select-fallback{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}.workspace-context{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.health-guidance{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
     .company-form-tabs{display:flex;gap:8px;overflow-x:auto;margin:2px 0 16px;padding:4px;border:1px solid var(--line);border-radius:14px;background:#f8fafc}.company-form-tabs button{flex:0 0 auto;background:transparent;color:#475569;border-color:transparent;box-shadow:none;padding:9px 14px}.company-form-tabs button.active{background:#fff;color:#1d4ed8;border-color:#bfdbfe;box-shadow:0 3px 10px rgba(37,99,235,.09)}.company-form-panel{min-height:260px}.company-form-panel .grid{align-content:start}.company-form-panel[hidden]{display:none}.company-fieldset-title{margin:0 0 4px;font-size:17px}.union-guidance{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
-    @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}.company-tab{min-width:165px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
+    .lsd-intro{grid-column:1/-1;display:grid;grid-template-columns:1.45fr 1fr;gap:20px;align-items:center;background:linear-gradient(135deg,#eff6ff 0%,#ecfeff 100%);border-color:#bfdbfe}.lsd-intro h2{font-size:25px;margin:7px 0}.lsd-intro-copy{margin:0;color:#334155;line-height:1.55}.lsd-intro-list{display:grid;gap:9px}.lsd-intro-item{padding:10px 12px;border:1px solid #bae6fd;border-radius:12px;background:rgba(255,255,255,.82);font-size:13px;font-weight:700;color:#0f3d66}
+    @media(max-width:900px){.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lsd-intro{grid-template-columns:1fr}}@media(max-width:760px){.grid{grid-template-columns:1fr}.wrap{padding-top:16px}h1{font-size:23px}.card{padding:16px}.company-tab{min-width:165px}}@media(max-width:560px){.usage-grid,.plan-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -30,6 +31,18 @@
   </header>
 
   <section id="authView" class="grid">
+    <article class="card lsd-intro">
+      <div>
+        <span class="pill">Libro de Sueldos Digital</span>
+        <h2>De la liquidación de la nómina al TXT para ARCA</h2>
+        <p class="lsd-intro-copy">Centralizá empleados, novedades y recibos del período. El sistema valida la información laboral y los conceptos parametrizados antes de generar el archivo completo de Libro de Sueldos Digital.</p>
+      </div>
+      <div class="lsd-intro-list" aria-label="Funciones de Libro de Sueldos Digital">
+        <div class="lsd-intro-item">Liquidación masiva de empleados activos</div>
+        <div class="lsd-intro-item">Validación de perfiles y conceptos ARCA</div>
+        <div class="lsd-intro-item">TXT con registros 01, 02, 03 y 04</div>
+      </div>
+    </article>
     <article class="card">
       <h2>Ingresar</h2><p class="muted">Accedé a una cuenta ya registrada.</p>
       <label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="username">
@@ -486,6 +499,12 @@
   const token = () => { try{return localStorage.getItem(TOKEN_KEY)||""}catch(_){return ""} };
   const selectedCompanyId = () => { try{return localStorage.getItem(COMPANY_KEY)||""}catch(_){return ""} };
   const setAuth = (value, companyId="") => { try{value?localStorage.setItem(TOKEN_KEY,value):localStorage.removeItem(TOKEN_KEY);companyId?localStorage.setItem(COMPANY_KEY,companyId):(!value&&localStorage.removeItem(COMPANY_KEY))}catch(_){} };
+  function acceptCompanyTokenHandoff(){
+    const params=new URLSearchParams(location.hash.replace(/^#/,"")),value=params.get("company_token")||"";
+    if(!/^[A-Za-z0-9_-]{40,}$/.test(value))return;
+    setAuth(value);
+    history.replaceState({},"",location.pathname+location.search);
+  }
   const setStatus = (id, text, ok=false) => { const el=$(id); if(el){el.textContent=text||"";el.className=`status ${text?(ok?"ok":"error"):""}`;} };
 
   function agreementForRama(rama){
@@ -1343,6 +1362,7 @@
   $("batchTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.printPayroll;if(id)printPayrolls(id);});
   clearNoveltyForm();
   setCompanyFormSection("identity");
+  acceptCompanyTokenHandoff();
   if(resetToken())$("resetPasswordView").classList.remove("hidden");
   loadPayrollMeta().then(loadSession);
 })();
