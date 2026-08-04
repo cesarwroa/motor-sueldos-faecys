@@ -15,8 +15,10 @@ class AccesoEmpresaPrincipalTest(unittest.TestCase):
     def test_portal_recibe_token_sin_dejarlo_en_la_url(self):
         source = (ROOT / "public" / "empresas.html").read_text(encoding="utf-8")
         self.assertIn("acceptCompanyTokenHandoff", source)
-        self.assertIn('params.get("company_token")', source)
-        self.assertIn('history.replaceState({},"",location.pathname+location.search)', source)
+        self.assertIn('hashParams.get("company_token")', source)
+        self.assertIn('queryParams.get("company_token")', source)
+        self.assertIn('queryParams.delete("company_token")', source)
+        self.assertIn('history.replaceState({},"",location.pathname+', source)
 
 
 if __name__ == "__main__":
