@@ -500,10 +500,14 @@
   const selectedCompanyId = () => { try{return localStorage.getItem(COMPANY_KEY)||""}catch(_){return ""} };
   const setAuth = (value, companyId="") => { try{value?localStorage.setItem(TOKEN_KEY,value):localStorage.removeItem(TOKEN_KEY);companyId?localStorage.setItem(COMPANY_KEY,companyId):(!value&&localStorage.removeItem(COMPANY_KEY))}catch(_){} };
   function acceptCompanyTokenHandoff(){
-    const params=new URLSearchParams(location.hash.replace(/^#/,"")),value=params.get("company_token")||"";
+    const hashParams=new URLSearchParams(location.hash.replace(/^#/,""));
+    const queryParams=new URLSearchParams(location.search);
+    const value=hashParams.get("company_token")||queryParams.get("company_token")||"";
     if(!/^[A-Za-z0-9_-]{40,}$/.test(value))return;
     setAuth(value);
-    history.replaceState({},"",location.pathname+location.search);
+    queryParams.delete("company_token");
+    const query=queryParams.toString();
+    history.replaceState({},"",location.pathname+(query?`?${query}`:""));
   }
   const setStatus = (id, text, ok=false) => { const el=$(id); if(el){el.textContent=text||"";el.className=`status ${text?(ok?"ok":"error"):""}`;} };
 
