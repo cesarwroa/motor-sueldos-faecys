@@ -15,13 +15,14 @@ import urllib.request
 import uuid
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from pypdf import PdfReader
 from escalas import (
     get_meta,
     get_payload,
@@ -85,7 +86,7 @@ PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
 PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
 COMPANY_PORTAL_FILE = BASE_DIR / "public" / "empresas.html"
 EMPLOYEE_IMPORT_TEMPLATE_FILE = BASE_DIR / "public" / "plantilla_importacion_empleados.xlsx"
-COMPANY_PAYROLL_MANUAL_FILE = BASE_DIR / "public" / "manual-liquidacion-recibos-libro-sueldos-digital-arca.pdf"
+COMPANY_PAYROLL_MANUAL_FILE = BASE_DIR / "public" / "manual-liquidacion-recibos-libro-sueldos-digital-arca-20260810.pdf"
 ADMIN_INDEX_FILE = BASE_DIR / "index.html"
 NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
@@ -107,6 +108,8 @@ DEFAULT_PUBLIC_FEATURES = {
 
 EMPLOYEE_IMPORT_MAX_BYTES = 3 * 1024 * 1024
 EMPLOYEE_IMPORT_MAX_ROWS = 500
+PILOT_EMAILS = {"flavia.mingrone@gmail.com", "cesarwroa@gmail.com"}
+PILOT_PDF_MAX_BYTES = 8 * 1024 * 1024
 _RATE_LIMIT_BUCKETS: Dict[str, List[float]] = {}
 
 
@@ -181,6 +184,73 @@ def _company_api_request(
     if not isinstance(data, dict):
         raise ValueError("Respuesta inválida del servicio de empresas.")
     return data
+
+
+def _require_company_pilot(authorization: str) -> Dict[str, Any]:
+    prefix = "bearer "
+    value = str(authorization or "").strip()
+    if not value.lower().startswith(prefix):
+        raise HTTPException(status_code=401, detail="Iniciá sesión para usar el piloto.")
+    token = value[len(prefix):].strip()
+    try:
+        session = _company_api_request("me", token=token)
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError, json.JSONDecodeError):
+        raise HTTPException(status_code=401, detail="No se pudo validar la sesión.")
+    email = str((session.get("user") or {}).get("email") or "").strip().lower()
+    if email not in PILOT_EMAILS:
+        raise HTTPException(status_code=403, detail="Esta función está habilitada sólo para usuarios piloto.")
+    return session
+
+
+def _money_from_text(value: str) -> Optional[float]:
+    raw = re.sub(r"[^0-9,.]", "", str(value or ""))
+    if not raw:
+        return None
+    if "," in raw:
+        raw = raw.replace(".", "").replace(",", ".")
+    elif raw.count(".") > 1:
+        raw = raw.replace(".", "")
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None
+    return amount if amount > 0 else None
+
+
+def _extract_agreement_categories(pdf_bytes: bytes) -> Dict[str, Any]:
+    try:
+        reader = PdfReader(BytesIO(pdf_bytes))
+        if reader.is_encrypted:
+            try:
+                reader.decrypt("")
+            except Exception as exc:
+                raise ValueError("El PDF está protegido con contraseña.") from exc
+        text = "\n".join((page.extract_text() or "") for page in reader.pages)
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("No se pudo leer el PDF.") from exc
+    rows: List[Dict[str, Any]] = []
+    seen = set()
+    amount_pattern = re.compile(r"(?:\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d{4,}(?:[.,]\d{2})?)")
+    for line in text.splitlines():
+        clean = re.sub(r"\s+", " ", line).strip(" -|\t")
+        match = amount_pattern.search(clean)
+        if not match:
+            continue
+        amount = _money_from_text(match.group(1))
+        name = re.sub(r"\s+", " ", clean[:match.start()].strip(" :-|.$"))
+        if amount is None or amount < 1000 or len(name) < 3 or len(name) > 120:
+            continue
+        normalized = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+        if normalized in seen or any(word in normalized for word in ("total", "aporte", "contribucion", "porcentaje")):
+            continue
+        seen.add(normalized)
+        rows.append({"code": f"CAT{len(rows)+1:03d}", "name": name, "basic_amount": amount, "weekly_hours": 48})
+        if len(rows) >= 200:
+            break
+    warning = "" if rows else "No se detectaron categorías automáticamente. Podés cargarlas manualmente."
+    return {"rows": rows, "page_count": len(reader.pages), "warning": warning}
 
 
 def _authenticate_platform_admin(email: str, password: str) -> bool:
@@ -1138,6 +1208,107 @@ async def employee_import_preview(request: Request, file: UploadFile = File(...)
     if len(contents) > EMPLOYEE_IMPORT_MAX_BYTES:
         raise HTTPException(status_code=413, detail="El archivo supera el máximo permitido de 3 MB.")
     return _parse_employee_import(contents)
+
+
+@app.post("/pilot/agreement-pdf-preview")
+async def pilot_agreement_pdf_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    authorization: str = Header(default=""),
+):
+    _require_company_pilot(authorization)
+    _enforce_rate_limit(request, "pilot-agreement-pdf", 12, 600)
+    if Path(str(file.filename or "")).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Seleccioná un archivo PDF.")
+    contents = await file.read(PILOT_PDF_MAX_BYTES + 1)
+    if len(contents) > PILOT_PDF_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="El PDF supera el máximo permitido de 8 MB.")
+    try:
+        return {"ok": True, **_extract_agreement_categories(contents)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/pilot/plantilla-novedades.xlsx", include_in_schema=False)
+def pilot_novelties_template(authorization: str = Header(default="")):
+    _require_company_pilot(authorization)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Novedades"
+    sheet.append([
+        "legajo", "cuil", "tipo_concepto", "codigo_concepto_propio",
+        "nombre_concepto", "cantidad", "importe_o_porcentaje", "observaciones",
+    ])
+    sheet.append(["0001", "", "custom", "PREMIO01", "", 1, 15000, "Ejemplo: concepto propio"])
+    sheet.append(["", "20123456786", "overtime_50", "", "Horas extra 50%", 4, "", "Ejemplo: novedad estándar"])
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="plantilla_novedades_masivas.xlsx"', **NOINDEX_HEADERS},
+    )
+
+
+@app.post("/pilot/novelties-preview")
+async def pilot_novelties_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    authorization: str = Header(default=""),
+):
+    _require_company_pilot(authorization)
+    _enforce_rate_limit(request, "pilot-novelties-preview", 15, 600)
+    if Path(str(file.filename or "")).suffix.lower() != ".xlsx":
+        raise HTTPException(status_code=400, detail="Seleccioná un archivo Excel .xlsx.")
+    contents = await file.read(EMPLOYEE_IMPORT_MAX_BYTES + 1)
+    if len(contents) > EMPLOYEE_IMPORT_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="El archivo supera el máximo permitido de 3 MB.")
+    try:
+        workbook = load_workbook(BytesIO(contents), read_only=True, data_only=True)
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="No se pudo leer el archivo Excel.") from exc
+    if not rows:
+        raise HTTPException(status_code=400, detail="El archivo está vacío.")
+    aliases = {
+        "legajo": "file_number", "cuil": "cuil", "tipo_concepto": "type",
+        "codigo_concepto_propio": "custom_concept_code", "nombre_concepto": "name",
+        "cantidad": "quantity", "importe_o_porcentaje": "amount", "observaciones": "notes",
+    }
+    headers = [aliases.get(_employee_import_key(value), "") for value in rows[0]]
+    if not any(headers):
+        raise HTTPException(status_code=400, detail="No se reconocieron las columnas de la plantilla.")
+    parsed: List[Dict[str, Any]] = []
+    errors: List[str] = []
+    for number, values in enumerate(rows[1:EMPLOYEE_IMPORT_MAX_ROWS + 1], start=2):
+        item = {headers[index]: value for index, value in enumerate(values) if index < len(headers) and headers[index]}
+        if not any(value not in (None, "") for value in item.values()):
+            continue
+        file_number = str(item.get("file_number") or "").strip()
+        cuil = re.sub(r"\D", "", str(item.get("cuil") or ""))
+        novelty_type = str(item.get("type") or "").strip().lower()
+        custom_code = str(item.get("custom_concept_code") or "").strip().upper()
+        if not (file_number or cuil):
+            errors.append(f"Fila {number}: informá legajo o CUIL.")
+            continue
+        if not novelty_type:
+            errors.append(f"Fila {number}: falta tipo_concepto.")
+            continue
+        try:
+            quantity = float(item.get("quantity") or 0)
+            amount = float(item.get("amount") or 0)
+        except (TypeError, ValueError):
+            errors.append(f"Fila {number}: cantidad o importe no es numérico.")
+            continue
+        parsed.append({
+            "row": number, "file_number": file_number, "cuil": cuil, "type": novelty_type,
+            "custom_concept_code": custom_code, "name": str(item.get("name") or "").strip(),
+            "quantity": quantity, "amount": amount,
+            "notes": str(item.get("notes") or "").strip(),
+        })
+    return {"ok": True, "rows": parsed, "errors": errors, "total": len(parsed)}
 
 # ========= HEALTH =========
 @app.get("/health")
