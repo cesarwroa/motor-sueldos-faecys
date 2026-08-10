@@ -98,6 +98,7 @@
         <button type="button" data-workspace-target="concepts">Conceptos propios</button>
         <button type="button" data-workspace-target="payroll">Liquidaciones</button>
         <button type="button" data-workspace-target="arca">Libro Digital ARCA</button>
+        <button id="pilotNavBtn" class="hidden" type="button" data-workspace-target="pilot">Piloto avanzado</button>
         <button type="button" data-workspace-target="security">Seguridad</button>
       </nav>
     </div>
@@ -227,9 +228,11 @@
           <div><label for="employeeStart">Fecha de ingreso</label><input id="employeeStart" type="date"></div>
           <div><label for="employeeEnd">Fecha de egreso</label><input id="employeeEnd" type="date"></div>
           <div><label for="employeeStatusSelect">Estado laboral</label><select id="employeeStatusSelect"><option value="active">Activo</option><option value="paused">Pausado</option><option value="terminated">Desvinculado</option></select></div>
-          <div><label for="employeePayrollScheme">Régimen salarial *</label><select id="employeePayrollScheme"><option value="cct">Dentro de convenio</option><option value="outside_agreement">Fuera de convenio</option></select></div>
+          <div><label for="employeePayrollScheme">Régimen salarial *</label><select id="employeePayrollScheme"><option value="cct">Dentro de convenio</option><option value="outside_agreement">Fuera de convenio</option><option id="employeeCustomAgreementOption" class="hidden" value="custom_agreement">Convenio propio (piloto)</option></select></div>
           <div id="employeeManualSalaryField" class="hidden"><label for="employeeManualSalary">Sueldo mensual acordado *</label><input id="employeeManualSalary" type="number" min="0.01" step="0.01"></div>
           <div id="employeePositionField" class="hidden"><label for="employeePosition">Puesto / categoría libre *</label><input id="employeePosition" maxlength="120"></div>
+          <div id="employeeCustomAgreementField" class="hidden"><label for="employeeCustomAgreement">Convenio propio *</label><select id="employeeCustomAgreement"><option value="">Seleccionar convenio</option></select></div>
+          <div id="employeeCustomCategoryField" class="hidden"><label for="employeeCustomCategory">Categoría propia *</label><select id="employeeCustomCategory"><option value="">Seleccionar categoría</option></select></div>
           <div class="employee-cct-field"><label for="employeeRama">Convenio / rama *</label><select id="employeeRama"><option value="">Cargando convenios...</option></select></div>
           <div class="employee-cct-field"><label for="employeeAgrup">Agrupamiento *</label><select id="employeeAgrup"><option value="">Seleccionar rama</option></select></div>
           <div class="employee-cct-field"><label for="employeeCategory">Categoría *</label><select id="employeeCategory"><option value="">Seleccionar agrupamiento</option></select></div>
@@ -413,6 +416,49 @@
       <div id="batchTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Remunerativo</th><th>No remunerativo</th><th>Indemnizatorio</th><th>Descuentos</th><th>Neto</th><th></th></tr></thead><tbody id="batchTbody"></tbody></table></div>
     </article>
 
+    <article id="pilotManagementCard" class="card hidden" data-workspace-module="pilot">
+      <div class="summary"><div><span class="pill">Piloto privado</span><h2>Convenios, carga masiva y reportes</h2><p class="muted">Disponible únicamente para las dos cuentas habilitadas. El servidor vuelve a validar el permiso en cada operación.</p></div></div>
+      <details open><summary>1. Convenios y categorías propias</summary><div class="detail-body">
+        <div class="grid">
+          <div><label for="pilotAgreementCode">Código del convenio *</label><input id="pilotAgreementCode" maxlength="40" placeholder="CCT-PROP-01"></div>
+          <div><label for="pilotAgreementName">Nombre *</label><input id="pilotAgreementName" maxlength="190" placeholder="Convenio interno"></div>
+          <div><label for="pilotAgreementNotes">Notas</label><input id="pilotAgreementNotes" maxlength="255"></div>
+        </div>
+        <div class="actions"><button id="pilotAgreementSaveBtn" type="button">Guardar convenio</button></div><div id="pilotAgreementStatus" class="status"></div>
+        <div id="pilotAgreementsTableWrap" class="table-wrap hidden"><table><thead><tr><th>Código</th><th>Convenio</th><th>Categorías</th></tr></thead><tbody id="pilotAgreementsTbody"></tbody></table></div>
+        <h3>Categoría y escala</h3>
+        <div class="grid">
+          <div><label for="pilotCategoryAgreement">Convenio *</label><select id="pilotCategoryAgreement"><option value="">Seleccionar</option></select></div>
+          <div><label for="pilotCategoryCode">Código *</label><input id="pilotCategoryCode" maxlength="40" placeholder="ADM-A"></div>
+          <div><label for="pilotCategoryName">Categoría *</label><input id="pilotCategoryName" maxlength="190"></div>
+          <div><label for="pilotCategoryPeriod">Vigente desde *</label><input id="pilotCategoryPeriod" type="month"></div>
+          <div><label for="pilotCategoryAmount">Básico mensual *</label><input id="pilotCategoryAmount" type="number" min="0.01" step="0.01"></div>
+          <div><label for="pilotCategoryHours">Horas semanales</label><input id="pilotCategoryHours" type="number" min="0.5" max="168" step="0.5" value="48"></div>
+        </div>
+        <div class="actions"><button id="pilotCategorySaveBtn" type="button">Guardar categoría</button></div><div id="pilotCategoryStatus" class="status"></div>
+        <div id="pilotCategoriesTableWrap" class="table-wrap hidden"><table><thead><tr><th>Convenio</th><th>Categoría</th><th>Vigencia</th><th>Básico</th><th>Origen</th></tr></thead><tbody id="pilotCategoriesTbody"></tbody></table></div>
+      </div></details>
+      <details><summary>2. Importar categorías desde PDF</summary><div class="detail-body">
+        <p class="section-note">El sistema extrae una propuesta de categorías e importes. Revisá la vista previa antes de guardarla.</p>
+        <div class="grid"><div><label for="pilotPdfAgreement">Convenio destino *</label><select id="pilotPdfAgreement"><option value="">Seleccionar</option></select></div><div><label for="pilotPdfPeriod">Vigente desde *</label><input id="pilotPdfPeriod" type="month"></div><div><label for="pilotPdfFile">Escala en PDF *</label><input id="pilotPdfFile" type="file" accept="application/pdf,.pdf"></div></div>
+        <div class="actions"><button id="pilotPdfPreviewBtn" type="button">Analizar PDF</button><button id="pilotPdfImportBtn" class="secondary" type="button" disabled>Importar categorías revisadas</button></div><div id="pilotPdfStatus" class="status"></div>
+        <div id="pilotPdfTableWrap" class="table-wrap hidden"><table><thead><tr><th>Código</th><th>Categoría</th><th>Básico</th><th>Horas</th></tr></thead><tbody id="pilotPdfTbody"></tbody></table></div>
+      </div></details>
+      <details><summary>3. Novedades masivas</summary><div class="detail-body">
+        <p class="section-note">Seleccioná un período mensual abierto en Liquidaciones, descargá la plantilla y subí hasta 500 novedades.</p>
+        <div class="actions"><button id="pilotNoveltyTemplateBtn" class="secondary" type="button">Descargar plantilla Excel</button></div>
+        <div class="grid"><div><label for="pilotNoveltyFile">Archivo de novedades *</label><input id="pilotNoveltyFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div></div>
+        <div class="actions"><button id="pilotNoveltyPreviewBtn" type="button">Revisar archivo</button><button id="pilotNoveltyImportBtn" class="secondary" type="button" disabled>Importar novedades</button></div><div id="pilotNoveltyStatus" class="status"></div>
+        <div id="pilotNoveltyTableWrap" class="table-wrap hidden"><table><thead><tr><th>Fila</th><th>Empleado</th><th>Tipo/código</th><th>Cantidad</th><th>Importe/%</th></tr></thead><tbody id="pilotNoveltyTbody"></tbody></table></div>
+      </div></details>
+      <details><summary>4. Reportes de netos y conceptos liquidados</summary><div class="detail-body">
+        <div class="grid"><div><label for="pilotReportPeriod">Período</label><input id="pilotReportPeriod" type="month"></div></div>
+        <div class="actions"><button id="pilotNetLoadBtn" type="button">Ver netos</button><button id="pilotNetExportBtn" class="secondary" type="button">Descargar netos CSV</button><button id="pilotConceptLoadBtn" type="button">Ver conceptos</button><button id="pilotConceptExportBtn" class="secondary" type="button">Descargar conceptos CSV</button></div><div id="pilotReportStatus" class="status"></div>
+        <h3>Netos y costo laboral</h3><div id="pilotNetTableWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Régimen</th><th>Rem.</th><th>No rem.</th><th>Descuentos</th><th>Neto</th><th>Contribuciones</th><th>Costo</th></tr></thead><tbody id="pilotNetTbody"></tbody></table></div>
+        <h3>Conceptos liquidados (matriz dinámica)</h3><div id="pilotConceptTableWrap" class="table-wrap hidden"><table id="pilotConceptTable"></table></div>
+      </div></details>
+    </article>
+
     <article id="securityCard" class="card" data-workspace-module="security">
       <div class="summary"><div><h2>Seguridad y colaboradores</h2><p class="muted">Controlá quién accede, revisá la actividad y descargá un respaldo empresarial.</p></div><span id="currentRolePill" class="pill"></span></div>
       <div id="teamAdminSection">
@@ -518,6 +564,11 @@
   let arcaLiquidationValidation = null;
   let arcaValidation = null;
   let customConcepts = [];
+  let pilotAccess = false;
+  let pilotAgreements = [];
+  let pilotCategories = [];
+  let pilotPdfRows = [];
+  let pilotNoveltyRows = [];
   let creatingCompany = false;
   let workspaceModule = (()=>{try{return localStorage.getItem(WORKSPACE_MODULE_KEY)||"overview"}catch(_){return"overview"}})();
   let companyFormSection = "identity";
@@ -600,15 +651,17 @@
 
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
   function applyWorkspaceNavigation(){
-    const allowed=["overview","company","employees","concepts","payroll","arca","security"];
+    const allowed=["overview","company","employees","concepts","payroll","arca","security",...(pilotAccess?["pilot"]:[])];
     if(!allowed.includes(workspaceModule))workspaceModule="overview";
     document.querySelectorAll("[data-workspace-module]").forEach(element=>{
       const visible=element.dataset.workspaceModule===workspaceModule;
       const platformHidden=element.id==="platformAdminPanel"&&!session?.is_platform_admin;
-      element.classList.toggle("hidden",!visible||platformHidden);
+      const pilotHidden=element.dataset.workspaceModule==="pilot"&&!pilotAccess;
+      element.classList.toggle("hidden",!visible||platformHidden||pilotHidden);
     });
     document.querySelectorAll("[data-workspace-target]").forEach(button=>{
       const active=button.dataset.workspaceTarget===workspaceModule;
+      if(button.dataset.workspaceTarget==="pilot")button.classList.toggle("hidden",!pilotAccess);
       button.classList.toggle("active",active);
       button.setAttribute("aria-current",active?"page":"false");
     });
@@ -639,7 +692,7 @@
     $("companySaveBtn").textContent="Guardar empresa";
     setAuth(token(),companyId);activePeriodId="";arcaLiquidationValidation=null;
     renderSession();renderCompanyForm();
-    await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();
+    await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(pilotAccess)await loadPilotData();
   }
   function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado",expired:"Vencido"})[status]||status||"";}
   function mapPlan(plan){return ({starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Sin plan";}
@@ -699,7 +752,7 @@
 
   async function loadSession(){
     if(!token()){session=null;renderSession();return;}
-    try{session=await api("me");await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(session.is_platform_admin)await loadAdminCompanies();}
+    try{session=await api("me");const access=await api("pilot-access");pilotAccess=access.enabled===true;await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();applyWorkspaceNavigation();await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(pilotAccess)await loadPilotData();if(session.is_platform_admin)await loadAdminCompanies();}
     catch(err){setAuth("");session=null;renderSession();setStatus("loginStatus",err.message);}
   }
 
@@ -923,24 +976,33 @@
     const enabled=$("employeeUnionAffiliated").checked;
     $("employeeUnionPct").disabled=!enabled;$("employeeUnionFixed").disabled=!enabled;
   }
+  function refreshEmployeeCustomCategories(preferred=""){
+    const agreementId=$("employeeCustomAgreement").value;
+    const latest=new Map();
+    pilotCategories.filter(item=>String(item.agreement_id)===String(agreementId)&&Number(item.active)!==0).forEach(item=>{const key=item.code||item.id,current=latest.get(key);if(!current||String(item.effective_period)>String(current.effective_period))latest.set(key,item);});
+    $("employeeCustomCategory").innerHTML='<option value="">Seleccionar categoría</option>'+Array.from(latest.values()).map(item=>`<option value="${esc(item.id)}">${esc(item.name)} · ${esc(formatPeriod(item.effective_period))} · ${money(item.basic_amount)}</option>`).join("");
+    if(preferred)$("employeeCustomCategory").value=preferred;
+  }
   function syncEmployeeScheme(){
     const outside=$("employeePayrollScheme").value==="outside_agreement";
+    const custom=$("employeePayrollScheme").value==="custom_agreement"&&pilotAccess,manual=outside||custom;
     $("employeeManualSalaryField").classList.toggle("hidden",!outside);
     $("employeePositionField").classList.toggle("hidden",!outside);
-    document.querySelectorAll(".employee-cct-field").forEach(field=>field.classList.toggle("hidden",outside));
-    document.querySelectorAll(".employee-union-field,.employee-cct-only").forEach(field=>field.classList.toggle("hidden",outside));
+    $("employeeCustomAgreementField").classList.toggle("hidden",!custom);$("employeeCustomCategoryField").classList.toggle("hidden",!custom);
+    document.querySelectorAll(".employee-cct-field").forEach(field=>field.classList.toggle("hidden",manual));
+    document.querySelectorAll(".employee-union-field").forEach(field=>field.classList.toggle("hidden",outside));document.querySelectorAll(".employee-cct-only").forEach(field=>field.classList.toggle("hidden",manual));
     $("employeeCoverageSummary").textContent=outside?"Cobertura médica":"Cobertura médica y afiliaciones";
-    if(outside){$("employeeAgreement").value="Fuera de convenio";$("employeeArcaCct").checked=false;$("employeeUnionAffiliated").checked=false;["employeeUnionName","employeeUnionCode","employeeUnionMember"].forEach(id=>$(id).value="");$("employeeUnionPct").value="0";$("employeeUnionFixed").value="0";syncEmployeeUnionContribution();}
+    if(manual){$("employeeAgreement").value=outside?"Fuera de convenio":"Convenio propio";$("employeeArcaCct").checked=false;if(outside){$("employeeUnionAffiliated").checked=false;["employeeUnionName","employeeUnionCode","employeeUnionMember"].forEach(id=>$(id).value="");$("employeeUnionPct").value="0";$("employeeUnionFixed").value="0";}syncEmployeeUnionContribution();}
     else{$("employeeArcaCct").checked=true;if(!$('employeeAgreement').value||$('employeeAgreement').value==="Fuera de convenio")$("employeeAgreement").value=agreementForRama($("employeeRama").value);}
   }
   function clearEmployeeForm(){
-    $("employeePayrollScheme").value="cct";$("employeeManualSalary").value="";$("employeePosition").value="";queueMicrotask(syncEmployeeScheme);
+    $("employeePayrollScheme").value="cct";$("employeeManualSalary").value="";$("employeePosition").value="";$("employeeCustomAgreement").value="";refreshEmployeeCustomCategories();queueMicrotask(syncEmployeeScheme);
     employeeFields.forEach(id=>$(id).value="");const companySettings=activeCompany()?.settings||{};$("employeeHealthName").value=companySettings.health_insurance_name||"";$("employeeHealthCode").value=companySettings.health_insurance_code||"";$("employeeRama").value=payrollMeta?.ramas?.includes("GENERAL")?"GENERAL":payrollMeta?.ramas?.[0]||"";refreshEmployeeAgrups("GENERAL","MAESTRANZA A");$("employeeStatusSelect").value="active";$("employeeWorkday").value="";$("employeeWeeklyHours").value="48";$("employeePaymentMethod").value="Transferencia bancaria";$("employeeContractCode").value="008";$("employeeArcaSituation").value="01";$("employeeArcaCondition").value="01";$("employeeArcaActivity").value="049";$("employeeArcaSinister").value="00";$("employeeArcaLocality").value="00";$("employeeArcaChildren").value="0";$("employeeArcaOperation").value="0";$("employeeArcaSituation1").value="01";$("employeeArcaSituationDay1").value="1";$("employeeArcaSituationDay2").value="0";$("employeeArcaSituationDay3").value="0";$("employeeArcaHealthAdherents").value="0";$("employeeArcaCapDays").value="0";$("employeeUnionPct").value="0";$("employeeUnionFixed").value="0";["employeeArcaSsAdditionalPct","employeeArcaDifferentialPct","employeeArcaHealthAdditionalEmployee","employeeArcaHealthAdditionalEmployer","employeeArcaHealthDiffEmployee","employeeArcaHealthDiffEmployer","employeeArcaLrtDiff","employeeArcaSsDiffEmployee","employeeArcaSsDiffEmployer","employeeArcaMaternity"].forEach(id=>$(id).value="0");$("employeeHealthOnNonRem").checked=companySettings.health_contribution_on_non_remunerative===true||String(companySettings.health_contribution_on_non_remunerative)==="1";$("employeeUnionAffiliated").checked=false;syncEmployeeUnionContribution();$("employeeArcaSpouse").checked=false;$("employeeArcaCct").checked=true;$("employeeArcaScvo").checked=true;$("employeeArcaReduction").checked=false;$("employeeArcaReviewed").checked=false;$("employeeFormTitle").textContent="Nuevo empleado";$("employeeSaveBtn").textContent="Agregar empleado";$("employeeCancelBtn").classList.add("hidden");
   }
 
   function editEmployee(id){
     const item=employees.find(row=>String(row.id)===String(id));if(!item)return;const p=item.profile||{},a=item.arca_profile||{};
-    $("employeePayrollScheme").value=p.payroll_scheme||"cct";$("employeeManualSalary").value=p.manual_salary||"";$("employeePosition").value=p.position_name||item.category||"";queueMicrotask(syncEmployeeScheme);
+    $("employeePayrollScheme").value=p.payroll_scheme==="custom_agreement"&&pilotAccess?"custom_agreement":p.payroll_scheme||"cct";$("employeeManualSalary").value=p.manual_salary||"";$("employeePosition").value=p.position_name||item.category||"";$("employeeCustomAgreement").value=p.custom_agreement_id||"";refreshEmployeeCustomCategories(p.custom_category_id||"");queueMicrotask(syncEmployeeScheme);
     const rama=p.rama||"GENERAL",agrup=p.agrup||"GENERAL";$("employeeRama").value=payrollMeta?.ramas?.includes(rama)?rama:"GENERAL";refreshEmployeeAgrups(agrup,item.category);
     const values={employeeId:item.id,employeeFile:item.file_number,employeeName:item.full_name,employeeCuil:item.cuil,employeeDni:p.dni,employeeBirth:p.birth_date,employeeStart:item.start_date,employeeEnd:p.end_date,employeeAgreement:p.agreement||agreementForRama(rama),employeeWeeklyHours:p.weekly_hours,employeeContract:p.contract_modality,employeeContractCode:a.contract_modality_code||"008",employeeEmail:p.email,employeePhone:p.phone,employeeAddress:p.address,employeeLocality:p.locality,employeeProvince:p.province,employeeHealthName:p.health_insurance_name,employeeHealthCode:a.health_insurance_code,employeeHealthMember:p.health_insurance_member,employeeHealthStart:p.health_insurance_start,employeeUnionName:p.union_name,employeeUnionCode:a.union_code,employeeUnionMember:p.union_member,employeeUnionPct:p.union_contribution_pct||0,employeeUnionFixed:p.union_contribution_fixed||0,employeeBank:p.bank_name,employeeCbu:p.cbu,employeeAlias:p.bank_alias,employeeArcaSituation:a.situation_code||"01",employeeArcaCondition:a.condition_code||"01",employeeArcaActivity:a.activity_code||"049",employeeArcaSinister:a.sinister_code||"00",employeeArcaLocality:a.locality_code||"00",employeeArcaChildren:a.children??0,employeeArcaEmployerType:a.employer_type||"",employeeArcaOperation:a.operation_code||"0",employeeArcaSituation1:a.situation_1||a.situation_code||"01",employeeArcaSituationDay1:a.situation_day_1||1,employeeArcaSituation2:a.situation_2||"",employeeArcaSituationDay2:a.situation_day_2||0,employeeArcaSituation3:a.situation_3||"",employeeArcaSituationDay3:a.situation_day_3||0,employeeArcaHealthAdherents:a.health_adherents||0,employeeArcaCapDays:a.cap_days||0,employeeArcaSsAdditionalPct:a.social_security_additional_pct||0,employeeArcaDifferentialPct:a.differential_contribution_pct||0,employeeArcaHealthAdditionalEmployee:a.health_additional_employee||0,employeeArcaHealthAdditionalEmployer:a.health_additional_employer||0,employeeArcaHealthDiffEmployee:a.health_differential_employee_base||0,employeeArcaHealthDiffEmployer:a.health_differential_employer_base||0,employeeArcaLrtDiff:a.lrt_differential_base||0,employeeArcaSsDiffEmployee:a.social_security_differential_employee_base||0,employeeArcaSsDiffEmployer:a.social_security_differential_employer_base||0,employeeArcaMaternity:a.maternity_amount||0};
     Object.entries(values).forEach(([id,value])=>$(id).value=value??"");$("employeeHealthOnNonRem").checked=p.health_contribution_on_non_remunerative===true||String(p.health_contribution_on_non_remunerative)==="1";$("employeeUnionAffiliated").checked=p.union_affiliated===true||String(p.union_affiliated)==="1"||(p.union_affiliated===undefined&&!!p.union_name);syncEmployeeUnionContribution();$("employeeArcaSpouse").checked=String(a.spouse)==="1";$("employeeArcaCct").checked=a.cct===undefined||String(a.cct)==="1";$("employeeArcaScvo").checked=a.scvo===undefined||String(a.scvo)==="1";$("employeeArcaReduction").checked=String(a.reduction)==="1";$("employeeArcaReviewed").checked=String(a.reviewed)==="1";$("employeeStatusSelect").value=item.status||"active";$("employeeWorkday").value=p.workday||"";$("employeePaymentMethod").value=p.payment_method||"Transferencia bancaria";$("employeeFormTitle").textContent=`Editar: ${item.full_name}`;$("employeeSaveBtn").textContent="Guardar cambios";$("employeeCancelBtn").classList.remove("hidden");$("employeeFormTitle").scrollIntoView({behavior:"smooth",block:"start"});
@@ -951,13 +1013,18 @@
     const unionAffiliated=$("employeeUnionAffiliated").checked;
     const body={id:$("employeeId").value||undefined,company_id:company.id,file_number:$("employeeFile").value.trim(),full_name:$("employeeName").value.trim(),cuil:digits($("employeeCuil").value),category:$("employeeCategory").value.trim(),task_name:"",start_date:$("employeeStart").value,status:$("employeeStatusSelect").value,profile:{dni:digits($("employeeDni").value),birth_date:$("employeeBirth").value,address:$("employeeAddress").value.trim(),locality:$("employeeLocality").value.trim(),province:$("employeeProvince").value.trim(),phone:$("employeePhone").value.trim(),email:$("employeeEmail").value.trim(),end_date:$("employeeEnd").value,rama:$("employeeRama").value,agrup:$("employeeAgrup").value,agreement:$("employeeAgreement").value.trim(),workday:$("employeeWorkday").value,weekly_hours:$("employeeWeeklyHours").value,contract_modality:$("employeeContract").value.trim(),health_insurance_name:$("employeeHealthName").value.trim(),health_insurance_member:$("employeeHealthMember").value.trim(),health_insurance_start:$("employeeHealthStart").value,health_contribution_on_non_remunerative:$("employeeHealthOnNonRem").checked,union_name:$("employeeUnionName").value.trim(),union_member:$("employeeUnionMember").value.trim(),union_affiliated:unionAffiliated,union_contribution_pct:unionAffiliated?Number($("employeeUnionPct").value||0):0,union_contribution_fixed:unionAffiliated?Number($("employeeUnionFixed").value||0):0,bank_name:$("employeeBank").value.trim(),cbu:digits($("employeeCbu").value),bank_alias:$("employeeAlias").value.trim(),payment_method:$("employeePaymentMethod").value},arca_profile:{health_insurance_code:digits($("employeeHealthCode").value),contract_modality_code:digits($("employeeContractCode").value),union_code:digits($("employeeUnionCode").value),spouse:$("employeeArcaSpouse").checked?"1":"0",children:Number($("employeeArcaChildren").value||0),cct:$("employeeArcaCct").checked?"1":"0",scvo:$("employeeArcaScvo").checked?"1":"0",reduction:$("employeeArcaReduction").checked?"1":"0",employer_type:$("employeeArcaEmployerType").value.trim(),operation_code:$("employeeArcaOperation").value,situation_code:digits($("employeeArcaSituation").value),condition_code:digits($("employeeArcaCondition").value),activity_code:digits($("employeeArcaActivity").value),sinister_code:digits($("employeeArcaSinister").value),locality_code:digits($("employeeArcaLocality").value),situation_1:digits($("employeeArcaSituation1").value),situation_day_1:Number($("employeeArcaSituationDay1").value||1),situation_2:digits($("employeeArcaSituation2").value),situation_day_2:Number($("employeeArcaSituationDay2").value||0),situation_3:digits($("employeeArcaSituation3").value),situation_day_3:Number($("employeeArcaSituationDay3").value||0),health_adherents:Number($("employeeArcaHealthAdherents").value||0),cap_days:Number($("employeeArcaCapDays").value||0),social_security_additional_pct:Number($("employeeArcaSsAdditionalPct").value||0),differential_contribution_pct:Number($("employeeArcaDifferentialPct").value||0),health_additional_employee:Number($("employeeArcaHealthAdditionalEmployee").value||0),health_additional_employer:Number($("employeeArcaHealthAdditionalEmployer").value||0),health_differential_employee_base:Number($("employeeArcaHealthDiffEmployee").value||0),health_differential_employer_base:Number($("employeeArcaHealthDiffEmployer").value||0),lrt_differential_base:Number($("employeeArcaLrtDiff").value||0),social_security_differential_employee_base:Number($("employeeArcaSsDiffEmployee").value||0),social_security_differential_employer_base:Number($("employeeArcaSsDiffEmployer").value||0),maternity_amount:Number($("employeeArcaMaternity").value||0),reviewed:$("employeeArcaReviewed").checked?"1":"0"}};
     const outsideAgreement=$("employeePayrollScheme").value==="outside_agreement";
-    body.profile.payroll_scheme=outsideAgreement?"outside_agreement":"cct";
-    body.profile.manual_salary=outsideAgreement?Number($("employeeManualSalary").value||0):0;
-    body.profile.position_name=outsideAgreement?$("employeePosition").value.trim():body.category;
+    const customAgreement=$("employeePayrollScheme").value==="custom_agreement"&&pilotAccess;
+    const customCategory=pilotCategories.find(item=>String(item.id)===String($("employeeCustomCategory").value));
+    body.profile.payroll_scheme=customAgreement?"custom_agreement":outsideAgreement?"outside_agreement":"cct";
+    body.profile.custom_agreement_id=customAgreement?$("employeeCustomAgreement").value:"";body.profile.custom_category_id=customAgreement?$("employeeCustomCategory").value:"";
+    body.profile.manual_salary=customAgreement?Number(customCategory?.basic_amount||0):outsideAgreement?Number($("employeeManualSalary").value||0):0;
+    body.profile.position_name=customAgreement?(customCategory?.name||""):outsideAgreement?$("employeePosition").value.trim():body.category;
     if(outsideAgreement){body.category=body.profile.position_name;body.profile.rama="GENERAL";body.profile.agrup="GENERAL";body.profile.agreement="Fuera de convenio";body.profile.union_name="";body.profile.union_member="";body.profile.union_affiliated=false;body.profile.union_contribution_pct=0;body.profile.union_contribution_fixed=0;body.arca_profile.union_code="";body.arca_profile.cct="0";}
+    if(customAgreement){const agreement=pilotAgreements.find(item=>String(item.id)===String(body.profile.custom_agreement_id));body.category=body.profile.position_name;body.profile.rama="GENERAL";body.profile.agrup="GENERAL";body.profile.agreement=agreement?.name||"Convenio propio";body.profile.weekly_hours=customCategory?.weekly_hours||body.profile.weekly_hours;body.arca_profile.cct="0";}
     if(!body.full_name||!validTaxId(body.cuil))return setStatus("employeeStatus","Completá nombre y un CUIL válido, incluido su dígito verificador.");
     if(outsideAgreement&&(!body.category||body.profile.manual_salary<=0))return setStatus("employeeStatus","Completá el puesto y el sueldo mensual del personal fuera de convenio.");
-    if(!outsideAgreement&&(!body.profile.rama||!body.profile.agrup||!body.category))return setStatus("employeeStatus","Seleccioná convenio / rama, agrupamiento y categoría.");
+    if(customAgreement&&(!body.profile.custom_agreement_id||!body.profile.custom_category_id||body.profile.manual_salary<=0))return setStatus("employeeStatus","Seleccioná el convenio propio y una categoría con básico vigente.");
+    if(!outsideAgreement&&!customAgreement&&(!body.profile.rama||!body.profile.agrup||!body.category))return setStatus("employeeStatus","Seleccioná convenio / rama, agrupamiento y categoría.");
     if(unionAffiliated&&!body.profile.union_name)return setStatus("employeeStatus","Completá el sindicato del trabajador afiliado.");
     if(unionAffiliated&&body.profile.union_contribution_pct<=0&&body.profile.union_contribution_fixed<=0)return setStatus("employeeStatus","Completá un porcentaje o una suma fija para la afiliación sindical.");
     if(body.profile.union_contribution_pct<0||body.profile.union_contribution_pct>10||body.profile.union_contribution_fixed<0)return setStatus("employeeStatus","Revisá la cuota sindical: porcentaje entre 0 y 10 y suma fija no negativa.");
@@ -1437,6 +1504,47 @@
     }catch(err){setStatus("backupStatus",err.message);}
   }
 
+  function pilotMonthValue(){return digits($("pilotReportPeriod").value||activePeriod()?.period||"").slice(0,6);}
+  function renderPilotCatalog(){
+    $("employeeCustomAgreementOption").classList.toggle("hidden",!pilotAccess);
+    const options='<option value="">Seleccionar convenio</option>'+pilotAgreements.filter(item=>Number(item.active)!==0).map(item=>`<option value="${esc(item.id)}">${esc(item.code)} · ${esc(item.name)}</option>`).join("");
+    ["pilotCategoryAgreement","pilotPdfAgreement","employeeCustomAgreement"].forEach(id=>{const previous=$(id).value;$(id).innerHTML=options;if(previous)$(id).value=previous;});
+    $("pilotAgreementsTableWrap").classList.toggle("hidden",!pilotAgreements.length);$("pilotAgreementsTbody").innerHTML=pilotAgreements.map(item=>`<tr><td>${esc(item.code)}</td><td>${esc(item.name)}</td><td>${Number(item.category_count||0)}</td></tr>`).join("");
+    $("pilotCategoriesTableWrap").classList.toggle("hidden",!pilotCategories.length);$("pilotCategoriesTbody").innerHTML=pilotCategories.map(item=>`<tr><td>${esc(item.agreement_name)}</td><td><strong>${esc(item.name)}</strong><span class="subtext">${esc(item.code)}</span></td><td>${esc(formatPeriod(item.effective_period))}</td><td>${money(item.basic_amount)}</td><td>${item.source==="pdf"?"PDF":"Manual"}</td></tr>`).join("");
+    refreshEmployeeCustomCategories();
+  }
+  async function loadPilotData(){
+    const company=activeCompany();if(!pilotAccess||!company)return;
+    try{const [agreements,categories]=await Promise.all([api("company-agreements",{params:{company_id:company.id}}),api("company-agreement-categories",{params:{company_id:company.id}})]);pilotAgreements=agreements.items||[];pilotCategories=categories.items||[];renderPilotCatalog();}
+    catch(err){setStatus("pilotAgreementStatus",err.message);}
+  }
+  async function savePilotAgreement(){
+    const company=activeCompany(),body={company_id:company?.id,code:$("pilotAgreementCode").value.trim(),name:$("pilotAgreementName").value.trim(),notes:$("pilotAgreementNotes").value.trim()};if(!company||!body.code||!body.name)return setStatus("pilotAgreementStatus","Completá código y nombre.");
+    setStatus("pilotAgreementStatus","Guardando...");try{await api("company-agreements",{method:"POST",body});["pilotAgreementCode","pilotAgreementName","pilotAgreementNotes"].forEach(id=>$(id).value="");await loadPilotData();setStatus("pilotAgreementStatus","Convenio guardado.",true);}catch(err){setStatus("pilotAgreementStatus",err.message);}
+  }
+  async function savePilotCategory(){
+    const company=activeCompany(),body={company_id:company?.id,agreement_id:$("pilotCategoryAgreement").value,code:$("pilotCategoryCode").value.trim(),name:$("pilotCategoryName").value.trim(),effective_period:digits($("pilotCategoryPeriod").value),basic_amount:Number($("pilotCategoryAmount").value||0),weekly_hours:Number($("pilotCategoryHours").value||48),source:"manual"};if(!company||!body.agreement_id||!body.code||!body.name||body.effective_period.length!==6||body.basic_amount<=0)return setStatus("pilotCategoryStatus","Completá convenio, código, categoría, vigencia y básico.");
+    setStatus("pilotCategoryStatus","Guardando...");try{await api("company-agreement-categories",{method:"POST",body});["pilotCategoryCode","pilotCategoryName","pilotCategoryAmount"].forEach(id=>$(id).value="");await loadPilotData();setStatus("pilotCategoryStatus","Categoría guardada.",true);}catch(err){setStatus("pilotCategoryStatus",err.message);}
+  }
+  async function pilotRenderUpload(path,file,statusId){
+    const form=new FormData();form.append("file",file);const response=await fetch(path,{method:"POST",headers:{Authorization:`Bearer ${token()}`},body:form});let data={};try{data=await response.json()}catch(_){}if(!response.ok)throw new Error(data.detail||`Error HTTP ${response.status}`);return data;
+  }
+  async function previewPilotPdf(){
+    const file=$("pilotPdfFile").files?.[0];if(!file)return setStatus("pilotPdfStatus","Seleccioná un PDF.");setStatus("pilotPdfStatus","Analizando PDF...");
+    try{const data=await pilotRenderUpload("/pilot/agreement-pdf-preview",file,"pilotPdfStatus");pilotPdfRows=data.rows||[];$("pilotPdfTableWrap").classList.toggle("hidden",!pilotPdfRows.length);$("pilotPdfTbody").innerHTML=pilotPdfRows.map((item,index)=>`<tr><td><input data-pdf-code="${index}" value="${esc(item.code)}"></td><td><input data-pdf-name="${index}" value="${esc(item.name)}"></td><td><input data-pdf-amount="${index}" type="number" step="0.01" value="${Number(item.basic_amount||0)}"></td><td><input data-pdf-hours="${index}" type="number" step="0.5" value="${Number(item.weekly_hours||48)}"></td></tr>`).join("");$("pilotPdfImportBtn").disabled=!pilotPdfRows.length;setStatus("pilotPdfStatus",`${pilotPdfRows.length} categorías propuestas en ${data.page_count||0} páginas.${data.warning?` ${data.warning}`:""}`,!!pilotPdfRows.length);}catch(err){pilotPdfRows=[];$("pilotPdfImportBtn").disabled=true;setStatus("pilotPdfStatus",err.message);}
+  }
+  async function importPilotPdf(){
+    const company=activeCompany(),period=digits($("pilotPdfPeriod").value),agreementId=$("pilotPdfAgreement").value;const rows=pilotPdfRows.map((_,index)=>({code:document.querySelector(`[data-pdf-code="${index}"]`)?.value,name:document.querySelector(`[data-pdf-name="${index}"]`)?.value,basic_amount:Number(document.querySelector(`[data-pdf-amount="${index}"]`)?.value||0),weekly_hours:Number(document.querySelector(`[data-pdf-hours="${index}"]`)?.value||48)}));if(!company||!agreementId||period.length!==6)return setStatus("pilotPdfStatus","Seleccioná convenio y vigencia.");
+    setStatus("pilotPdfStatus","Importando...");try{const data=await api("company-agreement-categories-import",{method:"POST",body:{company_id:company.id,agreement_id:agreementId,effective_period:period,rows}});await loadPilotData();setStatus("pilotPdfStatus",`${data.saved||0} categorías importadas.`,true);}catch(err){setStatus("pilotPdfStatus",err.message);}
+  }
+  async function downloadPilotBlob(path,filename){const response=await fetch(path,{headers:{Authorization:`Bearer ${token()}`}});if(!response.ok){let data={};try{data=await response.json()}catch(_){}throw new Error(data.detail||data.message||`Error HTTP ${response.status}`);}const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
+  async function previewPilotNovelties(){const file=$("pilotNoveltyFile").files?.[0];if(!file)return setStatus("pilotNoveltyStatus","Seleccioná la plantilla completa.");setStatus("pilotNoveltyStatus","Revisando archivo...");try{const data=await pilotRenderUpload("/pilot/novelties-preview",file,"pilotNoveltyStatus");pilotNoveltyRows=data.rows||[];$("pilotNoveltyTableWrap").classList.toggle("hidden",!pilotNoveltyRows.length);$("pilotNoveltyTbody").innerHTML=pilotNoveltyRows.map(item=>`<tr><td>${item.row}</td><td>${esc(item.file_number||item.cuil)}</td><td>${esc(item.custom_concept_code||item.type)}</td><td>${Number(item.quantity||0)}</td><td>${Number(item.amount||0)}</td></tr>`).join("");$("pilotNoveltyImportBtn").disabled=!pilotNoveltyRows.length;setStatus("pilotNoveltyStatus",`${pilotNoveltyRows.length} novedades válidas${data.errors?.length?` · ${data.errors.length} observaciones`:""}.`,true);}catch(err){pilotNoveltyRows=[];$("pilotNoveltyImportBtn").disabled=true;setStatus("pilotNoveltyStatus",err.message);}}
+  async function importPilotNovelties(){const company=activeCompany(),period=activePeriod();if(!company||!period||period.payroll_type!=="monthly"||["closed","cancelled"].includes(period.status))return setStatus("pilotNoveltyStatus","Seleccioná en Liquidaciones un período mensual abierto o en borrador.");setStatus("pilotNoveltyStatus","Importando novedades...");try{const data=await api("pilot-novelties-import",{method:"POST",body:{company_id:company.id,period_id:period.id,rows:pilotNoveltyRows}});await loadNovelties();setStatus("pilotNoveltyStatus",`${data.saved||0} novedades guardadas${data.errors?.length?` · ${data.errors.length} filas rechazadas`:""}.`,true);}catch(err){setStatus("pilotNoveltyStatus",err.message);}}
+  function pilotReportParams(){return {company_id:activeCompany()?.id||"",period:pilotMonthValue()};}
+  async function loadPilotNetReport(){setStatus("pilotReportStatus","Cargando netos...");try{const data=await api("pilot-net-report",{params:pilotReportParams()});const rows=data.items||[];$("pilotNetTableWrap").classList.toggle("hidden",!rows.length);$("pilotNetTbody").innerHTML=rows.map(item=>`<tr><td><strong>${esc(item.full_name)}</strong><span class="subtext">${esc(item.file_number)}</span></td><td>${esc(item.scheme)}</td><td>${money(item.remunerative)}</td><td>${money(item.non_remunerative)}</td><td>${money(item.deductions)}</td><td><strong>${money(item.net)}</strong></td><td>${money(item.employer_contributions)}</td><td>${money(item.labor_cost)}</td></tr>`).join("");setStatus("pilotReportStatus",`${rows.length} liquidaciones encontradas.`,true);}catch(err){setStatus("pilotReportStatus",err.message);}}
+  async function loadPilotConceptReport(){setStatus("pilotReportStatus","Armando matriz de conceptos...");try{const data=await api("pilot-concept-report",{params:pilotReportParams()}),employees=data.employees||[],concepts=data.concepts||[];$("pilotConceptTableWrap").classList.toggle("hidden",!concepts.length);$("pilotConceptTable").innerHTML=`<thead><tr><th>Tipo / concepto</th>${employees.map(item=>`<th>${esc(item.name)}</th>`).join("")}<th>Total</th></tr></thead><tbody>${concepts.map(concept=>`<tr><td><strong>${esc(mapCustomConceptKind(concept.kind))}</strong><span class="subtext">${esc(concept.concept)}</span></td>${employees.map(employee=>`<td>${money(concept.values?.[employee.id]||0)}</td>`).join("")}<td><strong>${money(concept.total)}</strong></td></tr>`).join("")}</tbody>`;setStatus("pilotReportStatus",`${concepts.length} conceptos y contribuciones en la matriz.`,true);}catch(err){setStatus("pilotReportStatus",err.message);}}
+  async function exportPilotApi(action,filename){const url=new URL(API_URL);url.searchParams.set("action",action);Object.entries(pilotReportParams()).forEach(([key,value])=>value&&url.searchParams.set(key,value));try{await downloadPilotBlob(url.toString(),filename);setStatus("pilotReportStatus","Reporte descargado.",true);}catch(err){setStatus("pilotReportStatus",err.message);}}
+
   async function loadSecurity(){
     const company=activeCompany();await loadSessions();if(company&&["owner","admin"].includes(company.role)){await loadTeam();await loadAudit();}else{teamMembers=[];auditItems=[];renderTeam();renderAudit();}
   }
@@ -1468,6 +1576,7 @@
   $("employeeRama").addEventListener("change",()=>refreshEmployeeAgrups());
   $("employeeAgrup").addEventListener("change",()=>refreshEmployeeCategories());
   $("employeePayrollScheme").addEventListener("change",syncEmployeeScheme);
+  $("employeeCustomAgreement").addEventListener("change",()=>refreshEmployeeCustomCategories());
   $("employeeHealthName").addEventListener("blur",()=>{if(/\bOSDE\b/i.test($("employeeHealthName").value)){if(!digits($("employeeHealthCode").value))$("employeeHealthCode").value="400800";$("employeeHealthOnNonRem").checked=false;}});
   $("noveltyType").addEventListener("change",ev=>{$("noveltyName").value=mapNoveltyType(ev.target.value);syncNoveltyCustomConcept();});
   $("noveltyCustomConcept").addEventListener("change",()=>syncNoveltyCustomConcept(true));
@@ -1476,6 +1585,7 @@
   $("customConceptKind").addEventListener("change",suggestCustomConceptBase);
   $("customConceptSaveBtn").addEventListener("click",saveCustomConcept);
   $("customConceptCancelBtn").addEventListener("click",()=>{clearCustomConceptForm();setStatus("customConceptStatus","");});
+  $("pilotAgreementSaveBtn").addEventListener("click",savePilotAgreement);$("pilotCategorySaveBtn").addEventListener("click",savePilotCategory);$("pilotPdfPreviewBtn").addEventListener("click",previewPilotPdf);$("pilotPdfImportBtn").addEventListener("click",importPilotPdf);$("pilotNoveltyTemplateBtn").addEventListener("click",async()=>{try{await downloadPilotBlob("/pilot/plantilla-novedades.xlsx","plantilla_novedades_masivas.xlsx");}catch(err){setStatus("pilotNoveltyStatus",err.message);}});$("pilotNoveltyPreviewBtn").addEventListener("click",previewPilotNovelties);$("pilotNoveltyImportBtn").addEventListener("click",importPilotNovelties);$("pilotNetLoadBtn").addEventListener("click",loadPilotNetReport);$("pilotConceptLoadBtn").addEventListener("click",loadPilotConceptReport);$("pilotNetExportBtn").addEventListener("click",()=>exportPilotApi("pilot-net-report-export",`reporte_netos_${pilotMonthValue()||"todos"}.csv`));$("pilotConceptExportBtn").addEventListener("click",()=>exportPilotApi("pilot-concept-report-export",`conceptos_liquidados_${pilotMonthValue()||"todos"}.csv`));
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
   $("logoutBtn").addEventListener("click",async()=>{stopPayrollJobPolling();try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];customConcepts=[];arcaConcepts=[];arcaValidation=null;arcaLiquidationValidation=null;activePayrollJob=null;payrollJobItems=[];subscriptionSummary=null;activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
