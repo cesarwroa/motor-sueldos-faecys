@@ -316,6 +316,7 @@ class PublicLeadCreate(BaseModel):
     nombre: str
     email: str
     empresa: str
+    cuit: str = ""
     telefono: str = ""
     empleados: str = ""
     motivo: str = "Consulta empresa / nomina"
@@ -507,6 +508,7 @@ def _read_admin_leads() -> List[Dict[str, Any]]:
                 "nombre": _clean_lead_text(item.get("nombre"), 160),
                 "email": _clean_lead_text(item.get("email"), 220),
                 "empresa": _clean_lead_text(item.get("empresa"), 180),
+                "cuit": _clean_lead_text(item.get("cuit"), 20),
                 "telefono": _clean_lead_text(item.get("telefono"), 80),
                 "empleados": _clean_lead_text(item.get("empleados"), 80),
                 "motivo": _clean_lead_text(item.get("motivo"), 220),
@@ -1149,6 +1151,7 @@ def create_public_lead(payload: PublicLeadCreate, request: Request):
     nombre = _clean_lead_text(payload.nombre, 160)
     email = _clean_lead_text(payload.email, 220)
     empresa = _clean_lead_text(payload.empresa, 180)
+    cuit = "".join(char for char in str(payload.cuit or "") if char.isdigit())[:11]
     telefono = _clean_lead_text(payload.telefono, 80)
     empleados = _clean_lead_text(payload.empleados, 80)
     motivo = _clean_lead_text(payload.motivo, 220) or "Consulta empresa / nomina"
@@ -1167,6 +1170,7 @@ def create_public_lead(payload: PublicLeadCreate, request: Request):
         "nombre": nombre,
         "email": email,
         "empresa": empresa,
+        "cuit": cuit,
         "telefono": telefono,
         "empleados": empleados,
         "motivo": motivo,
@@ -1744,6 +1748,7 @@ def calcular(
     mes: str,
     jornada: float = 48.0,
     basico_manual: float = 0,
+    fuera_convenio: bool = False,
     anios_antig: float = 0,
     osecac: bool = True,
     obra_social_sobre_no_rem: bool = True,
@@ -1809,6 +1814,7 @@ def calcular(
         mes=mes,
         jornada=jornada,
         basico_manual=basico_manual,
+        fuera_convenio=fuera_convenio,
         anios_antig=anios_antig,
         osecac=osecac,
         obra_social_sobre_no_rem=obra_social_sobre_no_rem,
@@ -1879,6 +1885,7 @@ def calcular_vacaciones(
     regimen_contribuciones: str = "inciso_b",
     art_pct: float = 3,
     art_fijo: float = 1765,
+    fuera_convenio: bool = False,
 ):
     return calcular_vacaciones_payload(
         rama=rama,
@@ -1895,6 +1902,7 @@ def calcular_vacaciones(
         regimen_contribuciones=regimen_contribuciones,
         art_pct=art_pct,
         art_fijo=art_fijo,
+        fuera_convenio=fuera_convenio,
     )
 
 
@@ -1959,6 +1967,8 @@ def calcular_final(
     osecac_adicional_patronal: bool = True,
     la_estrella: bool = True,
     instituto_capacitacion: bool = True,
+    basico_manual: float = 0,
+    fuera_convenio: bool = False,
     authorization: Optional[str] = Header(default=None),
 ):
     return calcular_final_payload(
@@ -2017,6 +2027,8 @@ def calcular_final(
         osecac_adicional_patronal=osecac_adicional_patronal,
         la_estrella=la_estrella,
         instituto_capacitacion=instituto_capacitacion,
+        basico_manual=basico_manual,
+        fuera_convenio=fuera_convenio,
     )
 # ========= FUNEBRES =========
 @app.get("/adicionales-funebres")

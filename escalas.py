@@ -599,6 +599,7 @@ def _calcular_contribuciones_empleador(
     base_fs: float = 0,
     bruto_trabajador: float = 0,
     basico_ref_fallback: float = 0,
+    fuera_convenio: bool = False,
 ) -> Dict[str, Any]:
     def contrib_item(concepto: str, importe: float, base_num: float = 0.0, unidad: Any = "") -> Dict[str, Any]:
         out = {
@@ -666,14 +667,14 @@ def _calcular_contribuciones_empleador(
     if scvo_monto:
         items.append(contrib_item("Seguro de vida obligatorio Dec. 1567/74", scvo_monto))
 
-    seguro_prima = round2(_positive_float(seguro_vida_cct_prima))
+    seguro_prima = 0.0 if bool(fuera_convenio) else round2(_positive_float(seguro_vida_cct_prima))
     seguro_trabajador = round2(seguro_prima / 3.0) if seguro_prima else 0.0
     seguro_empleador = round2(seguro_prima * (2.0 / 3.0)) if seguro_prima else 0.0
     if aplica_costo_empleador and seguro_empleador:
         items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_empleador, seguro_prima))
 
     rama_norm = _norm_fold(rama)
-    if aplica_costo_empleador:
+    if aplica_costo_empleador and not bool(fuera_convenio):
         if rama_norm in ("GENERAL", "FUNEBRES", "FUNEBRE", "AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
             inacap_base = (
                 _basico_ref_empleador("GENERAL", mes, ["MAESTRANZA A", "MAESTRANZA  A"], "GENERAL")
@@ -696,7 +697,7 @@ def _calcular_contribuciones_empleador(
 
         items.append(contrib_item("OSECAC contribucion patronal adicional", 28000.0))
 
-    if aplica_costo_empleador and rama_norm != "CEREALES" and contrib_base_ss:
+    if aplica_costo_empleador and not bool(fuera_convenio) and rama_norm != "CEREALES" and contrib_base_ss:
         items.append(contrib_item("La Estrella (1,60%)", contrib_base_ss * 0.016, contrib_base_ss))
 
     total = round2(sum(float(x.get("importe") or 0.0) for x in items))
@@ -764,6 +765,7 @@ def calcular_payload(
     mes: str,
     jornada: float = 48,
     basico_manual: float = 0,
+    fuera_convenio: bool = False,
     anios_antig: float = 0,
     osecac: bool = True,
     obra_social_sobre_no_rem: bool = True,
@@ -854,12 +856,18 @@ def calcular_payload(
         j = float(jornada or 48)
         factor = (j / 48.0) if 48.0 else 1.0
         call_to_48 = 1.0
+    if bool(fuera_convenio):
+        factor = 1.0
 
 
     bas_base = float(base.get("basico", 0.0) or 0.0)
     nr_base = float(base.get("no_rem", 0.0) or 0.0)
     sf_base = float(base.get("suma_fija", 0.0) or 0.0)
     extraordinaria_base = float(base.get("extraordinaria", 0.0) or 0.0)
+    if bool(fuera_convenio):
+        nr_base = 0.0
+        sf_base = 0.0
+        extraordinaria_base = 0.0
 
     # Agua Potable: Conexiones (A/B/C/D) NO se muestra como adicional;
     # modifica directamente el valor del Básico y de los No Rem.
@@ -1100,7 +1108,7 @@ def calcular_payload(
             return (pow(1.02, anios) - 1.0) if anios else 0.0
         return float(_anios or 0.0) * 0.01
 
-    pct_ant = _pct_antiguedad(rama, anios_antig)
+    pct_ant = 0.0 if bool(fuera_convenio) else _pct_antiguedad(rama, anios_antig)
 
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     def _fpos(x) -> float:
@@ -1179,7 +1187,7 @@ def calcular_payload(
 
     # Regla Presentismo: se pierde con 2 (dos) o más ausencias injustificadas.
     aus_dias = max(0, int(aus_inj or 0))
-    presentismo_habil = (aus_dias < 2)
+    presentismo_habil = (aus_dias < 2) and not bool(fuera_convenio)
     # Presentismo: doceava parte de (Básico + Zona + Antigüedad + Horas + Adicionales)
     # Incluye: horas extra/nocturnas, adicional por KM y A cuenta (REM).
     base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + caja_rem + vid_rem + a_cuenta)
@@ -1487,7 +1495,7 @@ def calcular_payload(
     else:
         os_base = round2(rem_aportes_os + (nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
-        osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
+        osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
 
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
@@ -1496,8 +1504,8 @@ def calcular_payload(
     # Regla del sistema: Sindicato 2% y FAECYS 0,5% son obligatorios (no dependen de afiliación).
     # Base = REM aportable + NR aportable (sin viáticos NR sin aportes).
     base_fs = round2(rem_aportes + nr_aportable_real)
-    faecys = round2(base_fs * 0.005) if base_fs else 0.0
-    sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
+    faecys = round2(base_fs * 0.005) if (base_fs and not bool(fuera_convenio)) else 0.0
+    sind_solid = round2(base_fs * 0.02) if (base_fs and not bool(fuera_convenio)) else 0.0
     try:
         aporte_zonal_pct_f = max(0.0, float(aporte_zonal_pct or 0.0))
     except Exception:
@@ -1528,7 +1536,7 @@ def calcular_payload(
         except Exception:
             sind_fijo_monto = 0.0
 
-    seguro_vida_cct_prima_monto = round2(_fpos(seguro_vida_cct_prima))
+    seguro_vida_cct_prima_monto = 0.0 if bool(fuera_convenio) else round2(_fpos(seguro_vida_cct_prima))
     seguro_vida_cct_trabajador = round2(seguro_vida_cct_prima_monto / 3.0) if seguro_vida_cct_prima_monto else 0.0
     seguro_vida_cct_empleador = round2(seguro_vida_cct_prima_monto * (2.0 / 3.0)) if seguro_vida_cct_prima_monto else 0.0
 
@@ -1605,15 +1613,15 @@ def calcular_payload(
         sac_pami = round2(sac_base_previsional * 0.03) if sac_habil else 0.0
         mensual_os_base = round2(mensual_rem_aportes_os + (mensual_nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
         mensual_os_aporte = round2(mensual_os_base * 0.03) if bool(osecac) else 0.0
-        mensual_osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
+        mensual_osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
         sac_os_base = round2(sac_row_rem_os + (sac_row_nr_os if bool(obra_social_sobre_no_rem) else 0.0)) if sac_habil else 0.0
         sac_os_aporte = round2(sac_os_base * 0.03) if (bool(osecac) and sac_habil) else 0.0
 
-    mensual_faecys = round2(mensual_base_fs * 0.005) if mensual_base_fs else 0.0
-    mensual_sind_solid = round2(mensual_base_fs * 0.02) if mensual_base_fs else 0.0
+    mensual_faecys = round2(mensual_base_fs * 0.005) if (mensual_base_fs and not bool(fuera_convenio)) else 0.0
+    mensual_sind_solid = round2(mensual_base_fs * 0.02) if (mensual_base_fs and not bool(fuera_convenio)) else 0.0
     mensual_aporte_zonal = round2(mensual_base_fs * (aporte_zonal_pct_f / 100.0)) if (mensual_base_fs and aporte_zonal_nombre_txt and aporte_zonal_pct_f > 0) else 0.0
-    sac_faecys = round2(sac_base_fs * 0.005) if (sac_habil and sac_base_fs) else 0.0
-    sac_sind_solid = round2(sac_base_fs * 0.02) if (sac_habil and sac_base_fs) else 0.0
+    sac_faecys = round2(sac_base_fs * 0.005) if (sac_habil and sac_base_fs and not bool(fuera_convenio)) else 0.0
+    sac_sind_solid = round2(sac_base_fs * 0.02) if (sac_habil and sac_base_fs and not bool(fuera_convenio)) else 0.0
     sac_aporte_zonal = round2(sac_base_fs * (aporte_zonal_pct_f / 100.0)) if (sac_habil and sac_base_fs and aporte_zonal_nombre_txt and aporte_zonal_pct_f > 0) else 0.0
 
     mensual_sind = 0.0
@@ -1734,8 +1742,9 @@ def calcular_payload(
     ) -> None:
         if bool(jubilado):
             target.append(item("Jubilación 11% (Jubilado)", d=jub_val, base_num=rem_base, unidad=_fmt_unidad_pct(11)))
-            target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
-            target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
+            if not bool(fuera_convenio):
+                target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
+                target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
             if aporte_zonal_val:
                 target.append(item(aporte_zonal_nombre_txt, d=aporte_zonal_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(aporte_zonal_pct_f)))
             if sind_val:
@@ -1754,8 +1763,9 @@ def calcular_payload(
         else:
             target.append(item("Obra Social 3%", d=0.0, base_num=os_base_val, unidad=_fmt_unidad_pct(3)))
 
-        target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
-        target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
+        if not bool(fuera_convenio):
+            target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
+            target.append(item("Sindicato 2% Art 100", d=sind_solid_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(2)))
         if aporte_zonal_val:
             target.append(item(aporte_zonal_nombre_txt, d=aporte_zonal_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(aporte_zonal_pct_f)))
 
@@ -2130,7 +2140,7 @@ def calcular_payload(
         contribuciones_empleador_items.append(contrib_item("Seguro vida art. 97 CCT 130/75 empleador (2/3)", seguro_vida_cct_empleador, seguro_vida_cct_prima_monto, unidad="2/3"))
 
     rama_norm = _norm_fold(base.get("rama"))
-    if aplica_costo_empleador:
+    if aplica_costo_empleador and not bool(fuera_convenio):
         if rama_norm in ("GENERAL", "FUNEBRES", "FUNEBRE", "AGUA POTABLE", "AGUA", "AGUAPOTABLE"):
             inacap_base = (
                 _basico_ref("GENERAL", mes, ["MAESTRANZA A", "MAESTRANZA  A"], "GENERAL")
@@ -2151,10 +2161,10 @@ def calcular_payload(
             if incagro_base:
                 contribuciones_empleador_items.append(contrib_item("INCAGRO (1%)", incagro_base * 0.01, incagro_base))
 
-    if aplica_costo_empleador and bool(osecac_adicional_patronal):
+    if aplica_costo_empleador and bool(osecac_adicional_patronal) and not bool(fuera_convenio):
         contribuciones_empleador_items.append(contrib_item("OSECAC contribucion patronal adicional", 28000.0))
 
-    if aplica_costo_empleador and bool(la_estrella) and rama_norm != "CEREALES" and mensual_rem_aportes:
+    if aplica_costo_empleador and bool(la_estrella) and not bool(fuera_convenio) and rama_norm != "CEREALES" and mensual_rem_aportes:
         contribuciones_empleador_items.append(contrib_item("La Estrella (1,60%)", mensual_rem_aportes * 0.016, mensual_rem_aportes))
 
     total_contribuciones_empleador = round2(sum(float(x.get("importe") or 0.0) for x in contribuciones_empleador_items))
@@ -2214,6 +2224,7 @@ def calcular_payload(
         "extraordinaria_base": float(extraordinaria_base),
 
         "basico": float(bas),
+        "fuera_convenio": bool(fuera_convenio),
         "zona": float(zona),
         "no_rem": float(nr),
         "suma_fija": float(sf),
@@ -2479,6 +2490,7 @@ def calcular_vacaciones_payload(
     regimen_contribuciones: str = "inciso_b",
     art_pct: float = 3.0,
     art_fijo: float = 1765.0,
+    fuera_convenio: bool = False,
 ) -> Dict[str, Any]:
     """Adelanto de vacaciones para personal mensualizado (art. 155 LCT).
 
@@ -2499,9 +2511,9 @@ def calcular_vacaciones_payload(
     jub = round2(rem * 0.11)
     pami = 0.0 if bool(jubilado) else round2(rem * 0.03)
     obra_social = 0.0 if bool(jubilado) or not bool(osecac) else round2(base_aportes * 0.03)
-    faecys = round2(base_aportes * 0.005)
-    sindicato = round2(base_aportes * 0.02)
-    afiliacion = round2(base_aportes * (max(0.0, float(sind_pct or 0.0)) / 100.0)) if afiliado else 0.0
+    faecys = 0.0 if bool(fuera_convenio) else round2(base_aportes * 0.005)
+    sindicato = 0.0 if bool(fuera_convenio) else round2(base_aportes * 0.02)
+    afiliacion = round2(base_aportes * (max(0.0, float(sind_pct or 0.0)) / 100.0)) if (afiliado and not bool(fuera_convenio)) else 0.0
     ded = round2(jub + pami + obra_social + faecys + sindicato + afiliacion)
     neto = round2(rem + nr - ded)
 
@@ -2544,6 +2556,7 @@ def calcular_vacaciones_payload(
         base_fs=base_aportes,
         bruto_trabajador=round2(rem + nr),
         basico_ref_fallback=rem_base,
+        fuera_convenio=fuera_convenio,
     )
     return {
         "ok": True,
@@ -2631,6 +2644,8 @@ def calcular_final_payload(
     osecac_adicional_patronal: bool = True,
     la_estrella: bool = True,
     instituto_capacitacion: bool = True,
+    basico_manual: float = 0.0,
+    fuera_convenio: bool = False,
 ) -> Dict[str, Any]:
     """Liquidación final básica (MVP Etapa 9).
 
@@ -3018,6 +3033,8 @@ def calcular_final_payload(
             categoria=categoria,
             mes=mes_baja,
             jornada=jornada,
+            basico_manual=basico_manual,
+            fuera_convenio=fuera_convenio,
             anios_antig=anios_antig,
             osecac=osecac,
             afiliado=afiliado,
@@ -3127,9 +3144,9 @@ def calcular_final_payload(
         round2(nr_total - viaticos_nr - extraordinaria_exenta_nr),
     )
     base_fs = round2(rem_aportes + nr_aportable)
-    faecys = round2(base_fs * 0.005) if base_fs else 0.0
-    sind_solid = round2(base_fs * 0.02) if base_fs else 0.0
-    seguro_vida_cct_prima_monto = round2(_positive_float(seguro_vida_cct_prima))
+    faecys = round2(base_fs * 0.005) if (base_fs and not bool(fuera_convenio)) else 0.0
+    sind_solid = round2(base_fs * 0.02) if (base_fs and not bool(fuera_convenio)) else 0.0
+    seguro_vida_cct_prima_monto = 0.0 if bool(fuera_convenio) else round2(_positive_float(seguro_vida_cct_prima))
     seguro_vida_cct_trabajador = round2(seguro_vida_cct_prima_monto / 3.0) if seguro_vida_cct_prima_monto else 0.0
 
     if bool(jubilado):
@@ -3159,7 +3176,7 @@ def calcular_final_payload(
         )
         os_base = round2((rem_aportes_os + nr_os) if bool(osecac) else rem_aportes_os)
         os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
-        osecac_100 = 100.0 if (bool(osecac) and aplica_osecac_fijo(rama, mes_baja)) else 0.0
+        osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(rama, mes_baja)) else 0.0
 
         if bool(afiliado):
             if float(sind_pct or 0) > 0:
@@ -3245,6 +3262,7 @@ def calcular_final_payload(
         base_fs=base_fs,
         bruto_trabajador=bruto_trabajador_total,
         basico_ref_fallback=bas_full_r,
+        fuera_convenio=fuera_convenio,
     )
 
     return {
