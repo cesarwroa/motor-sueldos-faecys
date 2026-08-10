@@ -798,6 +798,8 @@ def calcular_payload(
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     a_cuenta_rem: float = 0,
     viaticos_nr: float = 0,
+    custom_rem_pct: float = 0,
+    custom_nr_pct: float = 0,
 
     # Etapa 7: Manejo de Caja / Vidriera / Adelanto
     manejo_caja: bool = False,
@@ -1117,8 +1119,10 @@ def calcular_payload(
         except Exception:
             return 0.0
 
-    a_cuenta = _fpos(a_cuenta_rem)
-    viaticos = _fpos(viaticos_nr)
+    custom_rem_pct_value = _fpos(custom_rem_pct)
+    custom_nr_pct_value = _fpos(custom_nr_pct)
+    a_cuenta = round2(_fpos(a_cuenta_rem) + (bas * custom_rem_pct_value / 100.0))
+    viaticos = round2(_fpos(viaticos_nr) + (bas * custom_nr_pct_value / 100.0))
 
     # Etapa 7: Manejo de Caja / Vidriera / Adelanto / Faltante
     # - Manejo de Caja (Art. 30) (NR exento): A/C 12,25% sobre básico inicial Cajero A; B 48% sobre básico inicial Cajero B.

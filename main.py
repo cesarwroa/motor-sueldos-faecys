@@ -1779,6 +1779,8 @@ def calcular(
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     a_cuenta_rem: float = 0,
     viaticos_nr: float = 0,
+    custom_rem_pct: float = 0,
+    custom_nr_pct: float = 0,
 
     # Etapa 7: Manejo de Caja / Vidriera / Adelanto
     manejo_caja: bool = False,
@@ -1842,6 +1844,8 @@ def calcular(
         km_mas100=km_mas100,
         a_cuenta_rem=a_cuenta_rem,
         viaticos_nr=viaticos_nr,
+        custom_rem_pct=custom_rem_pct,
+        custom_nr_pct=custom_nr_pct,
         manejo_caja=manejo_caja,
         cajero_tipo=cajero_tipo,
         faltante_caja=faltante_caja,
