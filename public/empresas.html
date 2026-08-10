@@ -246,21 +246,21 @@
         </div></div>
       </details>
       <details>
-        <summary>Cobertura médica y afiliaciones</summary>
+        <summary id="employeeCoverageSummary">Cobertura médica y afiliaciones</summary>
         <div class="detail-body">
-          <div class="notice health-guidance"><strong>Configuración individual:</strong> al dar de alta un empleado se completa la cobertura habitual definida en la empresa. Modificá estos datos sólo si el trabajador tiene una cobertura diferente. La contribución patronal OSECAC de $28.000 se genera igualmente por estar incluido en CCT.</div>
+          <div class="notice health-guidance employee-cct-only"><strong>Configuración individual:</strong> al dar de alta un empleado se completa la cobertura habitual definida en la empresa. Modificá estos datos sólo si el trabajador tiene una cobertura diferente. La contribución patronal OSECAC de $28.000 se genera igualmente por estar incluido en CCT.</div>
           <div class="grid">
             <div><label for="employeeHealthName">Obra social / agente de salud</label><input id="employeeHealthName" maxlength="190" placeholder="Ej.: OSDE"></div>
             <div><label for="employeeHealthCode">Código obra social ARCA (6 dígitos)</label><input id="employeeHealthCode" inputmode="numeric" maxlength="6" placeholder="OSDE: 400800"></div>
             <div><label for="employeeHealthMember">Número de afiliado</label><input id="employeeHealthMember" maxlength="80"></div>
             <div><label for="employeeHealthStart">Vigencia desde</label><input id="employeeHealthStart" type="date"></div>
             <div class="wide"><label class="check-line"><input id="employeeHealthOnNonRem" type="checkbox"> Aplicar aporte y contribución de obra social sobre conceptos no remunerativos</label><span class="subtext">Para el caso OSDE del recibo de prueba debe quedar desmarcado.</span></div>
-            <div><label for="employeeUnionName">Sindicato</label><input id="employeeUnionName" maxlength="190"></div>
-            <div><label for="employeeUnionCode">Código sindical</label><input id="employeeUnionCode" inputmode="numeric" maxlength="12"></div>
-            <div><label for="employeeUnionMember">Número de afiliado sindical</label><input id="employeeUnionMember" maxlength="80"></div>
-            <div class="wide"><label class="check-line"><input id="employeeUnionAffiliated" type="checkbox"> Afiliado al sindicato</label><span class="subtext">La cuota de afiliación es adicional al aporte solidario del 2% y al aporte zonal que corresponda.</span></div>
-            <div><label for="employeeUnionPct">Porcentaje de afiliación</label><input id="employeeUnionPct" type="number" min="0" max="10" step="0.01" value="0"><span class="subtext">Porcentaje sobre la base sindical aportable.</span></div>
-            <div><label for="employeeUnionFixed">Suma fija de afiliación</label><input id="employeeUnionFixed" type="number" min="0" step="0.01" value="0"><span class="subtext">Puede utilizarse sola o junto con el porcentaje.</span></div>
+            <div class="employee-union-field"><label for="employeeUnionName">Sindicato</label><input id="employeeUnionName" maxlength="190"></div>
+            <div class="employee-union-field"><label for="employeeUnionCode">Código sindical</label><input id="employeeUnionCode" inputmode="numeric" maxlength="12"></div>
+            <div class="employee-union-field"><label for="employeeUnionMember">Número de afiliado sindical</label><input id="employeeUnionMember" maxlength="80"></div>
+            <div class="wide employee-union-field"><label class="check-line"><input id="employeeUnionAffiliated" type="checkbox"> Afiliado al sindicato</label><span class="subtext">La cuota de afiliación es adicional al aporte solidario del 2% y al aporte zonal que corresponda.</span></div>
+            <div class="employee-union-field"><label for="employeeUnionPct">Porcentaje de afiliación</label><input id="employeeUnionPct" type="number" min="0" max="10" step="0.01" value="0"><span class="subtext">Porcentaje sobre la base sindical aportable.</span></div>
+            <div class="employee-union-field"><label for="employeeUnionFixed">Suma fija de afiliación</label><input id="employeeUnionFixed" type="number" min="0" step="0.01" value="0"><span class="subtext">Puede utilizarse sola o junto con el porcentaje.</span></div>
           </div>
         </div>
       </details>
@@ -925,7 +925,9 @@
     $("employeeManualSalaryField").classList.toggle("hidden",!outside);
     $("employeePositionField").classList.toggle("hidden",!outside);
     document.querySelectorAll(".employee-cct-field").forEach(field=>field.classList.toggle("hidden",outside));
-    if(outside){$("employeeAgreement").value="Fuera de convenio";$("employeeArcaCct").checked=false;$("employeeUnionAffiliated").checked=false;syncEmployeeUnionContribution();}
+    document.querySelectorAll(".employee-union-field,.employee-cct-only").forEach(field=>field.classList.toggle("hidden",outside));
+    $("employeeCoverageSummary").textContent=outside?"Cobertura médica":"Cobertura médica y afiliaciones";
+    if(outside){$("employeeAgreement").value="Fuera de convenio";$("employeeArcaCct").checked=false;$("employeeUnionAffiliated").checked=false;["employeeUnionName","employeeUnionCode","employeeUnionMember"].forEach(id=>$(id).value="");$("employeeUnionPct").value="0";$("employeeUnionFixed").value="0";syncEmployeeUnionContribution();}
     else{$("employeeArcaCct").checked=true;if(!$('employeeAgreement').value||$('employeeAgreement').value==="Fuera de convenio")$("employeeAgreement").value=agreementForRama($("employeeRama").value);}
   }
   function clearEmployeeForm(){
@@ -949,7 +951,7 @@
     body.profile.payroll_scheme=outsideAgreement?"outside_agreement":"cct";
     body.profile.manual_salary=outsideAgreement?Number($("employeeManualSalary").value||0):0;
     body.profile.position_name=outsideAgreement?$("employeePosition").value.trim():body.category;
-    if(outsideAgreement){body.category=body.profile.position_name;body.profile.rama="GENERAL";body.profile.agrup="GENERAL";body.profile.agreement="Fuera de convenio";body.profile.union_affiliated=false;body.profile.union_contribution_pct=0;body.profile.union_contribution_fixed=0;body.arca_profile.cct="0";}
+    if(outsideAgreement){body.category=body.profile.position_name;body.profile.rama="GENERAL";body.profile.agrup="GENERAL";body.profile.agreement="Fuera de convenio";body.profile.union_name="";body.profile.union_member="";body.profile.union_affiliated=false;body.profile.union_contribution_pct=0;body.profile.union_contribution_fixed=0;body.arca_profile.union_code="";body.arca_profile.cct="0";}
     if(!body.full_name||!validTaxId(body.cuil))return setStatus("employeeStatus","Completá nombre y un CUIL válido, incluido su dígito verificador.");
     if(outsideAgreement&&(!body.category||body.profile.manual_salary<=0))return setStatus("employeeStatus","Completá el puesto y el sueldo mensual del personal fuera de convenio.");
     if(!outsideAgreement&&(!body.profile.rama||!body.profile.agrup||!body.category))return setStatus("employeeStatus","Seleccioná convenio / rama, agrupamiento y categoría.");
