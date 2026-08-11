@@ -98,6 +98,7 @@
         <button type="button" data-workspace-target="concepts">Conceptos propios</button>
         <button type="button" data-workspace-target="payroll">Liquidaciones</button>
         <button type="button" data-workspace-target="arca">Libro Digital ARCA</button>
+        <button id="incomeTaxNavBtn" class="hidden" type="button" data-workspace-target="income-tax">Ganancias 4ta.</button>
         <button id="pilotNavBtn" class="hidden" type="button" data-workspace-target="pilot">Piloto avanzado</button>
         <button type="button" data-workspace-target="security">Seguridad</button>
       </nav>
@@ -459,6 +460,56 @@
       </div></details>
     </article>
 
+    <article id="incomeTaxCard" class="card hidden" data-workspace-module="income-tax">
+      <div class="summary"><div><span class="pill">Piloto privado 2026</span><h2>Retenciones de Ganancias · 4ta categoría</h2><p class="muted">Cálculo acumulativo, SiRADIG, retención o devolución y papel de trabajo. Disponible únicamente para las dos cuentas autorizadas.</p></div><span id="incomeTaxTablePill" class="pill">Tablas ARCA 2026</span></div>
+      <div class="notice"><strong>Actualización controlada:</strong> las tablas oficiales quedan versionadas. Una actualización de ARCA requiere revisión antes de aplicarse y no modifica cálculos anteriores.</div>
+      <details open><summary>1. Configuración fiscal del empleado</summary><div class="detail-body">
+        <div class="grid">
+          <div><label for="incomeTaxEmployee">Empleado *</label><select id="incomeTaxEmployee"><option value="">Seleccionar</option></select></div>
+          <div><label for="incomeTaxYear">Año fiscal</label><select id="incomeTaxYear"><option value="2026">2026</option></select></div>
+          <div><label for="incomeTaxPeriod">Período de pago *</label><input id="incomeTaxPeriod" type="month" value="2026-08"></div>
+          <div><label for="incomeTaxType">Tipo de liquidación</label><select id="incomeTaxType"><option value="monthly">Mensual</option><option value="annual">Anual</option><option value="final">Final</option><option value="informative">Informativa</option></select></div>
+        </div>
+        <div class="grid">
+          <label class="check"><input id="incomeTaxEnabled" type="checkbox" checked> Empleado habilitado para Ganancias</label>
+          <label class="check"><input id="incomeTaxAgent" type="checkbox" checked> La empresa actúa como agente de retención</label>
+          <div><label for="incomeTaxSpouse">Cónyuge / unión convivencial</label><input id="incomeTaxSpouse" type="number" min="0" max="1" step="1" value="0"></div>
+          <div><label for="incomeTaxChildren">Hijos (equivalente 100%)</label><input id="incomeTaxChildren" type="number" min="0" step="0.5" value="0"></div>
+          <div><label for="incomeTaxDisabledChildren">Hijos incapacitados (equivalente 100%)</label><input id="incomeTaxDisabledChildren" type="number" min="0" step="0.5" value="0"></div>
+          <div><label for="incomeTaxMultiplier">Multiplicador deducciones personales</label><input id="incomeTaxMultiplier" type="number" min="0.1" step="0.01" value="1"><span class="subtext">Usar 1 salvo tratamiento regional verificado.</span></div>
+        </div>
+        <h3>Saldos anteriores al sistema</h3>
+        <div class="grid">
+          <div><label for="incomeTaxPriorGross">Ganancia bruta gravada acumulada</label><input id="incomeTaxPriorGross" type="number" min="0" step="0.01"></div>
+          <div><label for="incomeTaxPriorMandatory">Deducciones obligatorias acumuladas</label><input id="incomeTaxPriorMandatory" type="number" min="0" step="0.01"></div>
+          <div><label for="incomeTaxPriorGeneral">Deducciones generales acumuladas</label><input id="incomeTaxPriorGeneral" type="number" min="0" step="0.01"></div>
+          <div><label for="incomeTaxPriorWithheld">Impuesto retenido acumulado</label><input id="incomeTaxPriorWithheld" type="number" step="0.01"></div>
+          <div><label for="incomeTaxNotes">Notas de revisión</label><input id="incomeTaxNotes" maxlength="500"></div>
+        </div>
+        <div class="actions"><button id="incomeTaxProfileSaveBtn" type="button">Guardar configuración</button></div><div id="incomeTaxProfileStatus" class="status"></div>
+      </div></details>
+      <details><summary>2. Importar ZIP o XML de SiRADIG Empleador</summary><div class="detail-body">
+        <p class="section-note">SiRADIG no llega normalmente como PDF: desde SiRADIG Empleador se descarga un ZIP con un XML por empleado/presentación. El sistema muestra una vista previa y no marca importes automáticamente.</p>
+        <div class="grid"><div><label for="incomeTaxSiradigFile">Archivo ZIP/XML *</label><input id="incomeTaxSiradigFile" type="file" accept=".zip,.xml,application/zip,text/xml,application/xml"></div></div>
+        <div class="actions"><button id="incomeTaxSiradigPreviewBtn" type="button">Analizar archivo</button><button id="incomeTaxSiradigImportBtn" class="secondary" type="button" disabled>Importar filas seleccionadas</button></div><div id="incomeTaxSiradigStatus" class="status"></div>
+        <div id="incomeTaxSiradigWrap" class="table-wrap hidden"><table><thead><tr><th>Archivo / empleado</th><th>Presentación</th><th>Dato detectado</th><th>Tratamiento</th><th>Período</th><th>Importe</th><th>Importar</th></tr></thead><tbody id="incomeTaxSiradigTbody"></tbody></table></div>
+      </div></details>
+      <details><summary>3. Deducciones, otros empleadores y pagos a cuenta</summary><div class="detail-body">
+        <div class="grid">
+          <div><label for="incomeTaxAdjustmentKind">Tipo *</label><select id="incomeTaxAdjustmentKind"><option value="deduction">Deducción general</option><option value="other_income">Ingreso de otro empleador</option><option value="payment_on_account">Retención / pago a cuenta</option></select></div>
+          <div><label for="incomeTaxAdjustmentDescription">Descripción *</label><input id="incomeTaxAdjustmentDescription" maxlength="190" placeholder="Ej.: alquiler de vivienda"></div>
+          <div><label for="incomeTaxAdjustmentAmount">Importe *</label><input id="incomeTaxAdjustmentAmount" type="number" min="0.01" step="0.01"></div>
+        </div>
+        <div class="actions"><button id="incomeTaxAdjustmentSaveBtn" type="button">Agregar al acumulado</button></div><div id="incomeTaxAdjustmentStatus" class="status"></div>
+        <div id="incomeTaxAdjustmentsWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Período</th><th>Tipo</th><th>Descripción</th><th>Importe</th><th>Origen</th></tr></thead><tbody id="incomeTaxAdjustmentsTbody"></tbody></table></div>
+      </div></details>
+      <details open><summary>4. Calcular, revisar y aplicar</summary><div class="detail-body">
+        <div class="actions"><button id="incomeTaxCalculateBtn" type="button">Calcular Ganancias</button><button id="incomeTaxApplyBtn" class="secondary" type="button" disabled>Aplicar al recibo mensual</button><button id="incomeTaxWorkpaperBtn" class="secondary" type="button" disabled>Descargar papel de trabajo Excel</button><button id="incomeTaxF1359Btn" class="secondary" type="button">Borrador control F.1359</button><button id="incomeTaxSicoreBtn" class="secondary" type="button">Borrador control SICORE</button></div><div id="incomeTaxCalculateStatus" class="status"></div>
+        <div id="incomeTaxResult" class="hidden"></div>
+        <h3>Historial de cálculos</h3><div id="incomeTaxCalculationsWrap" class="table-wrap hidden"><table><thead><tr><th>Empleado</th><th>Período / versión</th><th>Tipo</th><th>Ganancia neta</th><th>Impuesto</th><th>Retención</th><th>Devolución</th><th>Estado</th></tr></thead><tbody id="incomeTaxCalculationsTbody"></tbody></table></div>
+      </div></details>
+    </article>
+
     <article id="securityCard" class="card" data-workspace-module="security">
       <div class="summary"><div><h2>Seguridad y colaboradores</h2><p class="muted">Controlá quién accede, revisá la actividad y descargá un respaldo empresarial.</p></div><span id="currentRolePill" class="pill"></span></div>
       <div id="teamAdminSection">
@@ -569,6 +620,9 @@
   let pilotCategories = [];
   let pilotPdfRows = [];
   let pilotNoveltyRows = [];
+  let incomeTaxData = {profiles:[],imports:[],adjustments:[],calculations:[]};
+  let incomeTaxSiradigPresentations = [];
+  let activeIncomeTaxCalculation = null;
   let creatingCompany = false;
   let workspaceModule = (()=>{try{return localStorage.getItem(WORKSPACE_MODULE_KEY)||"overview"}catch(_){return"overview"}})();
   let companyFormSection = "identity";
@@ -651,17 +705,17 @@
 
   function activeCompany(){const companies=session?.companies||[];return companies.find(item=>String(item.id)===String(selectedCompanyId()))||companies[0]||null;}
   function applyWorkspaceNavigation(){
-    const allowed=["overview","company","employees","concepts","payroll","arca","security",...(pilotAccess?["pilot"]:[])];
+    const allowed=["overview","company","employees","concepts","payroll","arca","security",...(pilotAccess?["pilot","income-tax"]:[])];
     if(!allowed.includes(workspaceModule))workspaceModule="overview";
     document.querySelectorAll("[data-workspace-module]").forEach(element=>{
       const visible=element.dataset.workspaceModule===workspaceModule;
       const platformHidden=element.id==="platformAdminPanel"&&!session?.is_platform_admin;
-      const pilotHidden=element.dataset.workspaceModule==="pilot"&&!pilotAccess;
+      const pilotHidden=["pilot","income-tax"].includes(element.dataset.workspaceModule)&&!pilotAccess;
       element.classList.toggle("hidden",!visible||platformHidden||pilotHidden);
     });
     document.querySelectorAll("[data-workspace-target]").forEach(button=>{
       const active=button.dataset.workspaceTarget===workspaceModule;
-      if(button.dataset.workspaceTarget==="pilot")button.classList.toggle("hidden",!pilotAccess);
+      if(["pilot","income-tax"].includes(button.dataset.workspaceTarget))button.classList.toggle("hidden",!pilotAccess);
       button.classList.toggle("active",active);
       button.setAttribute("aria-current",active?"page":"false");
     });
@@ -692,7 +746,7 @@
     $("companySaveBtn").textContent="Guardar empresa";
     setAuth(token(),companyId);activePeriodId="";arcaLiquidationValidation=null;
     renderSession();renderCompanyForm();
-    await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(pilotAccess)await loadPilotData();
+    await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(pilotAccess){await loadPilotData();await loadIncomeTaxData();}
   }
   function mapStatus(status){return ({trial:"Prueba",active:"Activo",paused:"Pausado",closed:"Cerrado",expired:"Vencido"})[status]||status||"";}
   function mapPlan(plan){return ({starter:"Empresa",professional:"Profesional",studio:"Estudio"})[plan]||plan||"Sin plan";}
@@ -752,7 +806,7 @@
 
   async function loadSession(){
     if(!token()){session=null;renderSession();return;}
-    try{session=await api("me");const access=await api("pilot-access");pilotAccess=access.enabled===true;await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();applyWorkspaceNavigation();await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(pilotAccess)await loadPilotData();if(session.is_platform_admin)await loadAdminCompanies();}
+    try{session=await api("me");const access=await api("pilot-access");pilotAccess=access.enabled===true;await loadCompanies();const current=activeCompany();if(current&&!selectedCompanyId())setAuth(token(),current.id);renderSession();renderCompanyForm();applyWorkspaceNavigation();await loadSubscription();await loadEmployees();await loadCustomConcepts();await loadPeriods();await loadArcaConcepts();await loadSecurity();if(pilotAccess){await loadPilotData();await loadIncomeTaxData();}if(session.is_platform_admin)await loadAdminCompanies();}
     catch(err){setAuth("");session=null;renderSession();setStatus("loginStatus",err.message);}
   }
 
@@ -1545,6 +1599,60 @@
   async function loadPilotConceptReport(){setStatus("pilotReportStatus","Armando matriz de conceptos...");try{const data=await api("pilot-concept-report",{params:pilotReportParams()}),employees=data.employees||[],concepts=data.concepts||[];$("pilotConceptTableWrap").classList.toggle("hidden",!concepts.length);$("pilotConceptTable").innerHTML=`<thead><tr><th>Tipo / concepto</th>${employees.map(item=>`<th>${esc(item.name)}</th>`).join("")}<th>Total</th></tr></thead><tbody>${concepts.map(concept=>`<tr><td><strong>${esc(mapCustomConceptKind(concept.kind))}</strong><span class="subtext">${esc(concept.concept)}</span></td>${employees.map(employee=>`<td>${money(concept.values?.[employee.id]||0)}</td>`).join("")}<td><strong>${money(concept.total)}</strong></td></tr>`).join("")}</tbody>`;setStatus("pilotReportStatus",`${concepts.length} conceptos y contribuciones en la matriz.`,true);}catch(err){setStatus("pilotReportStatus",err.message);}}
   async function exportPilotApi(action,filename){const url=new URL(API_URL);url.searchParams.set("action",action);Object.entries(pilotReportParams()).forEach(([key,value])=>value&&url.searchParams.set(key,value));try{await downloadPilotBlob(url.toString(),filename);setStatus("pilotReportStatus","Reporte descargado.",true);}catch(err){setStatus("pilotReportStatus",err.message);}}
 
+  function incomeTaxPeriod(){return digits($("incomeTaxPeriod").value).slice(0,6);}
+  function incomeTaxEmployee(){return employees.find(item=>String(item.id)===String($("incomeTaxEmployee").value));}
+  function incomeTaxKindLabel(kind){return ({deduction:"Deducción",other_income:"Otro empleador",payment_on_account:"Pago a cuenta"})[kind]||kind||"";}
+  function renderIncomeTaxData(){
+    const previous=$("incomeTaxEmployee").value;
+    $("incomeTaxEmployee").innerHTML='<option value="">Seleccionar empleado</option>'+employees.filter(item=>item.status!=="terminated").map(item=>`<option value="${esc(item.id)}">${esc(item.full_name)} · ${esc(item.cuil||item.file_number)}</option>`).join("");
+    if(previous&&employees.some(item=>String(item.id)===String(previous)))$("incomeTaxEmployee").value=previous;
+    $("incomeTaxAdjustmentsWrap").classList.toggle("hidden",!incomeTaxData.adjustments.length);
+    $("incomeTaxAdjustmentsTbody").innerHTML=incomeTaxData.adjustments.map(item=>`<tr><td>${esc(item.full_name)}</td><td>${esc(formatPeriod(item.period))}</td><td>${esc(incomeTaxKindLabel(item.kind))}</td><td>${esc(item.description)}</td><td>${money(item.amount)}</td><td>${esc(item.source==="siradig"?"SiRADIG":"Manual")}</td></tr>`).join("");
+    $("incomeTaxCalculationsWrap").classList.toggle("hidden",!incomeTaxData.calculations.length);
+    $("incomeTaxCalculationsTbody").innerHTML=incomeTaxData.calculations.map(item=>`<tr><td>${esc(item.full_name)}</td><td>${esc(formatPeriod(item.period))} · v${Number(item.version||1)}</td><td>${esc(({monthly:"Mensual",annual:"Anual",final:"Final",informative:"Informativa"})[item.calculation_type]||item.calculation_type)}</td><td>${money(item.taxable_net)}</td><td>${money(item.determined_tax)}</td><td>${money(item.current_withholding)}</td><td>${money(item.current_refund)}</td><td>${esc(item.status==="applied"?"Aplicado":item.status==="superseded"?"Reemplazado":"Borrador")}</td></tr>`).join("");
+  }
+  function loadIncomeTaxProfile(){
+    const profile=incomeTaxData.profiles.find(item=>String(item.employee_id)===String($("incomeTaxEmployee").value));
+    const value=(id,key,fallback=0)=>{$(id).value=profile?.[key]??fallback};
+    $("incomeTaxEnabled").checked=!profile||Number(profile.enabled)!==0;$("incomeTaxAgent").checked=!profile||Number(profile.withholding_agent)!==0;
+    value("incomeTaxSpouse","spouse_count");value("incomeTaxChildren","children_count");value("incomeTaxDisabledChildren","disabled_children_count");value("incomeTaxMultiplier","deduction_multiplier",1);value("incomeTaxPriorGross","prior_taxable_gross");value("incomeTaxPriorMandatory","prior_mandatory_deductions");value("incomeTaxPriorGeneral","prior_general_deductions");value("incomeTaxPriorWithheld","prior_tax_withheld");value("incomeTaxNotes","notes","");
+  }
+  async function loadIncomeTaxData(){
+    const company=activeCompany();if(!pilotAccess||!company)return;
+    try{incomeTaxData=await api("income-tax-data",{params:{company_id:company.id,year:2026}});renderIncomeTaxData();loadIncomeTaxProfile();}
+    catch(err){setStatus("incomeTaxCalculateStatus",err.message);}
+  }
+  async function saveIncomeTaxProfile(){
+    const company=activeCompany(),employee=incomeTaxEmployee();if(!company||!employee)return setStatus("incomeTaxProfileStatus","Seleccioná un empleado.");
+    const body={company_id:company.id,employee_id:employee.id,fiscal_year:2026,enabled:$("incomeTaxEnabled").checked,withholding_agent:$("incomeTaxAgent").checked,spouse_count:Number($("incomeTaxSpouse").value||0),children_count:Number($("incomeTaxChildren").value||0),disabled_children_count:Number($("incomeTaxDisabledChildren").value||0),deduction_multiplier:Number($("incomeTaxMultiplier").value||1),prior_taxable_gross:Number($("incomeTaxPriorGross").value||0),prior_mandatory_deductions:Number($("incomeTaxPriorMandatory").value||0),prior_general_deductions:Number($("incomeTaxPriorGeneral").value||0),prior_tax_withheld:Number($("incomeTaxPriorWithheld").value||0),notes:$("incomeTaxNotes").value.trim()};
+    setStatus("incomeTaxProfileStatus","Guardando...");try{await api("income-tax-profile",{method:"POST",body});await loadIncomeTaxData();setStatus("incomeTaxProfileStatus","Configuración fiscal guardada.",true);}catch(err){setStatus("incomeTaxProfileStatus",err.message);}
+  }
+  async function previewIncomeTaxSiradig(){
+    const file=$("incomeTaxSiradigFile").files?.[0];if(!file)return setStatus("incomeTaxSiradigStatus","Seleccioná un ZIP o XML.");setStatus("incomeTaxSiradigStatus","Analizando presentaciones...");
+    try{const data=await pilotRenderUpload("/pilot/siradig-preview",file,"incomeTaxSiradigStatus");incomeTaxSiradigPresentations=data.presentations||[];const rows=[];incomeTaxSiradigPresentations.forEach((presentation,pIndex)=>{if(!presentation.entries?.length)rows.push(`<tr><td><strong>${esc(presentation.filename)}</strong><span class="subtext">CUIL ${esc(presentation.cuil||"no detectado")}</span></td><td>${Number(presentation.submission_number||0)||"—"}</td><td colspan="5">Sin importes detectados; puede conservarse como presentación de control.</td></tr>`);presentation.entries?.forEach((entry,eIndex)=>rows.push(`<tr><td><strong>${esc(presentation.filename)}</strong><span class="subtext">CUIL ${esc(presentation.cuil||"no detectado")}</span></td><td>${Number(presentation.submission_number||0)||"—"}</td><td><input data-tax-entry-description="${pIndex}-${eIndex}" value="${esc(entry.description)}"></td><td><select data-tax-entry-kind="${pIndex}-${eIndex}"><option value="deduction" ${entry.kind==="deduction"?"selected":""}>Deducción</option><option value="other_income" ${entry.kind==="other_income"?"selected":""}>Otro empleador</option><option value="payment_on_account" ${entry.kind==="payment_on_account"?"selected":""}>Pago a cuenta</option></select></td><td><input data-tax-entry-period="${pIndex}-${eIndex}" value="${esc(entry.period)}" maxlength="6"></td><td><input data-tax-entry-amount="${pIndex}-${eIndex}" type="number" step="0.01" value="${Number(entry.amount||0)}"></td><td><input data-tax-entry-selected="${pIndex}-${eIndex}" type="checkbox" aria-label="Importar fila"></td></tr>`));});$("incomeTaxSiradigTbody").innerHTML=rows.join("");$("incomeTaxSiradigWrap").classList.toggle("hidden",!rows.length);$("incomeTaxSiradigImportBtn").disabled=!incomeTaxSiradigPresentations.length;setStatus("incomeTaxSiradigStatus",`${incomeTaxSiradigPresentations.length} presentaciones analizadas${data.errors?.length?` · ${data.errors.length} archivos con error`:""}. Revisá y marcá cada importe a importar.`,true);}catch(err){incomeTaxSiradigPresentations=[];$("incomeTaxSiradigImportBtn").disabled=true;setStatus("incomeTaxSiradigStatus",err.message);}
+  }
+  async function importIncomeTaxSiradig(){
+    const company=activeCompany();if(!company)return;incomeTaxSiradigPresentations.forEach((presentation,pIndex)=>presentation.entries?.forEach((entry,eIndex)=>{const key=`${pIndex}-${eIndex}`;entry.selected=!!document.querySelector(`[data-tax-entry-selected="${key}"]`)?.checked;entry.kind=document.querySelector(`[data-tax-entry-kind="${key}"]`)?.value||entry.kind;entry.description=document.querySelector(`[data-tax-entry-description="${key}"]`)?.value||entry.description;entry.period=digits(document.querySelector(`[data-tax-entry-period="${key}"]`)?.value||entry.period);entry.amount=Number(document.querySelector(`[data-tax-entry-amount="${key}"]`)?.value||0);}));
+    setStatus("incomeTaxSiradigStatus","Importando...");try{const data=await api("income-tax-siradig-import",{method:"POST",body:{company_id:company.id,presentations:incomeTaxSiradigPresentations}});await loadIncomeTaxData();setStatus("incomeTaxSiradigStatus",`${data.saved||0} presentaciones importadas · ${data.duplicates||0} duplicadas · ${data.unmatched||0} sin empleado coincidente.`,true);}catch(err){setStatus("incomeTaxSiradigStatus",err.message);}
+  }
+  async function saveIncomeTaxAdjustment(){
+    const company=activeCompany(),employee=incomeTaxEmployee(),period=incomeTaxPeriod(),amount=Number($("incomeTaxAdjustmentAmount").value||0),description=$("incomeTaxAdjustmentDescription").value.trim();if(!company||!employee||period.length!==6||amount<=0||!description)return setStatus("incomeTaxAdjustmentStatus","Seleccioná empleado y completá período, descripción e importe.");
+    setStatus("incomeTaxAdjustmentStatus","Guardando...");try{await api("income-tax-adjustment",{method:"POST",body:{company_id:company.id,employee_id:employee.id,fiscal_year:2026,period,kind:$("incomeTaxAdjustmentKind").value,description,amount}});$("incomeTaxAdjustmentDescription").value="";$("incomeTaxAdjustmentAmount").value="";await loadIncomeTaxData();setStatus("incomeTaxAdjustmentStatus","Dato incorporado al acumulado.",true);}catch(err){setStatus("incomeTaxAdjustmentStatus",err.message);}
+  }
+  function renderIncomeTaxResult(details){
+    const rows=[["Ganancia bruta gravada",details.taxable_gross],["Ingresos de otros empleadores",details.other_income],["Deducciones obligatorias",-details.mandatory_deductions],["Deducciones generales",-details.general_deductions],["Deducciones personales",-details.personal_deductions],["Ganancia neta imponible",details.taxable_net],["Impuesto determinado",details.determined_tax],["Retenido anteriormente",-details.previous_withheld],["Pagos a cuenta",-details.payments_on_account]];
+    $("incomeTaxResult").classList.remove("hidden");$("incomeTaxResult").innerHTML=`<div class="summary"><div><h3>Resultado ${esc(formatPeriod(details.period))}</h3><p class="muted">Tabla: ${esc(details.table_version)}</p></div><div><span class="pill">${details.current_withholding>0?`Retener ${money(details.current_withholding)}`:details.current_refund>0?`Devolver ${money(details.current_refund)}`:"Sin retención"}</span></div></div><div class="table-wrap"><table><thead><tr><th>Concepto acumulado</th><th>Importe</th></tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row[0])}</td><td>${money(row[1])}</td></tr>`).join("")}</tbody></table></div>${details.warnings?.map(item=>`<div class="notice">${esc(item)}</div>`).join("")||""}`;
+  }
+  async function calculateIncomeTax(){
+    const company=activeCompany(),employee=incomeTaxEmployee(),period=incomeTaxPeriod();if(!company||!employee||period.length!==6)return setStatus("incomeTaxCalculateStatus","Seleccioná empleado y período.");setStatus("incomeTaxCalculateStatus","Calculando acumulados...");
+    try{const data=await api("income-tax-calculate",{method:"POST",body:{company_id:company.id,employee_id:employee.id,fiscal_year:2026,month:Number(period.slice(4,6)),calculation_type:$("incomeTaxType").value}});activeIncomeTaxCalculation={id:data.id,...data.details};renderIncomeTaxResult(data.details);$("incomeTaxApplyBtn").disabled=$("incomeTaxType").value!=="monthly";$("incomeTaxWorkpaperBtn").disabled=false;await loadIncomeTaxData();setStatus("incomeTaxCalculateStatus","Cálculo guardado para revisión. Todavía no modificó el recibo.",true);}catch(err){setStatus("incomeTaxCalculateStatus",err.message);}
+  }
+  async function applyIncomeTax(){
+    const company=activeCompany();if(!company||!activeIncomeTaxCalculation)return;if(!confirm("¿Aplicar esta retención o devolución al recibo mensual? El período debe estar abierto."))return;setStatus("incomeTaxCalculateStatus","Aplicando al recibo...");try{const data=await api("income-tax-apply",{method:"POST",body:{company_id:company.id,calculation_id:activeIncomeTaxCalculation.id}});await loadPayrolls();await loadIncomeTaxData();$("incomeTaxApplyBtn").disabled=true;setStatus("incomeTaxCalculateStatus",`Aplicado al recibo. Nuevo neto: ${money(data.net)}.`,true);}catch(err){setStatus("incomeTaxCalculateStatus",err.message);}
+  }
+  async function downloadIncomeTaxWorkpaper(){const company=activeCompany();if(!company||!activeIncomeTaxCalculation)return;const url=new URL(API_URL);url.searchParams.set("action","income-tax-workpaper-export");url.searchParams.set("company_id",company.id);url.searchParams.set("calculation_id",activeIncomeTaxCalculation.id);try{await downloadPilotBlob(url.toString(),`papel_trabajo_ganancias_${activeIncomeTaxCalculation.period}.xls`);}catch(err){setStatus("incomeTaxCalculateStatus",err.message);}}
+  async function downloadIncomeTaxControlDraft(kind){const company=activeCompany();if(!company)return;const action=kind==="f1359"?"income-tax-f1359-draft-export":"income-tax-sicore-draft-export",url=new URL(API_URL);url.searchParams.set("action",action);url.searchParams.set("company_id",company.id);url.searchParams.set("year","2026");try{await downloadPilotBlob(url.toString(),`borrador_control_${kind.toUpperCase()}_2026.csv`);setStatus("incomeTaxCalculateStatus","Borrador de control descargado. Revisalo antes de preparar la presentación oficial.",true);}catch(err){setStatus("incomeTaxCalculateStatus",err.message);}}
+
   async function loadSecurity(){
     const company=activeCompany();await loadSessions();if(company&&["owner","admin"].includes(company.role)){await loadTeam();await loadAudit();}else{teamMembers=[];auditItems=[];renderTeam();renderAudit();}
   }
@@ -1586,6 +1694,7 @@
   $("customConceptSaveBtn").addEventListener("click",saveCustomConcept);
   $("customConceptCancelBtn").addEventListener("click",()=>{clearCustomConceptForm();setStatus("customConceptStatus","");});
   $("pilotAgreementSaveBtn").addEventListener("click",savePilotAgreement);$("pilotCategorySaveBtn").addEventListener("click",savePilotCategory);$("pilotPdfPreviewBtn").addEventListener("click",previewPilotPdf);$("pilotPdfImportBtn").addEventListener("click",importPilotPdf);$("pilotNoveltyTemplateBtn").addEventListener("click",async()=>{try{await downloadPilotBlob("/pilot/plantilla-novedades.xlsx","plantilla_novedades_masivas.xlsx");}catch(err){setStatus("pilotNoveltyStatus",err.message);}});$("pilotNoveltyPreviewBtn").addEventListener("click",previewPilotNovelties);$("pilotNoveltyImportBtn").addEventListener("click",importPilotNovelties);$("pilotNetLoadBtn").addEventListener("click",loadPilotNetReport);$("pilotConceptLoadBtn").addEventListener("click",loadPilotConceptReport);$("pilotNetExportBtn").addEventListener("click",()=>exportPilotApi("pilot-net-report-export",`reporte_netos_${pilotMonthValue()||"todos"}.csv`));$("pilotConceptExportBtn").addEventListener("click",()=>exportPilotApi("pilot-concept-report-export",`conceptos_liquidados_${pilotMonthValue()||"todos"}.csv`));
+  $("incomeTaxEmployee").addEventListener("change",loadIncomeTaxProfile);$("incomeTaxProfileSaveBtn").addEventListener("click",saveIncomeTaxProfile);$("incomeTaxSiradigPreviewBtn").addEventListener("click",previewIncomeTaxSiradig);$("incomeTaxSiradigImportBtn").addEventListener("click",importIncomeTaxSiradig);$("incomeTaxAdjustmentSaveBtn").addEventListener("click",saveIncomeTaxAdjustment);$("incomeTaxCalculateBtn").addEventListener("click",calculateIncomeTax);$("incomeTaxApplyBtn").addEventListener("click",applyIncomeTax);$("incomeTaxWorkpaperBtn").addEventListener("click",downloadIncomeTaxWorkpaper);$("incomeTaxF1359Btn").addEventListener("click",()=>downloadIncomeTaxControlDraft("f1359"));$("incomeTaxSicoreBtn").addEventListener("click",()=>downloadIncomeTaxControlDraft("sicore"));
   $("noveltyAllEmployees").addEventListener("change",ev=>{$("noveltyEmployee").disabled=ev.target.checked;});
   $("logoutBtn").addEventListener("click",async()=>{stopPayrollJobPolling();try{await api("logout",{method:"POST"})}catch(_){}setAuth("");session=null;employees=[];periods=[];novelties=[];payrolls=[];customConcepts=[];arcaConcepts=[];arcaValidation=null;arcaLiquidationValidation=null;activePayrollJob=null;payrollJobItems=[];subscriptionSummary=null;activePeriodId="";renderSession();});
   $("adminCompaniesTbody").addEventListener("click",ev=>{const id=ev.target?.dataset?.savePlan;if(id)savePlan(id);});
