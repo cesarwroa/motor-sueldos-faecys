@@ -13,6 +13,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import zipfile
+import xml.etree.ElementTree as ET
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
@@ -86,7 +88,7 @@ PUBLIC_INDEX_FILE = BASE_DIR / "public_index.html"
 PUBLIC_STATIC_INDEX_FILE = BASE_DIR / "public" / "index.html"
 COMPANY_PORTAL_FILE = BASE_DIR / "public" / "empresas.html"
 EMPLOYEE_IMPORT_TEMPLATE_FILE = BASE_DIR / "public" / "plantilla_importacion_empleados.xlsx"
-COMPANY_PAYROLL_MANUAL_FILE = BASE_DIR / "public" / "manual-liquidacion-recibos-libro-sueldos-digital-arca-20260810.pdf"
+COMPANY_PAYROLL_MANUAL_FILE = BASE_DIR / "public" / "manual-liquidacion-recibos-libro-sueldos-digital-arca-20260811.pdf"
 ADMIN_INDEX_FILE = BASE_DIR / "index.html"
 NOINDEX_HEADERS = {"X-Robots-Tag": "noindex, nofollow, noarchive"}
 FEATURE_ACCESS_ALLOWED = {"off", "admin_only", "public"}
@@ -110,6 +112,9 @@ EMPLOYEE_IMPORT_MAX_BYTES = 3 * 1024 * 1024
 EMPLOYEE_IMPORT_MAX_ROWS = 500
 PILOT_EMAILS = {"flavia.mingrone@gmail.com", "cesarwroa@gmail.com"}
 PILOT_PDF_MAX_BYTES = 8 * 1024 * 1024
+PILOT_SIRADIG_MAX_BYTES = 12 * 1024 * 1024
+PILOT_SIRADIG_MAX_FILES = 500
+PILOT_SIRADIG_MAX_UNCOMPRESSED_BYTES = 40 * 1024 * 1024
 _RATE_LIMIT_BUCKETS: Dict[str, List[float]] = {}
 
 
@@ -1227,6 +1232,153 @@ async def pilot_agreement_pdf_preview(
         return {"ok": True, **_extract_agreement_categories(contents)}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+def _siradig_local_name(value: str) -> str:
+    return str(value or "").split("}")[-1].strip()
+
+
+def _siradig_number(value: Any) -> Optional[float]:
+    raw = re.sub(r"[^0-9,.-]", "", str(value or "").strip())
+    if not raw:
+        return None
+    if "," in raw and "." in raw:
+        raw = raw.replace(".", "").replace(",", ".")
+    elif "," in raw:
+        raw = raw.replace(",", ".")
+    try:
+        return round(float(raw), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _siradig_parse_xml(filename: str, contents: bytes) -> Dict[str, Any]:
+    try:
+        root = ET.fromstring(contents)
+    except ET.ParseError as exc:
+        raise ValueError(f"{filename}: XML inválido ({exc}).") from exc
+    filename_digits = re.sub(r"\D", "", Path(filename).stem)
+    cuil_match = re.search(r"(?<!\d)(20|23|24|27|30|33|34)\d{9}(?!\d)", Path(filename).stem)
+    cuil = cuil_match.group(0) if cuil_match else ""
+    year_match = re.search(r"(?<!\d)(?:19|20)\d{2}(?!\d)", Path(filename).stem)
+    fiscal_year = int(year_match.group(0)) if year_match else 0
+    submission_match = re.search(r"(?:presentacion|presentación|pres|_)(\d{1,6})(?:\D*$)", Path(filename).stem, re.I)
+    submission_number = int(submission_match.group(1)) if submission_match else 0
+    scalar_values: Dict[str, str] = {}
+    entries: List[Dict[str, Any]] = []
+
+    def walk(node: ET.Element, path: List[str]) -> None:
+        nonlocal cuil, fiscal_year, submission_number
+        name = _siradig_local_name(node.tag)
+        current = path + [name]
+        children = list(node)
+        text_value = str(node.text or "").strip()
+        normalized_name = unicodedata.normalize("NFD", name).encode("ascii", "ignore").decode().lower()
+        if not children and text_value:
+            scalar_values["/".join(current)] = text_value[:500]
+            digits_value = re.sub(r"\D", "", text_value)
+            if not cuil and "cuil" in normalized_name and len(digits_value) == 11:
+                cuil = digits_value
+            if not fiscal_year and normalized_name in {"periodo", "periodofiscal", "anio", "ano"} and re.fullmatch(r"20\d{2}", digits_value):
+                fiscal_year = int(digits_value)
+            if not submission_number and "present" in normalized_name and digits_value:
+                submission_number = int(digits_value[:6])
+            amount = _siradig_number(text_value)
+            path_text = " ".join(current).lower()
+            amount_like = any(token in normalized_name for token in ("monto", "importe", "total", "retencion", "percepcion"))
+            if amount_like and amount is not None and amount > 0:
+                if any(token in path_text for token in ("otroemple", "otro_emple", "ganliqotro", "ingreso otro")):
+                    kind = "other_income"
+                elif any(token in path_text for token in ("retencion", "percepcion", "pagoacuenta", "pago_a_cuenta")):
+                    kind = "payment_on_account"
+                else:
+                    kind = "deduction"
+                description = " / ".join(current[-4:-1] or current[-2:-1] or [name])
+                entries.append({
+                    "selected": False,
+                    "kind": kind,
+                    "code": name[:80],
+                    "description": description[:190],
+                    "amount": amount,
+                    "period": f"{fiscal_year or 2026}12",
+                    "xml_path": "/".join(current),
+                })
+        for child in children:
+            walk(child, current)
+
+    walk(root, [])
+    if not cuil and len(filename_digits) >= 11:
+        for index in range(0, len(filename_digits) - 10):
+            candidate = filename_digits[index:index + 11]
+            if candidate[:2] in {"20", "23", "24", "27", "30", "33", "34"}:
+                cuil = candidate
+                break
+    if not fiscal_year:
+        fiscal_year = 2026
+    deduplicated: List[Dict[str, Any]] = []
+    seen = set()
+    for entry in entries:
+        key = (entry["kind"], entry["description"], entry["amount"], entry["xml_path"])
+        if key not in seen:
+            seen.add(key)
+            entry["period"] = f"{fiscal_year}12"
+            deduplicated.append(entry)
+    return {
+        "filename": Path(filename).name,
+        "source_hash": hashlib.sha256(contents).hexdigest(),
+        "cuil": cuil,
+        "fiscal_year": fiscal_year,
+        "submission_number": submission_number,
+        "entries": deduplicated,
+        "entry_count": len(deduplicated),
+        "raw_fields": scalar_values,
+        "warnings": ([] if cuil else ["No se pudo identificar el CUIL; revisá el nombre y contenido del XML."])
+            + (["No se detectó número de presentación."] if not submission_number else []),
+    }
+
+
+@app.post("/pilot/siradig-preview")
+async def pilot_siradig_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    authorization: str = Header(default=""),
+):
+    _require_company_pilot(authorization)
+    _enforce_rate_limit(request, "pilot-siradig-preview", 12, 600)
+    filename = Path(str(file.filename or "siradig"))
+    if filename.suffix.lower() not in {".zip", ".xml"}:
+        raise HTTPException(status_code=400, detail="Seleccioná el ZIP descargado de SiRADIG Empleador o un XML.")
+    contents = await file.read(PILOT_SIRADIG_MAX_BYTES + 1)
+    if len(contents) > PILOT_SIRADIG_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="El archivo supera el máximo permitido de 12 MB.")
+    xml_files: List[tuple[str, bytes]] = []
+    if filename.suffix.lower() == ".xml":
+        xml_files.append((filename.name, contents))
+    else:
+        try:
+            with zipfile.ZipFile(BytesIO(contents)) as archive:
+                infos = [item for item in archive.infolist() if not item.is_dir() and Path(item.filename).suffix.lower() == ".xml"]
+                if len(infos) > PILOT_SIRADIG_MAX_FILES:
+                    raise HTTPException(status_code=413, detail="El ZIP contiene más de 500 XML.")
+                if sum(max(0, item.file_size) for item in infos) > PILOT_SIRADIG_MAX_UNCOMPRESSED_BYTES:
+                    raise HTTPException(status_code=413, detail="El contenido descomprimido supera 40 MB.")
+                for info in infos:
+                    safe_name = Path(info.filename).name
+                    if not safe_name:
+                        continue
+                    xml_files.append((safe_name, archive.read(info)))
+        except zipfile.BadZipFile as exc:
+            raise HTTPException(status_code=400, detail="El ZIP no es válido.") from exc
+    if not xml_files:
+        raise HTTPException(status_code=400, detail="No se encontraron archivos XML dentro del archivo.")
+    presentations: List[Dict[str, Any]] = []
+    errors: List[str] = []
+    for xml_name, xml_contents in xml_files:
+        try:
+            presentations.append(_siradig_parse_xml(xml_name, xml_contents))
+        except ValueError as exc:
+            errors.append(str(exc))
+    return {"ok": bool(presentations), "presentations": presentations, "errors": errors, "count": len(presentations)}
 
 
 @app.get("/pilot/plantilla-novedades.xlsx", include_in_schema=False)
