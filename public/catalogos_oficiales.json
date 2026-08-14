@@ -3,7 +3,8 @@
   "periodo_referencia": "202607",
   "fuentes": {
     "arca": "SICOSS 47.0 Release 8 - Actualizador de Tablas publicado 28/07/2026",
-    "bcra": "Nómina del Sistema Financiero actualizada a abril de 2026"
+    "bcra": "Nómina del Sistema Financiero actualizada a abril de 2026",
+    "srt": "Boletín Total Sistema - noviembre de 2025; nómina de ART con actividad informada por la SRT"
   },
   "tipos_empleador": [
     {
@@ -41,6 +42,77 @@
     {
       "codigo": "9",
       "descripcion": "Contribuyente no SIPA"
+    }
+  ],
+  "arts": [
+    {
+      "descripcion": "ANDINA ART"
+    },
+    {
+      "descripcion": "ASOCIART ART"
+    },
+    {
+      "descripcion": "BERKLEY ART"
+    },
+    {
+      "descripcion": "CAJA POPULAR"
+    },
+    {
+      "descripcion": "EXPERTA ART"
+    },
+    {
+      "descripcion": "FEDERACIÓN PATRONAL ART"
+    },
+    {
+      "descripcion": "GALENO ART"
+    },
+    {
+      "descripcion": "HORIZONTE ART"
+    },
+    {
+      "descripcion": "INSTITUTO AUTÁRQUICO PROVINCIAL DEL SEGURO DE ENTRE RÍOS"
+    },
+    {
+      "descripcion": "LA HOLANDO SUDAMERICANA"
+    },
+    {
+      "descripcion": "LA SEGUNDA ART"
+    },
+    {
+      "descripcion": "LATITUD SUR"
+    },
+    {
+      "descripcion": "MUTUAL DE TRABAJADORES CAMIONEROS"
+    },
+    {
+      "descripcion": "MUTUAL PETROLEROS ART"
+    },
+    {
+      "descripcion": "MUTUAL RURAL ART"
+    },
+    {
+      "descripcion": "PARANÁ ART"
+    },
+    {
+      "descripcion": "PREVENCIÓN ART"
+    },
+    {
+      "descripcion": "PRODUCTORES DE FRUTAS ARGENTINAS"
+    },
+    {
+      "descripcion": "PROVINCIA ART"
+    },
+    {
+      "descripcion": "RECONQUISTA ART"
+    },
+    {
+      "descripcion": "SERENA ART"
+    },
+    {
+      "descripcion": "SWISS MEDICAL ART"
+    },
+    {
+      "descripcion": "VICTORIA ART"
     }
   ],
   "actividades": [
@@ -774,6 +846,356 @@
       "codigo": "921",
       "descripcion": "No obligados al SIPA - informativo (con ART)",
       "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    }
+  ],
+  "modalidades_contratacion": [
+    {
+      "codigo": "001",
+      "descripcion": "A tiempo parcial: Indeterminado /permanente",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002",
+      "descripcion": "Becarios- Residencias médicas Ley 22127",
+      "vigencia_desde": "199606",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003",
+      "descripcion": "De aprendizaje  l.25013",
+      "vigencia_desde": "199810",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "008",
+      "descripcion": "A Tiempo completo indeterminado /Trabajo permanente",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "010",
+      "descripcion": "Práctica profesionalizante-Dcto. 1374/11-Pasantías -sin obra social",
+      "vigencia_desde": "200901",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "011",
+      "descripcion": "Trabajo de temporada.",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "012",
+      "descripcion": "Trabajo eventual.",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "014",
+      "descripcion": "Nuevo Período de Prueba .",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "015",
+      "descripcion": "Puesto Nuevo Varones y Mujeres de  25 a 44 años Ley 25250",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "016",
+      "descripcion": "Nuevo Periodo de Prueba Trabajador Discapacitado Art.34 Ley 24147",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "017",
+      "descripcion": "Puesto Nuevo menor de 25 años, Varones y Mujeres de 45 o más años  y  Mujer Jefe de flia. S/límite/edad  Ley 25250",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "018",
+      "descripcion": "Trabajador Discapacitado Art. 34. Ley 24147",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "019",
+      "descripcion": "Puesto Nuevo. Varones y Mujeres  25 a 44 años Art. 34. Ley 24147 Ley 25250",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "020",
+      "descripcion": "Pto. Nuevo Menor 25 años, Varones y Mujeres 45 ó más y Mujer Jefe de flia. S/límite de  edad. Art 34 L. 24147Ley 25250",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "021",
+      "descripcion": "A tiempo parcial determinado",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "022",
+      "descripcion": "A Tiempo completo  determinado",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "023",
+      "descripcion": "Personal no permanente L  22248",
+      "vigencia_desde": "199910",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "024",
+      "descripcion": "Personal de la Construcción L 22250",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "025",
+      "descripcion": "Empleo público provincial",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "026",
+      "descripcion": "Beneficiario de programa de empleo, capacitación y de recuperación productiva",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "027",
+      "descripcion": "Pasantías Ley 26427 -con obra social-",
+      "vigencia_desde": "200812",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "028",
+      "descripcion": "Programas Jefes y Jefas de  Hogar",
+      "vigencia_desde": "200205",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "029",
+      "descripcion": "AFA Régimen especial. Aportante Autónomo",
+      "vigencia_desde": "202311",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "030",
+      "descripcion": "Nuevo Periodo de Prueba Trabajador Discapacitado Art. 87. L 24013",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "031",
+      "descripcion": "Trabajador Discapacitado Art. 87  L 24013",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "044",
+      "descripcion": "Changa Solidaria. CCT 62/75",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "045",
+      "descripcion": "Personal no permanente hoteles CCT 362/03 art.68 inc b",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "046",
+      "descripcion": "Planta transitoria Adm Pública Nacional, Provincial y/o Municipal",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "047",
+      "descripcion": "Representación gremial",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "048",
+      "descripcion": "Art 4°L 24241.Traslado temporario desde el exterior ó Conv bilaterales de Seg Social",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "049",
+      "descripcion": "Directores  - empleado   SA con Obra Social y LRT",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "051",
+      "descripcion": "Pasantías Ley 26427 -con obra social-beneficiario pension de discapacidad",
+      "vigencia_desde": "200812",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "059",
+      "descripcion": "Taller Protegido de Producción Ley 26816, art. 2º punto 2",
+      "vigencia_desde": "202202",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "061",
+      "descripcion": "Actividad Actoral Ley 27.203- c/Obra Social",
+      "vigencia_desde": "201601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "062",
+      "descripcion": "Actividad Actoral Ley 27.203- s/Obra Social",
+      "vigencia_desde": "201601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "063",
+      "descripcion": "Acciones de Entrenamiento para el Trabajo – Res 1107/2022",
+      "vigencia_desde": "202210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "065",
+      "descripcion": "A Tiempo indeterminado /Trabajo permanente discontinuo",
+      "vigencia_desde": "202310",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "095",
+      "descripcion": "Planes Ministerio de Trabajo",
+      "vigencia_desde": "201001",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "096",
+      "descripcion": "Plan Trabajo por San Luis Ley 5411/03",
+      "vigencia_desde": "200311",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "097",
+      "descripcion": "Programa Trabajo para jovenes tucumanos",
+      "vigencia_desde": "200702",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "098",
+      "descripcion": "BONUS 2da Oportunidad",
+      "vigencia_desde": "200608",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "099",
+      "descripcion": "LRT",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "102",
+      "descripcion": "Personal permanente discontínuo con ART  Decreto Nº 762/14",
+      "vigencia_desde": "201408",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103",
+      "descripcion": "Retiro Voluntario - Decreto 263/2018 y otros",
+      "vigencia_desde": "201805",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110",
+      "descripcion": "Trabajo permanente prestación continua Ley 26727",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111",
+      "descripcion": "Trabajo temporario Ley 26727",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113",
+      "descripcion": "Trabajo por equipo o cuadrilla fafmilar Ley 26727",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "704",
+      "descripcion": "Regularización personal no registrado. Art. 169 - Ley 27.802. Micro y Pequeñas Empresas. Entidades sin fines de lucro.",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "202610"
+    },
+    {
+      "codigo": "705",
+      "descripcion": "Regularización personal no registrado. Art. 169 - Ley 27.802. Medianas Empresas Tramo 1 y 2.",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "202610"
+    },
+    {
+      "codigo": "706",
+      "descripcion": "Regularización personal no registrado. Art. 169 - Ley 27.802. Demás empleadores.",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "202610"
+    },
+    {
+      "codigo": "984",
+      "descripcion": "CCG foresto industrial de Chaco",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "988",
+      "descripcion": "CCG limón Tucumán, Salta y Jujuy",
+      "vigencia_desde": "201904",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "989",
+      "descripcion": "CCG Tabaco Salta",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "990",
+      "descripcion": "CCG Tabaco Jujuy",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "992",
+      "descripcion": "CCG multiproducto del Chaco",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "994",
+      "descripcion": "CCG yerba mate Misiones y Corrientes",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "997",
+      "descripcion": "CCG forestal del Chaco",
+      "vigencia_desde": "201802",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "998",
+      "descripcion": "CCG tabaco Virginia del Chaco",
+      "vigencia_desde": "201802",
       "vigencia_hasta": "999999"
     }
   ],
