@@ -1201,11 +1201,11 @@ def calcular_payload(
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
-    # Presentismo sobre NR: 8,33% sobre los importes NR base y variables.
-    # La antigüedad NR se liquida por separado y no vuelve a integrar esta base.
+    # Presentismo Art. 40 sobre NR: una doceava parte de los importes NR,
+    # incluida la antigüedad NR. La asignación extraordinaria queda excluida.
     # Se pierde si hay 2+ ausencias injustificadas.
-    base_pres_nr = round2(nr_base_total + hex50_nr + hex100_nr + noct_nr)
-    presentismo_nr = round2(base_pres_nr * 0.0833) if (base_pres_nr and presentismo_habil) else 0.0
+    base_pres_nr = round2(nr_base_total + antig_nr + hex50_nr + hex100_nr + noct_nr)
+    presentismo_nr = round2(base_pres_nr / 12.0) if (base_pres_nr and presentismo_habil) else 0.0
 
     nr_total = round2(nr_base_total + antig_nr + presentismo_nr + hex50_nr + hex100_nr + noct_nr)
 
