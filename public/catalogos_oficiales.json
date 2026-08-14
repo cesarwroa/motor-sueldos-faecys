@@ -1,0 +1,4471 @@
+{
+  "version": "2026-07-28",
+  "periodo_referencia": "202607",
+  "fuentes": {
+    "arca": "SICOSS 47.0 Release 8 - Actualizador de Tablas publicado 28/07/2026",
+    "bcra": "Nómina del Sistema Financiero actualizada a abril de 2026"
+  },
+  "tipos_empleador": [
+    {
+      "codigo": "0",
+      "descripcion": "Administración Pública"
+    },
+    {
+      "codigo": "1",
+      "descripcion": "Decreto 814/01 art. 2 inc. B / Ley 27.541 art. 19 inc. B"
+    },
+    {
+      "codigo": "2",
+      "descripcion": "Empresa de servicios eventuales - inciso B"
+    },
+    {
+      "codigo": "3",
+      "descripcion": "Provincias y otros"
+    },
+    {
+      "codigo": "4",
+      "descripcion": "Decreto 814/01 art. 2 inc. A / Ley 27.541 art. 19 inc. A"
+    },
+    {
+      "codigo": "5",
+      "descripcion": "Empresa de servicios eventuales - inciso A"
+    },
+    {
+      "codigo": "7",
+      "descripcion": "Enseñanza privada"
+    },
+    {
+      "codigo": "8",
+      "descripcion": "AFA Clubes - Régimen especial"
+    },
+    {
+      "codigo": "9",
+      "descripcion": "Contribuyente no SIPA"
+    }
+  ],
+  "actividades": [
+    {
+      "codigo": "000",
+      "descripcion": "Zona de Desastre. Decreto 1386/01 excepto actividad agropecuaria",
+      "vigencia_desde": "200210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001",
+      "descripcion": "Producción Primaria excepto actividad agropecuaria",
+      "vigencia_desde": "200210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002",
+      "descripcion": "Producción de bienes sin comercialización",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003",
+      "descripcion": "Construcción de inmuebles",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "004",
+      "descripcion": "Turismo",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "005",
+      "descripcion": "Investigación  Científica y Tecnológica",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "006",
+      "descripcion": "Administración  Publica. CON OBRA SOCIAL 23660",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "007",
+      "descripcion": "Enseñanza Privada L.13047 no comprendidos en el D 137/05",
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "008",
+      "descripcion": "Servicio Doméstico",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "009",
+      "descripcion": "Servicios energéticos Res.MTESS 268 y 824/09",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "010",
+      "descripcion": "UNIVERSIDADES PRIVADAS. Personal no  Docente D.1123/99",
+      "vigencia_desde": "200501",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "011",
+      "descripcion": "Personal  Permanente Discont. Empresas de Servicios  Eventuales",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "012",
+      "descripcion": "PIT -Programas  Intensivos de Trabajo",
+      "vigencia_desde": "199805",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "013",
+      "descripcion": "Personal embarcado.",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "014",
+      "descripcion": "Personal embarcado Dec 1255 S/res SSS 18/99",
+      "vigencia_desde": "199811",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "015",
+      "descripcion": "L.R.T.-Directores SA, municipios, org, cent y descent. Emp mixt provin y otros-",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "016",
+      "descripcion": "No obligados con el SIJP (colegios, reciprocidad previsional y otros)",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "017",
+      "descripcion": "Obligados al SIJP -sin Obra Social Nacional (Adm Púb y otros)",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "018",
+      "descripcion": "Provincia incorporada al SIJP sin obra social nacional con ART",
+      "vigencia_desde": "199508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "019",
+      "descripcion": "Provincia incorporada al SIJP sin obra social nacional sin ART",
+      "vigencia_desde": "199508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "020",
+      "descripcion": "Ley N° 24.331 Zona Franca",
+      "vigencia_desde": "200007",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "021",
+      "descripcion": "Dec N° 1024/93 Empr del Estado, Org. y Entes Públicos con OS y FNE",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "022",
+      "descripcion": "Dec N° 1024/93 Empr del Estado, Org. y Entes Públicos sin OS y con FNE",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "027",
+      "descripcion": "Servicio exterior  Ley N° 22731",
+      "vigencia_desde": "202004",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "029",
+      "descripcion": "Personal embarcado Dec 1255 S/res SSS 18/99  con Obra Social",
+      "vigencia_desde": "200210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "030",
+      "descripcion": "AFA Régimen especial. Aportante autonomo",
+      "vigencia_desde": "202311",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "031",
+      "descripcion": "Trabajador rural de la Armada Argentina Ley 26727",
+      "vigencia_desde": "200204",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "032",
+      "descripcion": "CSJN Corte Supr de Justicia, Magistrados provinciales, Revisores de Cta con ART",
+      "vigencia_desde": "202004",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "033",
+      "descripcion": "Representante gremial en uso de licencia",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "034",
+      "descripcion": "Docentes estatales nacionales. CON OBRA SOCIAL 23660- Dec 137/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "035",
+      "descripcion": "Docentes estatales nacionales.SIN OBRA SOCIAL 23660 Dec 137/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "036",
+      "descripcion": "Invest cientifico/tecnológico/docente universitario estatal nacional CON OBRA SOCIAL 23660 Dec 160/05-",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "037",
+      "descripcion": "Invest cientifico/tecnológico/docente universitario  estatal nacional SIN OBRA SOCIAL 23660 Dec 160/05-",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "038",
+      "descripcion": "Docentes privados  Res 71/99 SSS - Dec 137/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "039",
+      "descripcion": "No docentes privados Res 71/99 SSS",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "040",
+      "descripcion": "Industria del software Ley N° 25922",
+      "vigencia_desde": "200409",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "042",
+      "descripcion": "Asignaciones  Familiares y FNE con Obra Social Nacional (Ley 15223)",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "043",
+      "descripcion": "Asignaciones  Familiares y FNE sin Obra Social Nacional (Ley 15223)",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "044",
+      "descripcion": "Ley N° 24061 Dto.249/92",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "045",
+      "descripcion": "Provincia incorporada al SIJP con obra social nacional con ART",
+      "vigencia_desde": "199508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "046",
+      "descripcion": "Provincia incorporada al SIJP  CON obra social nacional SIN ART",
+      "vigencia_desde": "199508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "047",
+      "descripcion": "Ley Nº 15223 con obra social",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "048",
+      "descripcion": "Regimen nacional sin obra social nacional",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "049",
+      "descripcion": "Actividades no clasificadas",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "050",
+      "descripcion": "POLICIA DE LA RIOJA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "051",
+      "descripcion": "POLICIA DE JUJUY",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "052",
+      "descripcion": "POLICIA DE TUCUMAN",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "053",
+      "descripcion": "POLICIA DE CATAMARCA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "054",
+      "descripcion": "POLICIA DE RIO NEGRO",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "055",
+      "descripcion": "POLICIA DE MENDOZA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "056",
+      "descripcion": "POLICIA DE SANTIAGO DEL ESTERO",
+      "vigencia_desde": "201001",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "057",
+      "descripcion": "POLICIA DE SALTA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "058",
+      "descripcion": "POLICIA DE SAN JUAN",
+      "vigencia_desde": "201903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "059",
+      "descripcion": "POLICIA DE SAN LUIS",
+      "vigencia_desde": "201406",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "060",
+      "descripcion": "SERVICIO PENITENCIARIO DE SAN LUIS",
+      "vigencia_desde": "201406",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "061",
+      "descripcion": "POLICIA METROPOLITANA DEL GOBIERNO DE LA CIUDAD DE BS AS",
+      "vigencia_desde": "200901",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "062",
+      "descripcion": "Personal sin estado policial POLICIA METROPOLITANA DEL GOB.CIUDAD DE BS AS",
+      "vigencia_desde": "200901",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "063",
+      "descripcion": "SERVICIO PENITENCIARIO DE LA RIOJA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "064",
+      "descripcion": "SERVICIO PENITENCIARIO DE JUJUY",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "065",
+      "descripcion": "SERVICIO PENITENCIARIO DE TUCUMAN",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "066",
+      "descripcion": "SERVICIO PENITENCIARIO DE CATAMARCA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "067",
+      "descripcion": "SERVICIO PENITENCIARIO DE RIO NEGRO",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "068",
+      "descripcion": "SERVICIO PENITENCIARIO DE MENDOZA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "069",
+      "descripcion": "Legisladores nacionales (diputados y senadores)",
+      "vigencia_desde": "200507",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "070",
+      "descripcion": "SERVICIO PENITENCIARIO DE  SANTIAGO DEL ESTERO",
+      "vigencia_desde": "201001",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "071",
+      "descripcion": "SERVICIO PENITENCIARIO DE  SALTA",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "072",
+      "descripcion": "SERVICIO PENITENCIARIO DE  SAN JUAN",
+      "vigencia_desde": "200903",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "073",
+      "descripcion": "Internas Unidad 31 c/Asignaciones Familiares",
+      "vigencia_desde": "201601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "075",
+      "descripcion": "Docente de Prov incorporada/SIJP S/obra social nacional C/ART Dec 137/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "076",
+      "descripcion": "Docente de Prov incorporada/SIJP S/obra social nacional S/ART Dec 137/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "077",
+      "descripcion": "Docente de Prov incorporada/SIJP c/obra social nacional c/ART Dec 137/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "078",
+      "descripcion": "Investig cientif/tecnológ/docente univ Prov incorp/SIPA S/O.Social Nac c/ART -Dec 160/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "079",
+      "descripcion": "Investigador cientif/tecnológ/Prov incorporada al SIJP c/O Social NAC c/ART -Dec 160/05",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "081",
+      "descripcion": "Funcionarios del Poder Judicial de la Nación Ley N° 24018",
+      "vigencia_desde": "202004",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "082",
+      "descripcion": "Funcionarios del Poder Ejecutivo  y otros Ley N° 24018",
+      "vigencia_desde": "200507",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "083",
+      "descripcion": "Presidente de la Nacion y Vicepresidente de la Nación",
+      "vigencia_desde": "200704",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "084",
+      "descripcion": "Docentes privados  Res 71/99 SSS - Dec 137/05 sin Obra Social",
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "085",
+      "descripcion": "Magistrados provinciales, Revisores de Cta -docentes con ART",
+      "vigencia_desde": "202004",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "086",
+      "descripcion": "Decreto 1474/2007 actividad minera",
+      "vigencia_desde": "200704",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "087",
+      "descripcion": "Ley 26508 docentes universitarios con Obra Social Nacional",
+      "vigencia_desde": "200910",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "088",
+      "descripcion": "Ley 26508 docentes universitarios Sin Obra Social Nacional",
+      "vigencia_desde": "200910",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "091",
+      "descripcion": "Regimen previsional propio.  Obra Social L.23660 Y 24714",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "092",
+      "descripcion": "Res 71/99 SSS y otros",
+      "vigencia_desde": "199805",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "093",
+      "descripcion": "UNIVERSIDADES PRIVADAS. Personal Docente D.1123/99",
+      "vigencia_desde": "199910",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "094",
+      "descripcion": "Decreto 953/99",
+      "vigencia_desde": "199910",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "095",
+      "descripcion": "Ley Nº 15223 sin obra social",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "097",
+      "descripcion": "Trabajador Agrario. Ley 26727",
+      "vigencia_desde": "200204",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "098",
+      "descripcion": "Zona de Desastre Decreto N° 1386/01. Actividad Agropecuaria Ley N°26727",
+      "vigencia_desde": "200210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "099",
+      "descripcion": "Trabajador Agrario Ley 25191",
+      "vigencia_desde": "201701",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100",
+      "descripcion": "CSJN Corte Supr de Justicia, Magistrados provinciales, Revisores de Cta sin ART",
+      "vigencia_desde": "202004",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "101",
+      "descripcion": "Magistrados provinciales, Revisores de Cta -docentes sin ART",
+      "vigencia_desde": "202004",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "102",
+      "descripcion": "Zona de Desastre Decreto N° 1386/01. Actividad Agropecuaria Ley N° 25191",
+      "vigencia_desde": "201701",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103",
+      "descripcion": "Trabajador Agrario Ley 23808 y otros regímenes",
+      "vigencia_desde": "201701",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104",
+      "descripcion": "Zona de Desastre Decreto N° 1386/01. Actividad Agropecuaria Ley N° 23808 y otros regímenes",
+      "vigencia_desde": "201701",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105",
+      "descripcion": "Dto. 637/13 y 88/26. Personal civil de las Fuerzas Armadas y de Seguridad excepto personal civil docente perteneciente a otra OS",
+      "vigencia_desde": "201307",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106",
+      "descripcion": "Administración Pública CON OBRA SOCIAL 23660 (con PAMI) Tipo de empleador especial",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107",
+      "descripcion": "Serv. energéticos Res. MTESS 268 y 824/09 Empr del Estado, Org. y Entes Públicos (Dto. 1024/93) s/OS, c/FNE s/ As. Fs.",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108",
+      "descripcion": "Serv. energéticos Res. MTESS 268 y 824/09 Emp. del estado y Org. y Entes públicos ( Dto. 1024/93) con OS y FNE sin As. Fs.",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109",
+      "descripcion": "Servicios energéticos Res.MTESS 268 y 824/09 - Provincias (sin PAMI y sin OS)",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110",
+      "descripcion": "Servicios energéticos Res.MTESS 268 y 824/09 - Provincias con OS",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111",
+      "descripcion": "Servicios energéticos Res.MTESS 268 y 824/09 - Provincias (sin PAMI y sin OS) sin ART",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112",
+      "descripcion": "Servicios energéticos Res.MTESS 268 y 824/09 - Provincias con OS sin ART",
+      "vigencia_desde": "200906",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113",
+      "descripcion": "Policía Federal del Gobierno de la Ciudad de Buenos Aires",
+      "vigencia_desde": "201701",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "117",
+      "descripcion": "Obligados al SIJP -sin Obra Social Nacional (Adm Púb y otros) y SIN PAMI - Tipo de empleador especial",
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "131",
+      "descripcion": "Regimen previsional propio.  Obra Social L.23660 Y FNE",
+      "vigencia_desde": "201608",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901",
+      "descripcion": "Poder judicial (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902",
+      "descripcion": "Poder judicial (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903",
+      "descripcion": "Poder Legislativo (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904",
+      "descripcion": "Poder Legislativo (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905",
+      "descripcion": "Empleo público en gral (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906",
+      "descripcion": "Empleo público en gral (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "907",
+      "descripcion": "Docente (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "908",
+      "descripcion": "Docente (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "909",
+      "descripcion": "Fuerza de seguridad (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "910",
+      "descripcion": "Fuerza de seguridad (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "911",
+      "descripcion": "No clasificados (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "912",
+      "descripcion": "No clasificados (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "913",
+      "descripcion": "Prestadores de servicios (monotributo y/o autónomos)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "914",
+      "descripcion": "Bombero voluntario. Pcia de Bs. As.Ley PBA 13.802 (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "915",
+      "descripcion": "Bombero voluntario. Pcia de Bs. As.Ley PBA 13.802 (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "920",
+      "descripcion": "No obligados al SIPA - informativo (sin ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "921",
+      "descripcion": "No obligados al SIPA - informativo (con ART)",
+      "vigencia_desde": "201201",
+      "vigencia_hasta": "999999"
+    }
+  ],
+  "obras_sociales": [
+    {
+      "codigo": "000000",
+      "descripcion": "NINGUNA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000208",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA GRAFICA DE LA PROVINCIA DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000307",
+      "descripcion": "OS  PORTUARIOS ARGENTINOS DE MAR DEL PLATA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000406",
+      "descripcion": "OS  DEL PERSONAL DEL ORGANISMO DE CONTROL EXTERNO*",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000505",
+      "descripcion": "OS  DE CAPITANES,  PILOTOS Y PATRONES DE PESCA",
+      "tipo": 1,
+      "vigencia_desde": "199410",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000604",
+      "descripcion": "OS  DE AGENTES DE LOTERIAS Y AFINES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000703",
+      "descripcion": "MUTUAL DEL PERSONAL DEL AGUA Y LA ENERGIA ELECTRICA DE MENDOZA *",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "000901",
+      "descripcion": "OS  DE LA ACTIVIDAD DE SEGUROS,  REASEGUROS,  CAPITALIZACION Y AHORRO Y PRESTAMO PARA LA VIVIENDA",
+      "tipo": 1,
+      "vigencia_desde": "199609",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001102",
+      "descripcion": "OS  PARA LA ACTIVIDAD DOCENTE",
+      "tipo": 1,
+      "vigencia_desde": "199612",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001201",
+      "descripcion": "OS  PARA EL PERSONAL DEL MINISTERIO DE ECONOMIA Y DE OBRAS Y SERVICIOS PUBLICOS",
+      "tipo": 1,
+      "vigencia_desde": "199612",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001300",
+      "descripcion": "OS  FERROVIARIA",
+      "tipo": 1,
+      "vigencia_desde": "199612",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001508",
+      "descripcion": "OS  DE LA ASOCIACION CIVIL PRO SINDICATO  AMAS DE CASA DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001607",
+      "descripcion": "OS  DEL SINDICATO UNIDO DE TRABAJADORES DE LA INDUSTRIA DE AGUAS GASEOSAS DE LA PROVINCIA DE SANTA FE",
+      "tipo": 1,
+      "vigencia_desde": "199711",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001706",
+      "descripcion": "OS  DEL PERSONAL JERARQUICO DE LA REPUBLICA ARGENTINA PARA EL PERSONAL JERARQUICO DE LA INDUSTRIA GRAFICA  Y EL PERSONAL JERARQUICO DEL AGUA Y LA ENERGIA",
+      "tipo": 1,
+      "vigencia_desde": "199712",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001805",
+      "descripcion": "OS  DE LOS LEGISLADORES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199810",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "001904",
+      "descripcion": "OS DE LA FEDERACION DE CAMARAS Y CENTROS COMERCIALES ZONALES DE LA REPUBLICA ARGENTINA (O.S.FEDECAMARAS)",
+      "tipo": 1,
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002105",
+      "descripcion": "OS PROFESIONALES DEL TURF DE LA  RA (OSPROTURA)",
+      "tipo": 1,
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002204",
+      "descripcion": "OS DE EMPL.Y PERS. JERARQ.DE LA ACT.DEL  NEUM.ARG.DE NEUM.G.YEAR",
+      "tipo": 1,
+      "vigencia_desde": "200107",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002303",
+      "descripcion": "OS PARA EL PERSONAL DE EMPRESAS DE LIMPIEZA, SERVICIOS Y MAESTRANZA DE  MENDOZA",
+      "tipo": 1,
+      "vigencia_desde": "200204",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002402",
+      "descripcion": "OBRA SOCIAL DEL PERSONAL JERARQUICO DEL TRANSPORTE AUTOMOTOR DE PASAJEROS DE CORDOBA Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "200210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002501",
+      "descripcion": "OS DE MINISTROS, SECRETARIOS Y SUBSECRETARIOS",
+      "tipo": 1,
+      "vigencia_desde": "200402",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002600",
+      "descripcion": "OS DE LOS TRABAJADORES DE LA CARNE Y AFINES DE LA REPUBLICA ARGENTINA (OSCARA)",
+      "tipo": 1,
+      "vigencia_desde": "200404",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002709",
+      "descripcion": "OS DE LOS TRABAJADORES ASOCIADOS A LA ASOCIACION MUTUAL MERCANTIL ARGENTINA (OSTAMMA)",
+      "tipo": 1,
+      "vigencia_desde": "200411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002808",
+      "descripcion": "OS DE LA CAMARA DE EMPRESARIOS DE AGENCIAS DE REMISES DE LA PROVINCIA DE BUENOS AIRES (O.S.C.E.A.R.B.A)",
+      "tipo": 1,
+      "vigencia_desde": "200504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "002907",
+      "descripcion": "OS ASOCIACION MUTUAL METALURGICA VILLA CONSTITUCION (O.S.A.M.M.V.C.)",
+      "tipo": 1,
+      "vigencia_desde": "200505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003009",
+      "descripcion": "O.S.PERSONAL ASOCIADO A ASOC.MUTUAL SANCOR (O.S.PERS.A.A.M.S)",
+      "tipo": 1,
+      "vigencia_desde": "200601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003108",
+      "descripcion": "OS DE LOS INMIGRANTES ESPAÑOLES Y SUS DESCENDIENTES RESIDENTES EN LA R.A (OSPAÑA)",
+      "tipo": 1,
+      "vigencia_desde": "200611",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003207",
+      "descripcion": "OS DE TRABAJADORES SOCIOS DE LA ASOCIACION MUTUAL DEL PERSONAL JERARQUICO DE BANCOS OFICIALES NACIONALES - JERARQUICO SALUD",
+      "tipo": 1,
+      "vigencia_desde": "200708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003306",
+      "descripcion": "OS DE TRABAJADORES VENDEDORES DE DIARIOS, REVISTAS Y AF. (OSTVENDRA)",
+      "tipo": 1,
+      "vigencia_desde": "200708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003405",
+      "descripcion": "OS DE LA ASOCIACION MUTUAL DE LOS OBREROS CATOLICOS PADRE FEDERICO GROTE",
+      "tipo": 1,
+      "vigencia_desde": "200801",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003504",
+      "descripcion": "OS DE CONDUCTORES TITULARES DE TAXIS DE LA CIUDAD AUTONOMA DE BUENOS AIRES",
+      "tipo": 1,
+      "vigencia_desde": "200808",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003603",
+      "descripcion": "OS PROGRAMAS MEDICOS SA DE CONSULTORIA MUTUAL",
+      "tipo": 1,
+      "vigencia_desde": "201007",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003702",
+      "descripcion": "OS  YACIMIENTOS CARBONIFEROS",
+      "tipo": 1,
+      "vigencia_desde": "201111",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003801",
+      "descripcion": "OS DE LA PREVENCIÓN Y LA SALUD",
+      "tipo": 1,
+      "vigencia_desde": "201905",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "003900",
+      "descripcion": "OS TÉCNICOS DE VUELO LIN.AEREAS",
+      "tipo": 1,
+      "vigencia_desde": "202108",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "004002",
+      "descripcion": "OS  DE AGENTES DE PROPAGANDA MEDICA DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "202206",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "004101",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100106",
+      "descripcion": "OS  PARA EL PERSONAL DE LA INDUSTRIA ACEITERA DESMOTADORA Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100205",
+      "descripcion": "OS  DE  ACTORES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100403",
+      "descripcion": "OS  DEL PERSONAL SUPERIOR Y PROFESIONAL DE EMPRESAS AEROCOMERCIALES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100502",
+      "descripcion": "OS  DEL PERSONAL AERONAUTICO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100601",
+      "descripcion": "OS  DEL PERSONAL DE AERONAVEGACION DE ENTES PRIVADOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100700",
+      "descripcion": "OS  DEL PERSONAL TECNICO AERONAUTICO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100809",
+      "descripcion": "OS  DE  AERONAVEGANTES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "100908",
+      "descripcion": "OS  DE EMPLEADOS DE AGENCIAS DE INFORMES (O.S.E.D.I.)",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "101000",
+      "descripcion": "OS  DEL PERSONAL DE AGUAS GASEOSAS Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "101208",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DE LA ALIMENTACION",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "101604",
+      "descripcion": "OS  DEL PERSONAL DEL AUTOMOVIL CLUB ARGENTINO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "101802",
+      "descripcion": "OS  DEL PERSONAL DEL AZUCAR DEL INGENIO LA ESPERANZA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "101901",
+      "descripcion": "OS  DEL PERSONAL DEL AZUCAR DEL INGENIO LEDESMA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "102300",
+      "descripcion": "OS  DEL PERSONAL DEL AZUCAR DEL INGENIO SAN MARTIN",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "102706",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA AZUCARERA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "102904",
+      "descripcion": "OS  DEL PERSONAL DE BARRACAS DE LANAS, CUEROS Y ANEXOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103105",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL CALZADO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103204",
+      "descripcion": "OS  DE  CONDUCTORES CAMIONEROS Y PERSONAL DEL TRANSPORTE AUTOMOTOR DE CARGAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103402",
+      "descripcion": "OS  DEL PERSONAL DE CARGA Y DESCARGA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103600",
+      "descripcion": "OS  DEL PERSONAL AUXILIAR DE CASAS PARTICULARES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103709",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL CAUCHO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103808",
+      "descripcion": "OS  DEL PERSONAL DEL CAUCHO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "103907",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL CAUCHO DE SANTA FE",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104009",
+      "descripcion": "O.S.DEL PERSONAL DE CEMENTERIOS DE LA REP. ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104108",
+      "descripcion": "OS  DE CERAMISTAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104207",
+      "descripcion": "OS  DEL PERSONAL DE LA CERAMICA, SANITARIOS, PORCELANA DE MESA Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104306",
+      "descripcion": "OS  DEL PERSONAL DE LA ACTIVIDAD CERVECERA Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104405",
+      "descripcion": "OS  DEL PERSONAL CINEMATOGRAFICO DE MAR DEL PLATA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104504",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA CINEMATOGRAFICA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104603",
+      "descripcion": "OS  DE OPERADORES CINEMATOGRAFICOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "104801",
+      "descripcion": "OS  DE COLOCADORES DE AZULEJOS, MOSAICOS, GRANITEROS, LUSTRADORES Y PORCELANEROS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105002",
+      "descripcion": "OS  DE CONDUCTORES NAVALES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105309",
+      "descripcion": "OS  DEL PERSONAL ADMINISTRATIVO Y TECNICO DE LA CONSTRUCCION Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105408",
+      "descripcion": "OS  DEL PERSONAL DE LA CONSTRUCCION",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105507",
+      "descripcion": "OS  DE LOS CORTADORES DE LA INDUMENTARIA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105606",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL CUERO Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105705",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL CHACINADO Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "105804",
+      "descripcion": "OS  DE CHOFERES DE CAMIONES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106005",
+      "descripcion": "OS  DEL PERSONAL DE  ENTIDADES DEPORTIVAS Y CIVILES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106104",
+      "descripcion": "OS DE  EMPLEADOS DE DESPACHANTES DE ADUANA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106203",
+      "descripcion": "OS  DEL PERS. DE DISTRIBUIDORES CINEMATOGRAF. DE LA R.A.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106302",
+      "descripcion": "OS  DE DOCENTES PARTICULARES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106401",
+      "descripcion": "OS  DEL PERSONAL DE EDIFCIOS DE RENTA Y HORIZONTAL DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106500",
+      "descripcion": "OS  DEL PERSONAL DE EDIFICIOS DE RENTAS Y HORIZONTAL DE CAPITAL FEDERAL Y GRAN BUENOS ARIES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106609",
+      "descripcion": "OS  ELECTRICISTAS NAVALES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106708",
+      "descripcion": "OS  DE OBREROS EMPACADORES DE FRUTA DE RIO NEGRO Y NEUQUEN",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106807",
+      "descripcion": "OS  DEL PERSONAL DE LA ENSEÑANZA PRIVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "106906",
+      "descripcion": "OS  DEL PERSONAL DE  ESCRIBANIAS DE LA PROVINCIA DE BUENOS AIRES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107008",
+      "descripcion": "OS  DEL PERSONAL DE ESCRIBANOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107107",
+      "descripcion": "OS  DEL PERSONAL DEL ESPECTACULO PUBLICO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107206",
+      "descripcion": "OS  DEL PERSONAL DE ESTACIONES DE SERVICIO,  GARAGES, PLAYAS DE ESTACIONAMIENTO Y LAVADEROS AUTOMATICOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107404",
+      "descripcion": "OS  DEL PERSONAL DE FARMACIA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107800",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL FIBROCEMENTO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "107909",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA FIDEERA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108001",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA FORESTAL DE SANTIAGO DEL ESTERO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108209",
+      "descripcion": "OS  DE FOTOGRAFOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108407",
+      "descripcion": "OS  DEL PERSONAL DE LA ACTIVIDAD  FRUCTICOLA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108506",
+      "descripcion": "OS  DEL PERSONAL DE MANIPULEO, EMPAQUE  Y EXPEDICION  DE FRUTA FRESCA Y HORTALIZAS DE CUYO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108605",
+      "descripcion": "OS  DE FUTBOLISTAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108704",
+      "descripcion": "OS  DE TECNICOS DE FUTBOL",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "108803",
+      "descripcion": "OS DEL PERSONAL DE LA UNION DE TRABAJADORES DEL TURISMO, HOTELEROS Y GASTRONOMICOS DE LA RA (OSUTHGRA)",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109004",
+      "descripcion": "OS  DEL PERSONAL GRAFICO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109202",
+      "descripcion": "OS  DE GUINCHEROS Y MAQUINISTAS DE  GRUAS MOVILES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109301",
+      "descripcion": "OS  DEL PERSONAL DE CONSIGNATARIOS DEL MERCADO NACIONAL DE HACIENDA DE LINIERS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109400",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL HIELO Y MERCADOS PARTICULARES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109509",
+      "descripcion": "OS  DEL PERSONAL DE LOS HIPODROMOS DE BUENOS AIRES Y SAN ISIDRO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109608",
+      "descripcion": "OS  DEL PERSONAL MENSUALIZADO DEL JOCKEY CLUB DE BUENOS AIRES Y LOS HIPODROMOS DE PALERMO Y SAN ISIDRO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "109707",
+      "descripcion": "OS  DEL PERSONAL DE IMPRENTA, DIARIOS Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110008",
+      "descripcion": "OS  DEL PERSONAL DE JABONEROS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110107",
+      "descripcion": "OS  DE JARDINEROS,PARQUISTAS,VIVERISTAS Y FLORIC.DE R.A.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110206",
+      "descripcion": "OS  DEL PERSONAL DE JOCKEY CLUB DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110305",
+      "descripcion": "OS  DEL PERSONAL LADRILLERO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110404",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA LADRILLERA A MAQUINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110503",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA LECHERA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110602",
+      "descripcion": "OS  DE LOCUTORES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110701",
+      "descripcion": "OS  DE LA FEDERACION ARGENTINA DE TRABAJADORES  DE LUZ Y FUERZA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110800",
+      "descripcion": "OS  DE LOS TRABAJADORES DE LAS EMPRESAS DE ELECTRICIDAD",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "110909",
+      "descripcion": "OS  DEL PERSONAL DE LUZ Y FUERZA DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111001",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA MADERERA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111209",
+      "descripcion": "OS  DEL PERSONAL DE MAESTRANZA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111308",
+      "descripcion": "OS  DE MAQUINISTAS DE TEATRO Y TELEVISION",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111407",
+      "descripcion": "OS  DE CAPITANES DE ULTRAMAR Y OFICIALES DE LA MARINA MERCANTE",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111506",
+      "descripcion": "OS  CAPITANES BAQUEANOS FLUVIALES DE LA MARINA MERCANTE",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111605",
+      "descripcion": "OS  DE EMPLEADOS DE LA MARINA MERCANTE",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111704",
+      "descripcion": "OS  DE ENCARGADOS APUNTADORES MARITIMOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111803",
+      "descripcion": "OS  DEL PERSONAL MARITIMO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "111902",
+      "descripcion": "OS  DEL SINDICATO DE MECANICOS Y AFINES DEL TRANSPORTE AUTOMOTOR",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112004",
+      "descripcion": "OS  DEL PERSONAL SUPERIOR DE MERCEDES BENZ ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112103",
+      "descripcion": "OS  DE LA UNION OBRERA METALURGICO DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112202",
+      "descripcion": "OS  DE LOS SUPERVISORES DE LA INDUSTRIA METALMECANICA DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112301",
+      "descripcion": "OS  DEL PERSONAL DE MICROS Y OMNIBUS DE MENDOZA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112400",
+      "descripcion": "OS  DE LA ACTIVIDAD MINERA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112509",
+      "descripcion": "OS  MODELOS ARGENTINOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112608",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA MOLINERA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112707",
+      "descripcion": "OS  DEL PERSONAL MOSAISTA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "112806",
+      "descripcion": "OS  DE MUSICOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113205",
+      "descripcion": "OS  DE JEFES Y OFICIALES NAVALES DE RADIOCOMUNICACIONES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113304",
+      "descripcion": "OS  DE JEFES Y OFICIALES MAQUINISTAS NAVALES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113403",
+      "descripcion": "OS  DEL PERSONAL NAVAL",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113601",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL NEUMATICO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113700",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA NAVAL",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113809",
+      "descripcion": "OS  DE COMISARIOS NAVALES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "113908",
+      "descripcion": "OS  DEL PERSONAL DE PANADERIAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114000",
+      "descripcion": "OS  DE PANADEROS, PASTELEROS Y FACTUREROS DE ENTRE RIOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114109",
+      "descripcion": "OS  DEL PERSONAL DEL PAPEL, CARTON Y QUIMICOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114208",
+      "descripcion": "OS  DE LA INDUSTRIA DE PASTAS ALIMENTICIAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114307",
+      "descripcion": "OS  TRABAJ. PAST, CONFIT, PIZZEROS, HELAD. Y ALFAJ. DE LA R.A.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114505",
+      "descripcion": "OS  DE PATRONES DE CABOTAJE DE RIOS Y PUERTOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114703",
+      "descripcion": "OS  DEL PERSONAL DE PELUQUERIAS,  ESTETICA Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "114901",
+      "descripcion": "OS OFICIALES PELUQUEROS Y PEINADORES DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115003",
+      "descripcion": "OS  DEL PERSONAL DE LA ACTIVIDAD PERFUMISTA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115102",
+      "descripcion": "OS  DE TRABADORES DE PRENSA DE BUENOS AIRES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115201",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL PESCADO DE MAR DEL PLATA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115300",
+      "descripcion": "OS DE  PETROLEROS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115409",
+      "descripcion": "OS  DEL PETROLEO Y GAS PRIVADO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115508",
+      "descripcion": "OS  DE PETROLEROS DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115607",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA PETROQUIMICA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115706",
+      "descripcion": "OS  DE PILOTOS DE LINEAS AEREAS COMERCIALES Y REGULARES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "115805",
+      "descripcion": "OS  DEL PERSONAL DE FABRICAS DE PINTURA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "116006",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL PLASTICO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "116105",
+      "descripcion": "OS  DE CAPATACES  ESTIBADORES PORTUARIOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "116204",
+      "descripcion": "OS  DE PORTUARIOS ARGENTINOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "116709",
+      "descripcion": "OS  PORTUARIOS DE PUERTO SAN MARTIN Y BELLA VISTA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "117207",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "117405",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE BAHIA BLANCA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "117603",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE LA PROVINCIA DEL CHACO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "117702",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE MAR DEL PLATA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "117801",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE MENDOZA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118002",
+      "descripcion": "OS   EMPLEADOS DE PRENSA DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118200",
+      "descripcion": "OS  DE AGENTES DE PROPAGANDA MEDICA DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118309",
+      "descripcion": "OS  DE AGENTES DE PROPAGANDA MEDICA DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118408",
+      "descripcion": "OS  DE AGENTES DE PROPAGANDA MEDICA DE ENTRE RIOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118606",
+      "descripcion": "OS  DEL PERSONAL DE LA PUBLICIDAD",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118705",
+      "descripcion": "OS  DEL PERSONAL DE INDUSTRIAS QUIMICAS Y PETROQUIMICAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118804",
+      "descripcion": "OS  DE RECIBIDORES DE GRANOS Y ANEXOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "118903",
+      "descripcion": "OS  DEL PERSONAL DE RECOLECCION Y BARRIDO DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119005",
+      "descripcion": "OS  DEL PERSONAL DE REFINERIAS DE MAIZ",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119203",
+      "descripcion": "OS  DE RELOJEROS Y JOYEROS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119302",
+      "descripcion": "OS  DEL PERSONAL RURAL Y ESTIBADORES DE LA REPUBLICA  ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119500",
+      "descripcion": "OS  DEL PERSONAL DE LA SANIDAD ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119609",
+      "descripcion": "OS  DEL PERSONAL DE INSTALACIONES SANITARIAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119708",
+      "descripcion": "OS  DEL PERSONAL DE SEGURIDAD COMERCIAL, INDUSTRIAL E INVESTIGACIONES PRIVADAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "119906",
+      "descripcion": "OS  DE SERENOS DE BUQUES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120306",
+      "descripcion": "OS  DEL PERSONAL DE SUPERVISION DE LA EMPRESA SUBTERRANEOS DE BUENOS AIRES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120405",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LA EMPRESA SUBTERRANEOS BUENOS AIRES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120504",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL TABACO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120603",
+      "descripcion": "OS  DE EMPLEADOS DEL TABACO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120702",
+      "descripcion": "OS  DEL PERSONAL DE LAS TELECOMUNICACIONES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120801",
+      "descripcion": "OS  DE TRABAJADORES DE LAS COMUNICACIONES (OSTRAC)",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "120900",
+      "descripcion": "OS  DEL PERSONAL DE TELEVISION",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121002",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA TEXTIL",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121101",
+      "descripcion": "OS  DE EMPLEADOS TEXTILES Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121309",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL TRACTOR",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121507",
+      "descripcion": "OS  DE LA INDUSTRIA DEL TRANSPORTE AUTOMOTOR DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121606",
+      "descripcion": "OS  DE CONDUCTORES DE TRANSPORTE COLECTIVO DE PASAJEROS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121705",
+      "descripcion": "OS  DEL PERSONAL DE LA ACTIVIDAD DEL TURF",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121804",
+      "descripcion": "OS  CONDUCTORES DE TAXIS DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "121903",
+      "descripcion": "OS  DE VAREADORES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122005",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL VESTIDO Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122104",
+      "descripcion": "OS  DE VIAJANTES VENDEDORES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122302",
+      "descripcion": "OS  DEL PERSONAL DE LA ACTIVIDAD VIAL",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122401",
+      "descripcion": "OS  DE EMPLEADOS DE LA INDUSTRIA DEL VIDRIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122500",
+      "descripcion": "OS  DEL PERSONAL DE LA INDUSTRIA DEL VIDRIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122609",
+      "descripcion": "OS  DEL PERSONAL DE LA ACTIVIDAD VITIVINICOLA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122807",
+      "descripcion": "OS  DEL PERSONAL DE VIGILANCIA Y SEGURIDAD COMERCIAL, INDUSTRIAL E INVESTIGACIONES PRIVADAS DE CORDOBA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "122906",
+      "descripcion": "OS DEL  PERSONAL. ESTACIONES DE SERVICIO, GARAGES, PLAYAS  Y LAVADEROS AUTOMATICOS DE LA PROVINCIA DE SANTA FE",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123008",
+      "descripcion": "OS  PARA EL PERSONAL DE ESTACIONES DE SERVICIO, GARAGES, PLAYAS DE ESTACIONAMIENTO, LAVADEROS AUTOMATICOS Y GOMERIAS DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123107",
+      "descripcion": "OS  DE TALLERISTAS A DOMICILIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123305",
+      "descripcion": "OS  DEL PERSONAL DE SOCIEDADES DE AUTORES Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123404",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123503",
+      "descripcion": "OS  DEL PERSONAL DE PRENSA DE TUCUMAN",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123602",
+      "descripcion": "OS  DE TRABAJADORES DE PERKINS ARGENTINA S.A.I.C.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123701",
+      "descripcion": "OS  DE PEONES DE TAXIS DE LA CAPITAL FEDERAL",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "123909",
+      "descripcion": "OS  DE VENDEDORES AMBULANTES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "124001",
+      "descripcion": "OS  DE BOXEADORES AGREMIADOS DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "124506",
+      "descripcion": "OS  DE LOS TRABAJADORES DE LA INDUSTRIA DEL GAS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "125103",
+      "descripcion": "OS  DE LOS PROFESIONALES UNIVERSITARIOS DEL AGUA Y LA  ENERGIA ELECTRICA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "125301",
+      "descripcion": "OS  FEDERAL  DE LA FEDERACION DE TRABAJADORES OBRAS SANITARIAS",
+      "tipo": 1,
+      "vigencia_desde": "199410",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "125509",
+      "descripcion": "OS  DE LA FEDERACION ARGENTINA DEL TRABAJADOR DE LAS UNIVERSIDADES NACIONALES",
+      "tipo": 1,
+      "vigencia_desde": "199502",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "125707",
+      "descripcion": "OS UNION  PERSONAL DE LA UNION DE TRABAJADORES CIVIL DE LA NACION",
+      "tipo": 1,
+      "vigencia_desde": "199508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "125905",
+      "descripcion": "OS  ARBITROS DEPORTIVOS DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199512",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126007",
+      "descripcion": "OS  DE LA  FEDERACION GREMIAL DE LA INDUSTRIA DE LA CARNE Y SUS DERIVADOS",
+      "tipo": 1,
+      "vigencia_desde": "199512",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126106",
+      "descripcion": "OS  DE LOS TRABAJADORES DE LA EDUCACION PRIVADA",
+      "tipo": 1,
+      "vigencia_desde": "199604",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126205",
+      "descripcion": "OS  DE LOS EMPLEADOS DE COMERCIO Y ACTIVIDADES CIVILES",
+      "tipo": 1,
+      "vigencia_desde": "199605",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126304",
+      "descripcion": "OS  BANCARIA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199701",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126502",
+      "descripcion": "O.S.DE LA CONFEDERACION DE OBREROS Y EMPLEADOS MUNICIPALES ARGENTINA ( O.S.C.O.E.M.A)",
+      "tipo": 1,
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126601",
+      "descripcion": "OS DEL PERSONAL DE INDUSTRIAS QUIMICAS Y PETROQUIMICAS DE ZARATE CAMPANA",
+      "tipo": 1,
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126700",
+      "descripcion": "OS DEL PERSONAL DE LA  ACTIVIDAD AZUCARERA TUCUMANA",
+      "tipo": 1,
+      "vigencia_desde": "200012",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126809",
+      "descripcion": "OS DE  CONDUCT.DE REMISES Y AUTOS AL INSTANTE Y AFINES",
+      "tipo": 1,
+      "vigencia_desde": "200012",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "126908",
+      "descripcion": "OBRA SOCIAL DE LOS MEDICOS DE LA CIUDAD DE BUENOS AIRES",
+      "tipo": 1,
+      "vigencia_desde": "200107",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127000",
+      "descripcion": "OBRA SOCIAL DE TRABAJADORES DE ESTACIONES DE SERVICIO (OSTES)",
+      "tipo": 1,
+      "vigencia_desde": "200210",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127109",
+      "descripcion": "OBRA SOCIAL DEL PERSONAL DE TELECOMUNICACIONES SINDICATO BUENOS AIRES (OSPETELCO)",
+      "tipo": 1,
+      "vigencia_desde": "200309",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127208",
+      "descripcion": "OS DE MANDOS MEDIOS DE TELECOMUNICACIONES EN LA REPUBLICA ARGENTINA Y MERCOSUR (OSMMEDT)",
+      "tipo": 1,
+      "vigencia_desde": "200404",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127307",
+      "descripcion": "OS DE TRABAJADORES VIALES Y AFINES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "200407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127406",
+      "descripcion": "O S  DE OBREROS Y EMPLEADOS TINTOREROS, SOMBREREROS Y LAVAD. R.A.",
+      "tipo": 1,
+      "vigencia_desde": "200512",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127505",
+      "descripcion": "OS DE LAS ASOCIACIONES DE EMPLEADOS DE FARMACIA",
+      "tipo": 1,
+      "vigencia_desde": "200601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127604",
+      "descripcion": "OS PARA EL PERSONAL DE OBRAS Y SERVICIOS SANITARIOS",
+      "tipo": 1,
+      "vigencia_desde": "200708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127703",
+      "descripcion": "OS PERSONAL ESTACIONES DE SERVICIO, GARAGES, PLAYAS Y LAVADEROS DE LA PROVINCIA DEL CHACO",
+      "tipo": 1,
+      "vigencia_desde": "200708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127802",
+      "descripcion": "OS DE LUZ Y FUERZA DE LA PATAGONIA",
+      "tipo": 1,
+      "vigencia_desde": "200708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "127901",
+      "descripcion": "OS DE PETROLEROS PRIVADOS",
+      "tipo": 1,
+      "vigencia_desde": "200809",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128003",
+      "descripcion": "OS DEL PERSONAL DE LA FED. DE SINDICATOS DE LA IND. QUIMICA Y PETROQUIMICA",
+      "tipo": 1,
+      "vigencia_desde": "201105",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128102",
+      "descripcion": "OS DE LA UNION DE TRABAJADORES DEL INSSJP",
+      "tipo": 1,
+      "vigencia_desde": "201107",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128201",
+      "descripcion": "OS DEL SINDICATO UNICO DE RECOLECTORES DE RESIDUOS",
+      "tipo": 1,
+      "vigencia_desde": "201405",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128300",
+      "descripcion": "OBRA SOCIAL PEONES DE TAXI DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "201801",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128409",
+      "descripcion": "OS DEL SINDICATO OBREROS Y EMPLEADOS DE EMPRESAS DE LIMPIEZA, SERVICIOS Y AFINES DE CÓRDOBA",
+      "tipo": 1,
+      "vigencia_desde": "201510",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128508",
+      "descripcion": "OS DE FARMACEUTICOS Y BIOQUIMICOS",
+      "tipo": 1,
+      "vigencia_desde": "201607",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128607",
+      "descripcion": "OS DE TRABAJADORES DEL PETROLEO Y GAS PRIVADO DEL CHUBUT",
+      "tipo": 1,
+      "vigencia_desde": "201610",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128706",
+      "descripcion": "OS DEL PERSONAL DE DRAGADO Y BALIZAMIENTO",
+      "tipo": 1,
+      "vigencia_desde": "201708",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "128904",
+      "descripcion": "OS DE LOS TRABAJADORES ARGENTINOS DE CENTROS DE CONTACTOS",
+      "tipo": 1,
+      "vigencia_desde": "201811",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "129006",
+      "descripcion": "OS ASOCIACIÓN DEL PERSONAL SUPERIOR DE EPEC (OSAPSE)",
+      "tipo": 1,
+      "vigencia_desde": "202003",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "200400",
+      "descripcion": "OS DEL PERSONAL  DE LA EMPRESA NACIONAL DE CORREOS Y TELEGRAFOS S.A. Y DE LAS COMUNICACIONES DE LA REPUBLICA ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202000",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202109",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202208",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202307",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202406",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202505",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202604",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202703",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202802",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "202901",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210005",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210104",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210203",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210302",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210401",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210500",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210609",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210708",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210807",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "210906",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211008",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211107",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211206",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211305",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211404",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211503",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211602",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211701",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211800",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "211909",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212001",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212100",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212209",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212308",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212407",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212506",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212605",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212704",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212803",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "212902",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "300704",
+      "descripcion": "OS  CERAS JOHNSON",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "302106",
+      "descripcion": "OS  PARA DIRECTIVOS, TECNICOS Y EMPLEADOS DE JOHN DEERE ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "302304",
+      "descripcion": "OS  COMPAÑÍA MINERA AGUILAR S.A.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "302809",
+      "descripcion": "OS  REFINERIAS DE MAIZ S.A.I.C.F.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "303109",
+      "descripcion": "OS  SUPERCO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "303307",
+      "descripcion": "OS  CABOT ARGENTINA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "303406",
+      "descripcion": "OS  DEL PERSONAL DE SHELL - CAPSA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "303703",
+      "descripcion": "O.S.DEL PERSONAL DE PBBPOLISUR DE BAHIA BLANCA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "303901",
+      "descripcion": "OS DE FORD ARGENTINA SCA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304003",
+      "descripcion": "OS  DE  VOLKSWAGEN ARGENTINA S.A.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304102",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304201",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304300",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304409",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304508",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304607",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304706",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304805",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "304904",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "305006",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400107",
+      "descripcion": "OS DEL PERSONAL DE DIRECCION DE LAS EMPRESAS DE LA  ALIMENTACION Y DEMAS ACTIVIDADES EMPRESARIAS",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400206",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LA INDUSTRIA AUTOMOTRIZ ARGENTINA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400305",
+      "descripcion": "OS  COOPERATIVA LIMITADA DE ASISTENCIA MEDICA, FARMACEUTICA, CREDITO Y CONSUMO DEL PERSONAL SUPERIOR DE LA INDUSTRIA DEL CAUCHO Y OTRAS ACTIVIDADES INDUSTRIALES",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400404",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LA INDUSTRIA CERVECERA Y MALTERA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400503",
+      "descripcion": "O.S.ASOCIACION DEL PERSONAL DE DIRECCION Y JERERQUICO DE LA INDUSTRIA DEL CIGARRILLO",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400602",
+      "descripcion": "OS  DEL PERSONAL DIRECTIVO DE LA INDUSTRIA DE LA CONSTRUCCION",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400701",
+      "descripcion": "OS  CAMARA DE LA INDUSTRIA CURTIDORA ARGENTINA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400800",
+      "descripcion": "O.S.DE EJECUTIVOS Y DEL PERSONAL DE DIRECCION DE EMPRESAS",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "400909",
+      "descripcion": "OS  ACCION SOCIAL DE EMPRESARIOS",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401001",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LAS EMPRESAS QUE ACTUAN EN FRUTOS DEL PAIS",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401100",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION ALFREDO FORTABAT",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401209",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LA INDUSTRIA METALURGICA Y DEMAS ACTIVIDADES EMPRESARIAS",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401308",
+      "descripcion": "OS  PARA EL PERSONAL DE DIRECCION DE LA INDUSTRIA MADERERA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401605",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LA INDUSTRIA PRIVADA DEL PETROLEO",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401704",
+      "descripcion": "OS  DE EMPRESARIOS, PROFESIONALES Y MONOTRIBUTISTAS",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401803",
+      "descripcion": "OS  ASOCIACION MUTUAL DEL PERSONAL DE PHILIPS ARGENTINA (AMPAR)",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "401902",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE PERFUMERIAS E. W. HOPE",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402004",
+      "descripcion": "OS  DEL PERSONAL DE DIRECCION DE LA SANIDAD  LUIS PASTEUR",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402103",
+      "descripcion": "OS  ASOCIACION DEL PERSONAL DE DIRECCION DE LA INDUSTRIA SIDERURGICA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402202",
+      "descripcion": "OS  MUTUALIDAD INDUSTRIAL TEXTIL ARGENTINA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402301",
+      "descripcion": "OS  ASOCIACION DEL PERSONAL SUPERIOR DE LA ORGANIZACIÓN TECHINT",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402400",
+      "descripcion": "OS  PARA EL  PERSONAL DE DIRECCION DE LA INDUTRIA VITIVINICOLA Y AFINES",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402509",
+      "descripcion": "O.S.YPF",
+      "tipo": 4,
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402608",
+      "descripcion": "OS ASOCIACION DE SERVICIOS SOCIALES PARA EMPRESARIOS Y PERSONAL DE DIRECCION DE EMPRESAS DEL COMERCIO, SERVICIOS, PRODUCCION, INDUSTRIA Y CIVIL (ASPE)",
+      "tipo": 4,
+      "vigencia_desde": "200006",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402707",
+      "descripcion": "OS DE DIRECCION OSDO",
+      "tipo": 4,
+      "vigencia_desde": "200404",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "402806",
+      "descripcion": "OS DE DIRECCION DE LA ACTIVIDAD AEROCOMERCIAL PRIVADA",
+      "tipo": 4,
+      "vigencia_desde": "200412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403007",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403106",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403205",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403304",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403403",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403502",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403601",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403700",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403809",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "403908",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404000",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404109",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404208",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404307",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404406",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404505",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "404604",
+      "descripcion": "RESERVADA",
+      "tipo": 4,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "500807",
+      "descripcion": "INSTITUTO NACIONAL DE SERVICIOS SOCIALES PARA JUBILADOS Y PENSIONADOS",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "501602",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "501701",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "501800",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "501909",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "502001",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510006",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510105",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510204",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510303",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510402",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510501",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510600",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510709",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510808",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "510907",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "600309",
+      "descripcion": "ASOCIACION DE OBRAS SOCIALES DE BELLA VISTA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "600408",
+      "descripcion": "ASOCIACION DE OBRAS SOCIALES DE COMODORO RIVADAVIA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "602305",
+      "descripcion": "ASOCIACION DE OBRAS SOCIALES DE ROSARIO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "603100",
+      "descripcion": "ASOCIACION DE OBRAS SOCIALES DE TRELEW",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "603803",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "603902",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604004",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604103",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604202",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604301",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604400",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604509",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604608",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "604707",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "700108",
+      "descripcion": "OS  DEL PERSONAL MUNICIPAL DE AVELLANEDA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "700801",
+      "descripcion": "OS  DEL PERSONAL MUNICIPAL DE LA MATANZA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701002",
+      "descripcion": "OS  DEL PERSONAL MUNICIPAL DE TRES DE FEBRERO",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701309",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701408",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701507",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701606",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701705",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701804",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "701903",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "702005",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "702104",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "702203",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "800303",
+      "descripcion": "OS  PAPEL MISIONERO S.A.I.F. Y C.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "800501",
+      "descripcion": "OS  DE  ACEROS PARANA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "800600",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "800709",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "800808",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "800907",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "801009",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "801108",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "801207",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "801306",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "801405",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "801504",
+      "descripcion": "RESERVADA",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900102",
+      "descripcion": "O.S.DEL PERSONAL DE EMPRESAS FIAT Y EMPRESAS PEUGEOT CITROEN ARG.",
+      "tipo": 1,
+      "vigencia_desde": "199407",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900300",
+      "descripcion": "ASOCIACIÓN MUTUAL RURALISTA",
+      "tipo": 4,
+      "vigencia_desde": "202404",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900409",
+      "descripcion": "LA CASA DEL MÉDICO",
+      "tipo": 4,
+      "vigencia_desde": "202404",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900508",
+      "descripcion": "CYNTHIOS SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202406",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900607",
+      "descripcion": "SABER SOCIEDAD ANÓNIMA",
+      "tipo": 4,
+      "vigencia_desde": "202404",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900706",
+      "descripcion": "PRESTADORES SANATORIALES S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202408",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900805",
+      "descripcion": "SWISS MEDICAL S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202410",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "900904",
+      "descripcion": "ASOCIACIÓN MUTUAL DE SALUD DE CIUDADELA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901006",
+      "descripcion": "MEDICUS SOCIEDAD ANONIMA DE ASISTENCIA MEDICA Y CIENTIFICA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901105",
+      "descripcion": "GALENO ARGENTINA SOCIEDAD ANONIMA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901204",
+      "descripcion": "HOSPITAL ALEMAN ASOCIACION CIVIL",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901402",
+      "descripcion": "MEDIFE ASOCIACION CIVIL",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901501",
+      "descripcion": "MEDICINA PREPAGA HOMINIS S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901600",
+      "descripcion": "ASISTENCIA SANITARIA INTEGRAL S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901709",
+      "descripcion": "MUTUAL MEDICA CONCORDIA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901808",
+      "descripcion": "ASOCIACION MUTUAL DE PARTICIPANTES DE ECONOMIA SOLIDARIAS",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "901907",
+      "descripcion": "SOREMER SA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902009",
+      "descripcion": "PARQUE SALUD SA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902108",
+      "descripcion": "ASOCIACION MUTUAL SANCOR SALUD",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902207",
+      "descripcion": "NATIVUS SRL",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902306",
+      "descripcion": "ASOCIACION MUTUAL DEL PERSONAL, ASESORES Y DIRECTIVOS DE GRUPO SAN NICOLAS S.R.L",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902405",
+      "descripcion": "PLENIMEDICAL S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902504",
+      "descripcion": "HOSPITAL BRITANICO DE BUENOS AIRES ASOCIACION CIVIL",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902603",
+      "descripcion": "CEMIC",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902702",
+      "descripcion": "SOCIEDAD ITALIANA DE BENEFICENCIA EN BUENOS AIRES",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902801",
+      "descripcion": "APRES SOCIEDAD ANONIMA",
+      "tipo": 4,
+      "vigencia_desde": "202411",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "902900",
+      "descripcion": "OMINT SOCIEDAD ANONlMA DE SERVICIOS",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903002",
+      "descripcion": "ASOCIACION CIVIL DE ESTUDIOS SUPERIORES ACES (HOSPITAL AUSTRAL)",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903101",
+      "descripcion": "AVALIAN SALUD Y BIENESTAR COOPERATIVA LIMITADA",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903200",
+      "descripcion": "MUTUAL FEDERADA \"25 DE JUNIO\" SOCIEDAD DE PROTECCIÓN RECÍPROCA",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903309",
+      "descripcion": "GRUPO DDM SA",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903408",
+      "descripcion": "ROI SA",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903507",
+      "descripcion": "PREVENCIÓN SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903606",
+      "descripcion": "ENSALUD SA",
+      "tipo": 4,
+      "vigencia_desde": "202412",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903705",
+      "descripcion": "SISTEMA INTEGRADO DE PRESTADORES DE SALUD S A",
+      "tipo": 4,
+      "vigencia_desde": "202501",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903804",
+      "descripcion": "GERMED S A",
+      "tipo": 4,
+      "vigencia_desde": "202502",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "903903",
+      "descripcion": "MET - CORDOBA SA",
+      "tipo": 4,
+      "vigencia_desde": "202502",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904005",
+      "descripcion": "GEA S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202503",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904104",
+      "descripcion": "PRIVAMED S.A",
+      "tipo": 4,
+      "vigencia_desde": "202503",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904203",
+      "descripcion": "PREMEDICA S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904302",
+      "descripcion": "COBERTURA DE SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904401",
+      "descripcion": "ASOCIACIÓN MUTUAL MÉDICA DE VILLA MARÍA",
+      "tipo": 4,
+      "vigencia_desde": "202504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904500",
+      "descripcion": "MEDYCIN ARGENTINO SA",
+      "tipo": 4,
+      "vigencia_desde": "202504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904609",
+      "descripcion": "ASOCIACIÓN MUTUAL FRANCO ANDINA REGIONAL MENDOZA",
+      "tipo": 4,
+      "vigencia_desde": "202504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904708",
+      "descripcion": "ASOCIACIÓN MUTUAL DEL CONTROL INTEGRAL",
+      "tipo": 4,
+      "vigencia_desde": "202504",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904807",
+      "descripcion": "SCIS S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "904906",
+      "descripcion": "NOBIS S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202505",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905008",
+      "descripcion": "ADMINISTRACIÓN RECURSOS PARA SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202507",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905107",
+      "descripcion": "AMSTERDAM SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202507",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905206",
+      "descripcion": "CIRCULO MEDICO DE LOMAS DE ZAMORA",
+      "tipo": 4,
+      "vigencia_desde": "202508",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905305",
+      "descripcion": "GILSA S.R.L.",
+      "tipo": 4,
+      "vigencia_desde": "202510",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905404",
+      "descripcion": "ASOCIACION MUTUAL DE FARMACEUTICOS FLORENTINO AMEGHINO",
+      "tipo": 4,
+      "vigencia_desde": "202510",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905503",
+      "descripcion": "AGRUPACIÓN SANATORIAL SUR S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202510",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905602",
+      "descripcion": "MUTUAL DEL PERSONAL DEL CENTRO INDUSTRIAL ACINDAR",
+      "tipo": 4,
+      "vigencia_desde": "202510",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905701",
+      "descripcion": "GRUPO MEDICO INCAS S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202510",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905800",
+      "descripcion": "ANDESALUD SA",
+      "tipo": 4,
+      "vigencia_desde": "202601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "905909",
+      "descripcion": "BONMED SA",
+      "tipo": 4,
+      "vigencia_desde": "202601",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906001",
+      "descripcion": "EMINENTE MEDICINAL S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202602",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906100",
+      "descripcion": "PRIMED S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202603",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906209",
+      "descripcion": "VITA'S S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202603",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906308",
+      "descripcion": "MEDICAL SERVICIOS DE SALUD S.R.L.",
+      "tipo": 4,
+      "vigencia_desde": "202603",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906407",
+      "descripcion": "ASOC. MUTUAL UKRA DE LA UNIÓN KIOSQUEROS DE LA REP. ARG. (AMUKRA).",
+      "tipo": 4,
+      "vigencia_desde": "202604",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906506",
+      "descripcion": "SAJU S.R.L",
+      "tipo": 4,
+      "vigencia_desde": "202604",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906704",
+      "descripcion": "CARE SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202605",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "906803",
+      "descripcion": "COLEGIO MÉD. DE SAN JUAN ASOC.",
+      "tipo": 4,
+      "vigencia_desde": "202606",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "907004",
+      "descripcion": "SALUD PROFESIONAL Y TECNOLOGIC",
+      "tipo": 4,
+      "vigencia_desde": "202606",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "907103",
+      "descripcion": "MEMED S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202606",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "907202",
+      "descripcion": "AS MUT PERS JERARQ BCOS OF NAC",
+      "tipo": 4,
+      "vigencia_desde": "202606",
+      "vigencia_hasta": "999999"
+    },
+    {
+      "codigo": "907301",
+      "descripcion": "ASSISTENCIAL SALUD S.A.",
+      "tipo": 4,
+      "vigencia_desde": "202607",
+      "vigencia_hasta": "999999"
+    }
+  ],
+  "bancos": [
+    {
+      "codigo": "007",
+      "descripcion": "BANCO DE GALICIA Y BUENOS AIRES S.A."
+    },
+    {
+      "codigo": "011",
+      "descripcion": "BANCO DE LA NACION ARGENTINA"
+    },
+    {
+      "codigo": "014",
+      "descripcion": "BANCO DE LA PROVINCIA DE BUENOS AIRES"
+    },
+    {
+      "codigo": "015",
+      "descripcion": "INDUSTRIAL AND COMMERCIAL BANK OF CHINA"
+    },
+    {
+      "codigo": "016",
+      "descripcion": "CITIBANK N.A."
+    },
+    {
+      "codigo": "017",
+      "descripcion": "BANCO BBVA ARGENTINA S.A."
+    },
+    {
+      "codigo": "020",
+      "descripcion": "BANCO DE LA PROVINCIA DE CORDOBA S.A."
+    },
+    {
+      "codigo": "027",
+      "descripcion": "BANCO SUPERVIELLE S.A."
+    },
+    {
+      "codigo": "029",
+      "descripcion": "BANCO DE LA CIUDAD DE BUENOS AIRES"
+    },
+    {
+      "codigo": "034",
+      "descripcion": "BANCO PATAGONIA S.A."
+    },
+    {
+      "codigo": "044",
+      "descripcion": "BANCO HIPOTECARIO S.A."
+    },
+    {
+      "codigo": "045",
+      "descripcion": "BANCO DE SAN JUAN S.A."
+    },
+    {
+      "codigo": "065",
+      "descripcion": "BANCO MUNICIPAL DE ROSARIO"
+    },
+    {
+      "codigo": "072",
+      "descripcion": "BANCO SANTANDER ARGENTINA S.A."
+    },
+    {
+      "codigo": "083",
+      "descripcion": "BANCO DEL CHUBUT S.A."
+    },
+    {
+      "codigo": "086",
+      "descripcion": "BANCO DE SANTA CRUZ S.A."
+    },
+    {
+      "codigo": "093",
+      "descripcion": "BANCO DE LA PAMPA SA"
+    },
+    {
+      "codigo": "094",
+      "descripcion": "BANCO DE CORRIENTES S.A."
+    },
+    {
+      "codigo": "097",
+      "descripcion": "BANCO PROVINCIA DEL NEUQUÉN SOCIEDAD ANÓ"
+    },
+    {
+      "codigo": "131",
+      "descripcion": "BANK OF CHINA LIMITED SUCURSAL BUENOS AI"
+    },
+    {
+      "codigo": "143",
+      "descripcion": "BRUBANK S.A.U."
+    },
+    {
+      "codigo": "147",
+      "descripcion": "BIBANK S.A."
+    },
+    {
+      "codigo": "165",
+      "descripcion": "JPMORGAN CHASE BANK, NATIONAL ASSOCIATIO"
+    },
+    {
+      "codigo": "191",
+      "descripcion": "BANCO CREDICOOP COOPERATIVO LIMITADO"
+    },
+    {
+      "codigo": "198",
+      "descripcion": "BANCO DE VALORES S.A."
+    },
+    {
+      "codigo": "247",
+      "descripcion": "BANCO ROELA S.A."
+    },
+    {
+      "codigo": "254",
+      "descripcion": "BANCO MARIVA S.A."
+    },
+    {
+      "codigo": "266",
+      "descripcion": "BNP PARIBAS"
+    },
+    {
+      "codigo": "268",
+      "descripcion": "BANCO PROVINCIA DE TIERRA DEL FUEGO"
+    },
+    {
+      "codigo": "269",
+      "descripcion": "BANCO DE LA REPUBLICA ORIENTAL DEL URUGU"
+    },
+    {
+      "codigo": "277",
+      "descripcion": "BANCO SAENZ S.A."
+    },
+    {
+      "codigo": "281",
+      "descripcion": "BANCO MERIDIAN S.A."
+    },
+    {
+      "codigo": "285",
+      "descripcion": "BANCO MACRO S.A."
+    },
+    {
+      "codigo": "299",
+      "descripcion": "BANCO COMAFI SOCIEDAD ANONIMA"
+    },
+    {
+      "codigo": "300",
+      "descripcion": "BANCO DE INVERSION Y COMERCIO EXTERIOR S"
+    },
+    {
+      "codigo": "301",
+      "descripcion": "BANCO PIANO S.A."
+    },
+    {
+      "codigo": "305",
+      "descripcion": "BANCO JULIO SOCIEDAD ANONIMA"
+    },
+    {
+      "codigo": "309",
+      "descripcion": "BANCO RIOJA SOCIEDAD ANONIMA UNIPERSONAL"
+    },
+    {
+      "codigo": "310",
+      "descripcion": "BANCO DEL SOL S.A."
+    },
+    {
+      "codigo": "311",
+      "descripcion": "NUEVO BANCO DEL CHACO S. A."
+    },
+    {
+      "codigo": "312",
+      "descripcion": "BANCO VOII S.A."
+    },
+    {
+      "codigo": "315",
+      "descripcion": "BANCO DE FORMOSA S.A."
+    },
+    {
+      "codigo": "319",
+      "descripcion": "BANCO CMF S.A."
+    },
+    {
+      "codigo": "321",
+      "descripcion": "BANCO DE SANTIAGO DEL ESTERO S.A."
+    },
+    {
+      "codigo": "322",
+      "descripcion": "BANCO INDUSTRIAL S.A."
+    },
+    {
+      "codigo": "330",
+      "descripcion": "NUEVO BANCO DE SANTA FE SOCIEDAD ANONIMA"
+    },
+    {
+      "codigo": "331",
+      "descripcion": "BANCO CETELEM ARGENTINA S.A."
+    },
+    {
+      "codigo": "332",
+      "descripcion": "BANCO DE SERVICIOS FINANCIEROS CARREFOUR"
+    },
+    {
+      "codigo": "338",
+      "descripcion": "BANCO DE SERVICIOS Y TRANSACCIONES SAU"
+    },
+    {
+      "codigo": "339",
+      "descripcion": "RCI BANQUE S.A."
+    },
+    {
+      "codigo": "340",
+      "descripcion": "BACS BANCO DE CREDITO Y SECURITIZACION S"
+    },
+    {
+      "codigo": "341",
+      "descripcion": "BANCO MASVENTAS S.A."
+    },
+    {
+      "codigo": "384",
+      "descripcion": "UALA BANK S.A.U."
+    },
+    {
+      "codigo": "386",
+      "descripcion": "NUEVO BANCO DE ENTRE RÍOS S.A."
+    },
+    {
+      "codigo": "389",
+      "descripcion": "BANCO COLUMBIA S.A."
+    },
+    {
+      "codigo": "426",
+      "descripcion": "BANCO BICA S.A."
+    },
+    {
+      "codigo": "431",
+      "descripcion": "BANCO COINAG S.A."
+    },
+    {
+      "codigo": "432",
+      "descripcion": "BANCO DE COMERCIO S.A."
+    },
+    {
+      "codigo": "435",
+      "descripcion": "BANCO SUCREDITO REGIONAL S.A.U."
+    },
+    {
+      "codigo": "448",
+      "descripcion": "BANCO DINO S.A."
+    },
+    {
+      "codigo": "44077",
+      "descripcion": "COMPAÑIA FINANCIERA ARGENTINA S.A."
+    },
+    {
+      "codigo": "44088",
+      "descripcion": "VOLKSWAGEN FINANCIAL SERVICES COMPAÑIA F"
+    },
+    {
+      "codigo": "44092",
+      "descripcion": "FCA COMPAÑIA FINANCIERA S.A."
+    },
+    {
+      "codigo": "44093",
+      "descripcion": "GPAT COMPAÑIA FINANCIERA S.A.U."
+    },
+    {
+      "codigo": "44094",
+      "descripcion": "MERCEDES-BENZ COMPAÑÍA FINANCIERA ARGENT"
+    },
+    {
+      "codigo": "44095",
+      "descripcion": "ROMBO COMPAÑÍA FINANCIERA S.A."
+    },
+    {
+      "codigo": "44096",
+      "descripcion": "JOHN DEERE CREDIT COMPAÑÍA FINANCIERA S."
+    },
+    {
+      "codigo": "44098",
+      "descripcion": "PSA FINANCE ARGENTINA COMPAÑÍA FINANCIER"
+    },
+    {
+      "codigo": "44099",
+      "descripcion": "TOYOTA COMPAÑÍA FINANCIERA DE ARGENTINA"
+    },
+    {
+      "codigo": "45030",
+      "descripcion": "NARANJA DIGITAL COMPAÑÍA FINANCIERA S.A."
+    },
+    {
+      "codigo": "45056",
+      "descripcion": "MONTEMAR COMPAÑIA FINANCIERA S.A."
+    },
+    {
+      "codigo": "45072",
+      "descripcion": "REBA COMPAÑIA FINANCIERA S.A."
+    },
+    {
+      "codigo": "65203",
+      "descripcion": "CRÉDITO REGIONAL COMPAÑÍA FINANCIERA S.A"
+    }
+  ],
+  "topes_previsionales": [
+    {
+      "periodo": "202604",
+      "minimo": 128091.45,
+      "maximo": 4162912.57,
+      "norma": "Resolución ANSES 74/2026"
+    },
+    {
+      "periodo": "202605",
+      "minimo": 132420.94,
+      "maximo": 4303619.01,
+      "norma": "Resolución ANSES 110/2026"
+    },
+    {
+      "periodo": "202606",
+      "minimo": 135837.4,
+      "maximo": 4414652.38,
+      "norma": "Resolución ANSES 139/2026"
+    },
+    {
+      "periodo": "202607",
+      "minimo": 138757.9,
+      "maximo": 4509567.41,
+      "norma": "Resolución ANSES 186/2026"
+    }
+  ],
+  "ffep_art": [
+    {
+      "periodo_desde": "202601",
+      "periodo_hasta": "202601",
+      "importe": 1602,
+      "norma": "Disposición SRT 01/2026"
+    },
+    {
+      "periodo_desde": "202602",
+      "periodo_hasta": "202602",
+      "importe": 1624,
+      "norma": "Disposición SRT 02/2026"
+    },
+    {
+      "periodo_desde": "202603",
+      "periodo_hasta": "202603",
+      "importe": 1637,
+      "norma": "Disposición SRT 03/2026"
+    },
+    {
+      "periodo_desde": "202604",
+      "periodo_hasta": "202604",
+      "importe": 1724,
+      "norma": "Disposición SRT 04/2026"
+    },
+    {
+      "periodo_desde": "202605",
+      "periodo_hasta": "202605",
+      "importe": 1765,
+      "norma": "Disposición SRT 05/2026"
+    },
+    {
+      "periodo_desde": "202606",
+      "periodo_hasta": "202606",
+      "importe": 1827,
+      "norma": "Disposición SRT 06/2026"
+    },
+    {
+      "periodo_desde": "202607",
+      "periodo_hasta": "999999",
+      "importe": 1839,
+      "norma": "Disposición SRT 07/2026"
+    }
+  ]
+}
