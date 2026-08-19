@@ -45,6 +45,50 @@
     th{background:#eaf1f2;color:#28464e}.selected-row{background:#eaf7f5}
     @media(max-width:760px){.wrap{padding-left:12px;padding-right:12px}.top{margin-left:-12px;margin-right:-12px;padding:17px 16px;border-radius:0 0 16px 16px}.jubilo-wordmark{font-size:20px}.workspace-sticky{position:static}}
 
+    /* Interfaz operativa JUBILO: escritorio de gestión inspirado en Tango */
+    :root{--desk-blue:#3f6f9f;--desk-blue-dark:#2d5478;--desk-blue-soft:#e7eff6;--desk-line:#bfcbd5;--desk-panel:#f5f7f9;--desk-head:#dbe5ed}
+    body{background:#e9edf0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:12px;line-height:1.3}
+    .wrap{padding:0 8px 32px}
+    .top{min-height:50px;margin:0 -8px 8px;padding:6px 14px;border-radius:0;background:linear-gradient(180deg,#47779f 0%,#315f87 100%);box-shadow:0 1px 3px rgba(20,43,61,.28)}
+    .jubilo-brand{gap:9px}.jubilo-mark{width:34px;height:34px;border-radius:3px;background:#fff;color:var(--desk-blue-dark);font-size:20px;box-shadow:none}.jubilo-wordmark{font-size:17px;letter-spacing:.13em}.jubilo-tagline{margin-top:1px;font-size:10px;color:#eaf3f9}.top .button.secondary{padding:6px 10px;border-radius:2px;background:#f7fafc;color:var(--desk-blue-dark);border-color:#d7e3eb;backdrop-filter:none}
+    #dashboardView{width:100%;max-width:none;margin:0 auto;background:#fff;border:1px solid #aebdc8;box-shadow:0 1px 4px rgba(20,43,61,.12)}
+    #dashboardView>.card,#dashboardView .workspace-sticky>.card,#dashboardView>[data-workspace-module]{margin:0;border-left:0;border-right:0;border-top:0}
+    #dashboardView .card{padding:10px 12px;border-radius:0;border-color:var(--desk-line);box-shadow:none;background:#fff}
+    #dashboardView h1,#dashboardView h2,#dashboardView h3{color:#243746}
+    #dashboardView h2{font-size:15px;margin-bottom:3px}#dashboardView h3{font-size:13px;margin-bottom:3px}.muted,.section-note{font-size:11px}
+    #dashboardView>.summary.card{min-height:44px;padding:6px 12px;background:#f4f7f9}
+    #dashboardView>.summary.card h2{display:inline-block;margin:0 8px 0 0;font-size:13px}#dashboardView>.summary.card .pill{vertical-align:1px}#dashboardView>.summary.card .muted{display:inline-block}
+    #dashboardView>.summary.card .actions{margin:0}
+    #dashboardView label{margin:6px 0 2px;font-size:10.5px;font-weight:650;color:#334957}
+    #dashboardView input,#dashboardView select,#dashboardView textarea{min-height:29px;padding:4px 7px;border-radius:1px;border-color:#bdc9d2;font-size:12px;box-shadow:inset 0 1px 1px rgba(30,53,70,.05)}
+    #dashboardView textarea{min-height:58px}#dashboardView input:focus,#dashboardView select:focus,#dashboardView textarea:focus{border-color:#5687b0;box-shadow:0 0 0 1px #5687b0}
+    #dashboardView button,#dashboardView .button{min-height:27px;padding:5px 10px;border-radius:2px;background:linear-gradient(180deg,#4f7fa7,#36678f);border-color:#315f85;font-size:11px;font-weight:650;box-shadow:none}
+    #dashboardView button.secondary,#dashboardView .button.secondary{background:#f7f9fa;color:#315f85;border-color:#9fb2c1}#dashboardView button.danger{background:#fff;color:#a12222;border-color:#d6a2a2}
+    #dashboardView .actions{gap:6px;margin-top:8px}#dashboardView .status{min-height:17px;margin-top:5px;font-size:11px}
+    #dashboardView .pill{padding:3px 7px;border-radius:2px;background:#e1ebf2;color:#315f85;font-size:10px}
+    .workspace-sticky{position:sticky;top:0;z-index:8;margin:0;padding:0;background:#fff;box-shadow:0 2px 4px rgba(20,43,61,.12)}
+    .company-switcher-card{padding:7px 12px!important;border-top:0}.company-switcher-head{margin-bottom:5px}.company-switcher-head .muted{display:inline;margin-left:5px}.company-switcher-head>div:first-child{display:flex;align-items:baseline;gap:5px}.workspace-context{gap:5px}
+    .company-tabs{gap:2px;padding:0 0 5px}.company-tab{min-width:150px;padding:5px 8px;border-radius:1px;background:#f7f9fa;border-color:#b9c6cf}.company-tab strong{font-size:10.5px}.company-tab span{font-size:9.5px}.company-tab.active{background:#dceaf4;border-color:#6d94b3;color:#224f74;box-shadow:inset 3px 0 0 #3e76a3}.company-tab.active span{color:#3a647f}
+    .company-switcher-card .notice{margin-top:0;padding:5px 8px;border-radius:1px;font-size:10.5px;background:#eef4f7;color:#36576e}
+    .workspace-nav{gap:0;margin:0;padding:0 7px;border-top:1px solid #b8c5ce;border-bottom:1px solid #9eafbc;border-radius:0;background:linear-gradient(180deg,#eef3f6,#dce5eb);box-shadow:none}
+    #dashboardView .workspace-nav button{position:relative;margin:0;min-height:31px;padding:7px 11px;border:0;border-right:1px solid #c3cdd5;border-radius:0;background:transparent;color:#314b5d;font-size:10.5px;font-weight:650}
+    #dashboardView .workspace-nav button:hover{background:#f8fafb;color:#244d6d}#dashboardView .workspace-nav button.active{background:#fff;color:#245a84;box-shadow:inset 0 3px 0 #3f78a5}
+    #dashboardView>[data-workspace-module]{padding:10px 12px!important}
+    #dashboardView .grid{grid-template-columns:repeat(4,minmax(150px,1fr));gap:5px 12px}
+    #dashboardView .check-grid{grid-template-columns:repeat(4,minmax(150px,1fr));gap:2px 12px}.check-line{margin-top:6px;font-size:11px}
+    .company-details{overflow:visible}.company-details>summary{padding:8px 12px;background:linear-gradient(180deg,#edf3f6,#dfe8ee);border-bottom:1px solid var(--desk-line)}.company-details>summary .summary{padding-right:48px}.company-details>summary .summary:after{font-size:10px;color:#315f85}.company-details>.detail-body{padding:8px 12px 12px}
+    .company-form-tabs{gap:0;margin:0 0 8px;padding:0;border:0;border-bottom:1px solid #9fb0bd;border-radius:0;background:#f3f6f8}#dashboardView .company-form-tabs button{min-height:29px;padding:6px 12px;border:0;border-right:1px solid #c8d1d8;border-radius:0;background:transparent;color:#3d5261}#dashboardView .company-form-tabs button.active{background:#fff;color:#245d89;border:0;border-top:2px solid #3f78a5;box-shadow:none}
+    .company-form-panel{min-height:0}.company-fieldset-title{padding:4px 6px;margin:0;background:#dfe8ee;border:1px solid #c1ccd4;font-size:12px}.company-fieldset-title+.section-note{padding:3px 6px;margin:0 0 4px;border:1px solid #d5dde3;border-top:0;background:#f7f9fa}
+    #dashboardView details{margin-top:7px;border-radius:1px;border-color:#bdc9d2;background:#fff}#dashboardView summary{padding:7px 9px;color:#315f85;font-size:11px;background:#edf2f5}.detail-body{padding:0 9px 9px}
+    #dashboardView .notice,#dashboardView .validation-box,#dashboardView .catalog-ready,#dashboardView .formula-assistant{padding:7px 9px;border-radius:1px;font-size:11px}.catalog-ready:before{width:16px;height:16px}.formula-tokens{gap:4px;margin-top:6px}.formula-tokens button{min-height:24px;padding:4px 6px;border-radius:1px;font-size:10px}
+    #dashboardView .table-wrap{margin-top:7px;border:1px solid #aebcc7}#dashboardView table{min-width:920px}#dashboardView th,#dashboardView td{padding:5px 6px;border:1px solid #c9d2d9;font-size:10.5px}#dashboardView th{position:sticky;top:0;z-index:1;background:linear-gradient(180deg,#e5edf2,#d4e0e8);color:#2d4658;font-weight:700}#dashboardView tr:nth-child(even) td{background:#f8fafb}#dashboardView .selected-row td{background:#dcecf6}
+    #dashboardView .usage-grid{gap:5px;margin-top:7px}.usage-box{padding:7px;border-radius:1px;background:#f4f7f9}.usage-box strong{font-size:15px}.plan-grid{gap:6px;margin-top:7px}.plan-box{padding:8px;border-radius:1px}.empty{padding:10px;border-radius:1px;margin-top:7px}
+    .logo-preview-wrap{padding:6px;border-radius:1px}.logo-preview-wrap img{border-radius:1px}.progress{height:7px;border-radius:1px}
+    @media(max-width:1200px){#dashboardView .grid,#dashboardView .check-grid{grid-template-columns:repeat(3,minmax(150px,1fr))}}
+    @media(max-width:900px){#dashboardView .grid,#dashboardView .check-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}.workspace-sticky{position:static}}
+    @media(max-width:620px){.wrap{padding-left:0;padding-right:0}.top{margin-left:0;margin-right:0;padding:7px 10px}.jubilo-tagline{display:none}#dashboardView{border-left:0;border-right:0}#dashboardView .grid,#dashboardView .check-grid{grid-template-columns:1fr}.company-switcher-head,.company-switcher-head>div:first-child{align-items:flex-start;flex-direction:column}.company-tab{min-width:135px}.workspace-nav{overflow-x:auto}.workspace-nav button{padding:7px 9px}}
+    [data-feature-disabled="income-tax"]{display:none!important}
+
   </style>
 </head>
 <body>
@@ -125,7 +169,7 @@
         <button type="button" data-workspace-target="concepts">Conceptos</button>
         <button type="button" data-workspace-target="payroll">Liquidaciones</button>
         <button type="button" data-workspace-target="arca">Libro Digital ARCA</button>
-        <button id="incomeTaxNavBtn" class="hidden" type="button" data-workspace-target="income-tax">Ganancias 4ta.</button>
+        <button id="incomeTaxNavBtn" class="hidden" type="button" data-workspace-target="income-tax" data-feature-disabled="income-tax">Ganancias 4ta.</button>
         <button id="pilotNavBtn" class="hidden" type="button" data-workspace-target="pilot">Piloto avanzado</button>
         <button type="button" data-workspace-target="security">Seguridad</button>
       </nav>
@@ -191,7 +235,7 @@
         <div><label for="companyArcaEmployerType">Tipo de empleador ARCA *</label><select id="companyArcaEmployerType"><option value="">Seleccionar código y descripción</option></select><span class="subtext">Debe coincidir con el tipo informado en Declaración en Línea / F.931.</span></div>
         <div><label for="companyArtInsurer">ART contratada</label><input id="companyArtInsurer" maxlength="190" list="srtArtOptions" placeholder="Buscar aseguradora"><span class="subtext">Nómina de aseguradoras con actividad informada por la SRT.</span></div>
         <div><label for="companyArtCode">Código CART / SRT</label><input id="companyArtCode" inputmode="numeric" maxlength="5" placeholder="Según póliza digital"><span class="subtext">Se toma de la póliza de la empresa; no se reemplaza por un código interno.</span></div>
-        <div><label for="companyArtRate">Alícuota ART contractual (%)</label><input id="companyArtRate" type="number" min="0" max="100" step="0.0001" value="0"><span class="subtext">Es la tasa pactada con la ART; no existe una alícuota única para todos.</span></div>
+        <div><label for="companyArtRate">Alícuota ART contractual (%) *</label><input id="companyArtRate" type="number" min="0" max="100" step="0.0001" value="0"><span class="subtext">Ingresá la tasa porcentual indicada en la póliza o contrato vigente de la ART.</span></div>
         <div><label for="companyArtContractFixed">Importe fijo contractual ART</label><input id="companyArtContractFixed" type="number" min="0" step="0.01" value="0"></div>
         <div><label for="companyHealthType">Tipo de cobertura habitual</label><select id="companyHealthType"><option value="osecac">OSECAC</option><option value="other_health">Otra obra social</option><option value="prepaid">Prepaga</option></select></div>
         <div><label for="companyHealthName">Nombre de la cobertura</label><input id="companyHealthName" maxlength="190" placeholder="Ej.: OSDE, Swiss Medical, OSECAC"></div>
@@ -386,7 +430,7 @@
         <div class="wide"><span id="customConceptCalculationHelp" class="subtext">La suma fija puede modificarse al cargar la novedad.</span></div>
       </div>
       <details><summary>3. Incidencias y clasificación</summary><div class="detail-body"><p class="section-note">Estas marcas documentan cómo debe considerarse el concepto en liquidaciones especiales y reportes.</p><div class="check-grid">
-        <label class="check-line"><input id="customConceptIncSac" type="checkbox"> Integra base de SAC</label><label class="check-line"><input id="customConceptIncVacation" type="checkbox"> Integra vacaciones</label><label class="check-line"><input id="customConceptIncIndemnity" type="checkbox"> Integra indemnizaciones</label><label class="check-line"><input id="customConceptIncHabitual" type="checkbox"> Habitual</label><label class="check-line"><input id="customConceptIncVariable" type="checkbox"> Remuneración variable</label><label class="check-line"><input id="customConceptIncPresentism" type="checkbox"> Integra presentismo</label><label class="check-line"><input id="customConceptIncGains" type="checkbox"> Afecta Ganancias</label>
+        <label class="check-line"><input id="customConceptIncSac" type="checkbox"> Integra base de SAC</label><label class="check-line"><input id="customConceptIncVacation" type="checkbox"> Integra vacaciones</label><label class="check-line"><input id="customConceptIncIndemnity" type="checkbox"> Integra indemnizaciones</label><label class="check-line"><input id="customConceptIncHabitual" type="checkbox"> Habitual</label><label class="check-line"><input id="customConceptIncVariable" type="checkbox"> Remuneración variable</label><label class="check-line"><input id="customConceptIncPresentism" type="checkbox"> Integra presentismo</label><label class="check-line hidden" data-feature-disabled="income-tax"><input id="customConceptIncGains" type="checkbox"> Afecta Ganancias</label>
       </div></div></details>
       <details><summary>4. Aportes y contribuciones adicionales</summary><div class="detail-body"><p class="section-note">Ingresá únicamente tasas especiales adicionales. Los aportes legales que ya corresponden a un remunerativo siguen siendo calculados por el motor.</p><div class="grid"><div><label for="customConceptRateHealth">Aporte obra social (%)</label><input id="customConceptRateHealth" type="number" min="0" max="100" step="0.0001" value="0"></div><div><label for="customConceptRateUnion">Aporte sindical (%)</label><input id="customConceptRateUnion" type="number" min="0" max="100" step="0.0001" value="0"></div><div><label for="customConceptRateEmployeeOther">Otro aporte trabajador (%)</label><input id="customConceptRateEmployeeOther" type="number" min="0" max="100" step="0.0001" value="0"></div><div><label for="customConceptRateArt">ART patronal adicional (%)</label><input id="customConceptRateArt" type="number" min="0" max="100" step="0.0001" value="0"></div><div><label for="customConceptRateEmployerOther">Otra contribución patronal (%)</label><input id="customConceptRateEmployerOther" type="number" min="0" max="100" step="0.0001" value="0"></div></div></div></details>
       <details><summary>5. ARCA / Libro de Sueldos Digital</summary><div class="detail-body"><div class="grid"><div><label for="customConceptArcaCode">Código de concepto ARCA</label><input id="customConceptArcaCode" inputmode="numeric" maxlength="10" placeholder="Código homologado"></div><div><label class="check-line"><input id="customConceptAffectsLsd" type="checkbox"> Incluir en Libro de Sueldos Digital</label></div></div><p class="section-note">El código debe coincidir con la parametrización vigente del empleador. Se conserva en la trazabilidad de cada liquidación.</p></div></details>
@@ -515,7 +559,7 @@
       </div></details>
     </article>
 
-    <article id="incomeTaxCard" class="card hidden" data-workspace-module="income-tax">
+    <article id="incomeTaxCard" class="card hidden" data-workspace-module="income-tax" data-feature-disabled="income-tax">
       <div class="summary"><div><span class="pill">Piloto privado 2026</span><h2>Retenciones de Ganancias · 4ta categoría</h2><p class="muted">Cálculo acumulativo, SiRADIG, retención o devolución y papel de trabajo. Disponible únicamente para las dos cuentas autorizadas.</p></div><span id="incomeTaxTablePill" class="pill">Tablas ARCA 2026</span></div>
       <div class="notice"><strong>Actualización controlada:</strong> las tablas oficiales quedan versionadas. Una actualización de ARCA requiere revisión antes de aplicarse y no modifica cálculos anteriores.</div>
       <details open><summary>1. Configuración fiscal del empleado</summary><div class="detail-body">
