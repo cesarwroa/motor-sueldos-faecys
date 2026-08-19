@@ -88,6 +88,10 @@
     @media(max-width:900px){#dashboardView .grid,#dashboardView .check-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}.workspace-sticky{position:static}}
     @media(max-width:620px){.wrap{padding-left:0;padding-right:0}.top{margin-left:0;margin-right:0;padding:7px 10px}.jubilo-tagline{display:none}#dashboardView{border-left:0;border-right:0}#dashboardView .grid,#dashboardView .check-grid{grid-template-columns:1fr}.company-switcher-head,.company-switcher-head>div:first-child{align-items:flex-start;flex-direction:column}.company-tab{min-width:135px}.workspace-nav{overflow-x:auto}.workspace-nav button{padding:7px 9px}}
     [data-feature-disabled="income-tax"]{display:none!important}
+    #dashboardView .company-tab{background:#f5f8fa;color:#263f50;border-color:#aebdc8;box-shadow:none}
+    #dashboardView .company-tab span{color:#627783}
+    #dashboardView .company-tab.active{background:linear-gradient(180deg,#45769e,#315f87);color:#fff;border-color:#294f70;box-shadow:inset 3px 0 0 #8dc0df}
+    #dashboardView .company-tab.active span{color:#e5f0f6}
 
   </style>
 </head>
@@ -204,7 +208,7 @@
     </article>
 
     <details id="companyDetailsCard" class="card company-details" data-workspace-module="company" open>
-      <summary><div class="summary"><div><h2>Ficha de la empresa</h2><p class="muted">Información que se utilizará en recibos y liquidaciones.</p></div><span class="pill">Paso 1</span></div></summary>
+      <summary class="hidden"><div class="summary"><div><h2>Ficha de la empresa</h2><p class="muted">Información que se utilizará en recibos y liquidaciones.</p></div><span class="pill">Paso 1</span></div></summary>
       <div class="detail-body">
       <div id="companyFormTabs" class="company-form-tabs" role="tablist" aria-label="Secciones de la empresa">
         <button type="button" role="tab" data-company-form-target="identity">Datos generales</button>
@@ -229,7 +233,7 @@
       </div>
       </section>
       <section class="company-form-panel" data-company-form-panel="coverage" hidden>
-      <h3 class="company-fieldset-title">Convenio, cobertura y aportes locales</h3><p class="section-note">Reglas que se usarán como valor inicial para la nómina de esta empresa.</p><div id="officialCatalogStatus" class="catalog-ready">Preparando catálogos oficiales…</div>
+      <h3 class="company-fieldset-title">Convenio, cobertura y aportes locales</h3><p class="section-note">Reglas que se usarán como valor inicial para la nómina de esta empresa.</p><div id="officialCatalogStatus" class="catalog-ready hidden">Preparando catálogos oficiales…</div>
       <div class="grid">
         <div><label for="companyAgreement">Convenio</label><input id="companyAgreement" maxlength="120" value="CCT 130/75"></div>
         <div><label for="companyArcaEmployerType">Tipo de empleador ARCA *</label><select id="companyArcaEmployerType"><option value="">Seleccionar código y descripción</option></select><span class="subtext">Debe coincidir con el tipo informado en Declaración en Línea / F.931.</span></div>
@@ -240,21 +244,21 @@
         <div><label for="companyHealthType">Tipo de cobertura habitual</label><select id="companyHealthType"><option value="osecac">OSECAC</option><option value="other_health">Otra obra social</option><option value="prepaid">Prepaga</option></select></div>
         <div><label for="companyHealthName">Nombre de la cobertura</label><input id="companyHealthName" maxlength="190" placeholder="Ej.: OSDE, Swiss Medical, OSECAC"></div>
         <div><label for="companyHealthCode">Código obra social ARCA/LSD</label><input id="companyHealthCode" inputmode="numeric" maxlength="6" list="arcaHealthOptions" placeholder="6 dígitos"><span class="subtext">El listado muestra código y descripción con vigencia ARCA.</span></div>
-        <div class="wide"><label class="check-line"><input id="companyHealthOnNonRem" type="checkbox"> Aplicar obra social sobre conceptos no remunerativos</label><span class="subtext">Se usa como valor inicial al crear empleados; cada ficha puede tener una excepción.</span></div>
-        <div class="wide notice"><strong>Dato obligatorio para Libro de Sueldos Digital:</strong> el tipo de empleador se informa en la posición 20 de cada registro 04. El sistema lo aplicará a toda la nómina y bloqueará el TXT si no fue confirmado.</div>
-        <div class="wide notice health-guidance"><strong>Regla CCT de la empresa:</strong> la cobertura habitual puede ser cualquier obra social o prepaga y se informa con su código LSD. Es independiente del aporte patronal extraordinario OSECAC de <strong>$28.000 por empleado</strong>. No se descuenta un aporte fijo OSECAC al trabajador.</div>
-        <div class="wide"><label class="check-line"><input id="companyRegionalUnionEnabled" type="checkbox"> Aplicar aporte sindical zonal obligatorio aunque el trabajador no esté afiliado</label></div>
-        <div><label for="companyRegionalUnionName">Nombre del concepto</label><input id="companyRegionalUnionName" maxlength="190" value="Resolución 3/76 - Sindicato Zona Norte"></div>
-        <div><label for="companyRegionalUnionPct">Porcentaje</label><input id="companyRegionalUnionPct" type="number" min="0" max="10" step="0.01" value="1"></div>
-        <div class="wide notice union-guidance"><strong>Ejemplo Zona Norte:</strong> Resolución 3/76 al 1% sobre la base sindical aportable. Es adicional al 2% solidario y no depende de la afiliación.</div>
+        <div class="wide hidden"><label class="check-line"><input id="companyHealthOnNonRem" type="checkbox"> Aplicar obra social sobre conceptos no remunerativos</label><span class="subtext">Se usa como valor inicial al crear empleados; cada ficha puede tener una excepción.</span></div>
+        <div class="wide notice hidden"><strong>Dato obligatorio para Libro de Sueldos Digital:</strong> el tipo de empleador se informa en la posición 20 de cada registro 04. El sistema lo aplicará a toda la nómina y bloqueará el TXT si no fue confirmado.</div>
+        <div class="wide notice health-guidance hidden"><strong>Regla CCT de la empresa:</strong> la cobertura habitual puede ser cualquier obra social o prepaga y se informa con su código LSD. Es independiente del aporte patronal extraordinario OSECAC de <strong>$28.000 por empleado</strong>. No se descuenta un aporte fijo OSECAC al trabajador.</div>
+        <div class="wide hidden"><label class="check-line"><input id="companyRegionalUnionEnabled" type="checkbox"> Aplicar aporte sindical zonal obligatorio aunque el trabajador no esté afiliado</label></div>
+        <div class="hidden"><label for="companyRegionalUnionName">Nombre del concepto</label><input id="companyRegionalUnionName" maxlength="190" value="Resolución 3/76 - Sindicato Zona Norte"></div>
+        <div class="hidden"><label for="companyRegionalUnionPct">Porcentaje</label><input id="companyRegionalUnionPct" type="number" min="0" max="10" step="0.01" value="1"></div>
+        <div class="wide notice union-guidance hidden"><strong>Ejemplo Zona Norte:</strong> Resolución 3/76 al 1% sobre la base sindical aportable. Es adicional al 2% solidario y no depende de la afiliación.</div>
       </div>
       </section>
       <section class="company-form-panel" data-company-form-panel="receipt" hidden>
       <h3 class="company-fieldset-title">Pago y presentación del recibo</h3><p class="section-note">Información operativa, logo y leyenda que aparecerán en los comprobantes.</p>
       <div class="grid">
         <div><label for="companyPaymentPlace">Lugar de pago</label><input id="companyPaymentPlace" maxlength="190"></div>
-        <div><label for="companyEstablishment">Establecimiento / sucursal</label><input id="companyEstablishment" maxlength="120"></div>
-        <div><label for="companyEmployerRegistration">N.º inscripción empleador</label><input id="companyEmployerRegistration" maxlength="80"></div>
+        <div class="hidden"><label for="companyEstablishment">Establecimiento / sucursal</label><input id="companyEstablishment" maxlength="120"></div>
+        <div class="hidden"><label for="companyEmployerRegistration">N.º inscripción empleador</label><input id="companyEmployerRegistration" maxlength="80"></div>
         <div>
           <label for="companyLogoFile">Logo de la empresa</label>
           <input id="companyLogoFile" type="file" accept="image/jpeg,image/png,image/webp">
@@ -5999,7 +6003,7 @@
     if(body.settings.art_rate<0||body.settings.art_contract_fixed<0)return setStatus("companySaveStatus","La alícuota y el fijo contractual de ART no pueden ser negativos.");
     if(body.settings.health_insurance_name&&!/^\d{6}$/.test(body.settings.health_insurance_code))return setStatus("companySaveStatus","La cobertura médica habitual debe tener un código ARCA/LSD de 6 dígitos.");
     if(body.settings.regional_union_contribution_enabled&&(!body.settings.regional_union_contribution_name||body.settings.regional_union_contribution_pct<=0))return setStatus("companySaveStatus","Completá el nombre y un porcentaje mayor a cero para el aporte sindical zonal.");
-    setStatus("companySaveStatus",creatingCompany?"Creando empresa...":"Guardando...");try{const saved=await api("companies",{method:"POST",body});if(creatingCompany&&saved.id)setAuth(token(),saved.id);creatingCompany=false;$("companyCancelCreateBtn").classList.add("hidden");$("companySaveBtn").textContent="Guardar empresa";await loadCompanies();renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadCustomConcepts();await loadArcaConcepts();await loadSecurity();$("companyDetailsCard").open=false;setStatus("companySaveStatus","Datos de la empresa guardados.",true);}catch(err){setStatus("companySaveStatus",err.message);}
+    setStatus("companySaveStatus",creatingCompany?"Creando empresa...":"Guardando...");try{const saved=await api("companies",{method:"POST",body});if(creatingCompany&&saved.id)setAuth(token(),saved.id);creatingCompany=false;$("companyCancelCreateBtn").classList.add("hidden");$("companySaveBtn").textContent="Guardar empresa";await loadCompanies();renderSession();renderCompanyForm();await loadSubscription();await loadEmployees();await loadPeriods();await loadCustomConcepts();await loadArcaConcepts();await loadSecurity();$("companyDetailsCard").open=true;setStatus("companySaveStatus","Datos de la empresa guardados.",true);}catch(err){setStatus("companySaveStatus",err.message);}
   }
 
   async function loadEmployees(){
