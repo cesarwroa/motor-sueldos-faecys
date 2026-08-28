@@ -911,7 +911,11 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <details class="note" id="mensualExtrasRoot" style="margin-top:8px">
   <summary style="cursor:pointer; font-weight:800">Extras Del Mes</summary>
   <div style="margin-top:8px">
-<div class="grid cols-4" style="margin-top:8px"><div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" step="0.01" type="number" value="0"/></div></div>
+<div class="grid cols-4" style="margin-top:8px">
+<div><label>A cuenta futuros aumentos (REM)</label><input id="aCuentaNR" min="0" step="0.01" type="number" value="0"/></div>
+<div><label>Adicional empresa (REM)</label><input id="adicionalEmpresa" min="0" step="0.01" type="number" value="0"/></div>
+<div><label>Comisiones (REM)</label><input id="comisiones" min="0" step="0.01" type="number" value="0"/></div>
+</div>
 <div class="grid cols-4" style="margin-top:8px"><div><label>Armado de vidriera</label> <label style="margin-left:6px"><input id="armadoAuto" type="checkbox"/> auto</label></div><div><label>Adicional por KM</label><div class="km-wrap"><span>Categoría:</span> <select id="kmTipo" style="max-width:160px"><option value="">--</option><option value="AY">Ayudante</option><option value="CH">Chofer</option></select> <div class="km-pair"><span>km menor o igual a 100 km:</span> <input id="kmMenos100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div> <div class="km-pair"><span>km más de 100 km:</span> <input id="kmMas100" min="0" step="1" style="max-width:110px" type="number" value="0"/></div></div></div><div id="boxTitulo" style="display:none"><label>Adicional por Título (Turismo)</label><select id="turTitulo"><option value="0">Sin título</option><option value="2.5">Terciario (2,5%)</option><option value="5">Licenciatura (5%)</option></select></div><div><label>Viáticos (NR sin aportes)</label><input id="viaticosNR" step="0.01" type="number" value="0"/></div><div><label>Zona desfavorable</label><select id="zona">
 <option value="0">Sin zona (0%)</option><option value="5">5%</option><option value="20">20%</option><option value="35">35%</option><option value="80">80%</option>
 </select></div><div><label>OSECAC</label><select id="osecac"><option value="true">Sí (3% NR + $100)</option><option value="false">No</option></select></div></div>
@@ -4576,7 +4580,9 @@ const p = await fetchJSON(url.toString());
     const hex50  = Math.max(0, num($("he50")?.value || 0) || 0);
     const hex100 = Math.max(0, num($("he100")?.value || 0) || 0);
     const hs_noct = Math.max(0, num($("hsNoct")?.value || 0) || 0);
-    const a_cuenta_rem = Math.max(0, num($("aCuenta")?.value || 0) || 0);
+    const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
+    const adicional_empresa_rem = Math.max(0, num($("adicionalEmpresa")?.value || 0) || 0);
+    const comisiones_rem = Math.max(0, num($("comisiones")?.value || 0) || 0);
     const viaticos_nr = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
     const manejo_caja = Math.max(0, num($("manejoCaja")?.value || 0) || 0);
     const cajero_tipo = $("cajeroTipo")?.value || "";
@@ -4627,6 +4633,8 @@ const p = await fetchJSON(url.toString());
     url.searchParams.set("hex100", String(hex100));
     url.searchParams.set("hs_noct", String(hs_noct));
     url.searchParams.set("a_cuenta_rem", String(a_cuenta_rem));
+    url.searchParams.set("adicional_empresa_rem", String(adicional_empresa_rem));
+    url.searchParams.set("comisiones_rem", String(comisiones_rem));
     url.searchParams.set("viaticos_nr", String(viaticos_nr));
     url.searchParams.set("manejo_caja", String(manejo_caja));
     url.searchParams.set("cajero_tipo", cajero_tipo);
@@ -4699,6 +4707,8 @@ const p = await fetchJSON(url.toString());
 
       // Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
       const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
+      const adicional_empresa_rem = Math.max(0, num($("adicionalEmpresa")?.value || 0) || 0);
+      const comisiones_rem = Math.max(0, num($("comisiones")?.value || 0) || 0);
       const viaticos_nr = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
       const manejo_caja = !!($('manejoCaja')?.checked);
       const cajero_tipo = ($('cajero_tipo')?.value || '').toString();
@@ -4758,6 +4768,8 @@ const p = await fetchJSON(url.toString());
       url.searchParams.set("hs_noct", String(hs_noct));
       // Etapa 5/6
       url.searchParams.set("a_cuenta_rem", String(a_cuenta_rem));
+      url.searchParams.set("adicional_empresa_rem", String(adicional_empresa_rem));
+      url.searchParams.set("comisiones_rem", String(comisiones_rem));
       url.searchParams.set("viaticos_nr", String(viaticos_nr));
       // Etapa 7
       url.searchParams.set("manejo_caja", manejo_caja ? "true" : "false");
@@ -5998,6 +6010,8 @@ function switchTab(tab){
     url.searchParams.set('hex100', '0');
     url.searchParams.set('hs_noct', '0');
     url.searchParams.set('a_cuenta_rem', '0');
+    url.searchParams.set('adicional_empresa_rem', '0');
+    url.searchParams.set('comisiones_rem', '0');
     url.searchParams.set('viaticos_nr', '0');
     url.searchParams.set('adelanto_sueldo', '0');
     url.searchParams.set('manejo_caja', 'false');
@@ -6243,6 +6257,8 @@ function switchTab(tab){
       const km_mas100   = Math.max(0, parseInt($("kmMas100")?.value || "0", 10) || 0);
 
       const a_cuenta_rem = Math.max(0, num($("aCuentaNR")?.value || 0) || 0);
+      const adicional_empresa_rem = Math.max(0, num($("adicionalEmpresa")?.value || 0) || 0);
+      const comisiones_rem = Math.max(0, num($("comisiones")?.value || 0) || 0);
       const viaticos_nr  = Math.max(0, num($("viaticosNR")?.value || 0) || 0);
 
       const manejo_caja = !!($("manejoCaja")?.checked);
@@ -6290,6 +6306,8 @@ function switchTab(tab){
         hex100: String(hex100),
         hs_noct: String(hs_noct),
         a_cuenta_rem: String(a_cuenta_rem),
+        adicional_empresa_rem: String(adicional_empresa_rem),
+        comisiones_rem: String(comisiones_rem),
         viaticos_nr: String(viaticos_nr),
         manejo_caja: manejo_caja ? 'true' : 'false',
         cajero_tipo: cajero_tipo,
