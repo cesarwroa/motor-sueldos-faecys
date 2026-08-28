@@ -797,6 +797,8 @@ def calcular_payload(
     km_mas100: float = 0,
     # Etapa 5/6: A cuenta (REM) / Viáticos (NR sin aportes)
     a_cuenta_rem: float = 0,
+    adicional_empresa_rem: float = 0,
+    comisiones_rem: float = 0,
     viaticos_nr: float = 0,
     custom_rem_pct: float = 0,
     custom_nr_pct: float = 0,
@@ -1142,6 +1144,9 @@ def calcular_payload(
     custom_rem_pct_value = _fpos(custom_rem_pct)
     custom_nr_pct_value = _fpos(custom_nr_pct)
     a_cuenta = round2(_fpos(a_cuenta_rem) + (bas * custom_rem_pct_value / 100.0))
+    adicional_empresa = round2(_fpos(adicional_empresa_rem))
+    comisiones = round2(_fpos(comisiones_rem))
+    extras_rem_sin_adicionales = round2(adicional_empresa + comisiones)
     viaticos = round2(_fpos(viaticos_nr) + (bas * custom_nr_pct_value / 100.0))
 
     # Etapa 7: Manejo de Caja / Vidriera / Adelanto / Faltante
@@ -1217,7 +1222,9 @@ def calcular_payload(
     base_pres = round2(bas + zona + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + caja_rem + vid_rem + a_cuenta)
     presentismo = round2(base_pres / 12.0) if presentismo_habil else 0.0
 
-    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + caja_rem + vid_rem + a_cuenta)
+    # Adicional empresa y Comisiones son remunerativos y aportables, pero no generan
+    # antigüedad, presentismo, zona, horas extra ni otros adicionales.
+    rem_total = round2(bas + zona + presentismo + antig + hex50_rem + hex100_rem + noct_rem + km_rem_total + caja_rem + vid_rem + a_cuenta + extras_rem_sin_adicionales)
 
     # No remunerativos (NR) + derivados (Antigüedad NR / Presentismo NR)
     antig_nr = round2(nr_base_total * pct_ant) if nr_base_total else 0.0
@@ -1417,7 +1424,7 @@ def calcular_payload(
     # Incluye A cuenta (REM) como monto fijo (no se prorratea por la simulación a 48hs).
     base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta)
     presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
-    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta)
+    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta + extras_rem_sin_adicionales)
 
     antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
     presentismo_nr_os = (
@@ -1863,6 +1870,20 @@ def calcular_payload(
             "A cuenta futuros aumentos (REM)",
             r=a_cuenta,
             unidad=unidad_dias_basico,
+        ))
+
+    if adicional_empresa:
+        items.append(item(
+            "Adicional empresa (REM)",
+            r=adicional_empresa,
+            base_num=adicional_empresa,
+        ))
+
+    if comisiones:
+        items.append(item(
+            "Comisiones (REM)",
+            r=comisiones,
+            base_num=comisiones,
         ))
 
     # Presentismo: si se pierde por 2+ ausencias injustificadas, NO se muestra la fila (pedido César).
@@ -2651,6 +2672,8 @@ def calcular_final_payload(
     km_menos100: int = 0,
     km_mas100: int = 0,
     a_cuenta_rem: float = 0.0,
+    adicional_empresa_rem: float = 0.0,
+    comisiones_rem: float = 0.0,
     viaticos_nr: float = 0.0,
     manejo_caja: bool = False,
     cajero_tipo: str = "",
@@ -3077,6 +3100,8 @@ def calcular_final_payload(
             km_menos100=int(km_menos100 or 0),
             km_mas100=int(km_mas100 or 0),
             a_cuenta_rem=float(a_cuenta_rem or 0),
+            adicional_empresa_rem=float(adicional_empresa_rem or 0),
+            comisiones_rem=float(comisiones_rem or 0),
             viaticos_nr=float(viaticos_nr or 0),
             manejo_caja=bool(manejo_caja),
             cajero_tipo=str(cajero_tipo or ""),
