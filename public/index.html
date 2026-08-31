@@ -4569,6 +4569,7 @@ const p = await fetchJSON(url.toString());
     const agrup = $("agrup")?.value || "";
     const categoria = $("categoria")?.value || "";
     const jornada = getEffectiveJornada();
+    const fecha_alta = $("alta")?.value || "";
           try{ _mAutoAntigFromAlta(); }catch(_){ }
       const anios_antig = num($("anios")?.value || 0) || 0;
 
@@ -4615,6 +4616,7 @@ const p = await fetchJSON(url.toString());
     url.searchParams.set("mes", mes);
     url.searchParams.set("agrup", agrup);
     url.searchParams.set("categoria", categoria);
+    if(fecha_alta) url.searchParams.set("fecha_alta", fecha_alta);
     url.searchParams.set("jornada", String(jornada));
       url.searchParams.set("basico_manual", String(Math.max(0, num($("basico")?.value || 0) || 0)));
     url.searchParams.set("anios_antig", String(anios_antig));
@@ -4687,6 +4689,11 @@ const p = await fetchJSON(url.toString());
       const jornada = getEffectiveJornada();
       try{ _mAutoAntigFromAlta(); }catch(_){ }
       const anios_antig = num($("anios")?.value || 0) || 0;
+      const fecha_alta = ($("alta")?.value || "").toString().trim();
+      if(fecha_alta && /^\d{4}-\d{2}-\d{2}$/.test(fecha_alta) && fecha_alta.slice(0, 7) > mes){
+        alert("La fecha de alta es posterior al período que intentás liquidar.");
+        return;
+      }
 
       // Feriados / Ausencias
       const fer_no_trab = Math.max(0, parseInt($("ferNoTrab")?.value || "0", 10) || 0);
@@ -4740,6 +4747,7 @@ const p = await fetchJSON(url.toString());
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);
       url.searchParams.set("mes", mes);
+      if(fecha_alta) url.searchParams.set("fecha_alta", fecha_alta);
       url.searchParams.set("jornada", String(jornada));
       url.searchParams.set("basico_manual", String(Math.max(0, num($("basico")?.value || 0) || 0)));
       // Agua Potable: conexiones (cantidad y/o categoría)
