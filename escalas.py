@@ -766,6 +766,7 @@ def calcular_payload(
     agrup: str,
     categoria: str,
     mes: str,
+    fecha_alta: str = "",
     jornada: float = 48,
     basico_manual: float = 0,
     fuera_convenio: bool = False,
@@ -849,6 +850,24 @@ def calcular_payload(
     mes_key = _mes_to_key(base.get("mes") or mes)
     aplica_costo_empleador = bool(mes_key and mes_key >= "2026-05")
 
+    # Ingreso durante el período: los conceptos salariales automáticos se liquidan
+    # desde el día de alta con divisor mensual de 30. Ej.: día 15 => 16 días.
+    dias_ingreso = 30
+    fecha_alta_txt = str(fecha_alta or "").strip()
+    if fecha_alta_txt and mes_key:
+        try:
+            alta_dt = _dt.datetime.strptime(fecha_alta_txt[:10], "%Y-%m-%d").date()
+            mes_anio, mes_numero = (int(x) for x in mes_key.split("-", 1))
+            alta_periodo = (alta_dt.year, alta_dt.month)
+            periodo = (mes_anio, mes_numero)
+            if alta_periodo > periodo:
+                dias_ingreso = 0
+            elif alta_periodo == periodo:
+                dias_ingreso = max(1, 30 - min(alta_dt.day, 30) + 1)
+        except Exception:
+            dias_ingreso = 30
+    factor_ingreso = float(dias_ingreso) / 30.0
+
     # -------- Bases prorrateadas (48hs) --------
     # CALL CENTER: la categoría ya trae su jornada (20/21/24/30/34/35/36/48hs).
     # No se prorratea por selector (evita que el básico se achique al poner 20hs).
@@ -893,9 +912,12 @@ def calcular_payload(
     if basico_manual_val > 0:
         bas_base = basico_manual_val
 
-    bas = bas_base * factor
-    nr = nr_base * factor
-    sf = sf_base * factor
+    bas_mes_completo = bas_base * factor
+    nr_mes_completo = nr_base * factor
+    sf_mes_completo = sf_base * factor
+    bas = bas_mes_completo * factor_ingreso
+    nr = nr_mes_completo * factor_ingreso
+    sf = sf_mes_completo * factor_ingreso
 
     # Asignación Extraordinaria por Única Vez - Revisión 2026:
     # - proporcional a la jornada y a los días efectivamente cumplidos;
@@ -903,7 +925,7 @@ def calcular_payload(
     aus_dias_extra = max(0, min(30, int(aus_inj or 0)))
     factor_asistencia_extra = max(0.0, (30.0 - aus_dias_extra) / 30.0)
     extraordinaria = round2(
-        extraordinaria_base * factor * factor_asistencia_extra
+        extraordinaria_base * factor * factor_ingreso * factor_asistencia_extra
     )
 
     # NR base total (sin derivados). Se usa también para valor-hora NR.
@@ -1114,8 +1136,11 @@ def calcular_payload(
     km_rem_total = round2(km_rem_le + km_rem_gt)
 
     DIV_HORA = 200.0
-    hora_rem = (float(bas) / DIV_HORA) if bas else 0.0
-    hora_nr = (float(nr_base_total) / DIV_HORA) if nr_base_total else 0.0
+    # El valor hora se mantiene sobre la escala mensual completa; la fecha de alta
+    # prorratea el haber mensual, no reduce el valor unitario de horas informadas.
+    hora_rem = (float(bas_mes_completo) / DIV_HORA) if bas_mes_completo else 0.0
+    nr_hora_mes_completo = round2(nr_mes_completo + sf_mes_completo)
+    hora_nr = (float(nr_hora_mes_completo) / DIV_HORA) if nr_hora_mes_completo else 0.0
 
     hex50_rem = round2(hora_rem * 1.5 * hex50_h) if (hora_rem and hex50_h) else 0.0
     hex50_nr = round2(hora_nr * 1.5 * hex50_h) if (hora_nr and hex50_h) else 0.0
@@ -1185,7 +1210,7 @@ def calcular_payload(
 
     # Se prorratea por jornada usando factor (j/48). Manejo de Caja (Art. 30) se trata
     # como **No Remunerativo Exento**: se paga, pero NO integra bases de presentismo ni de aportes.
-    caja_exento = round2(caja_mensual * factor) if caja_mensual else 0.0
+    caja_exento = round2(caja_mensual * factor * factor_ingreso) if caja_mensual else 0.0
     caja_rem = 0.0
     caja_rem_os = 0.0
 
@@ -1196,7 +1221,7 @@ def calcular_payload(
         agrup,
     ) if bool(armado_vidriera) else 0.0
     vid_pct = 0.0383
-    vid_rem = round2(vid_base * vid_pct * factor) if (vid_base and bool(armado_vidriera)) else 0.0
+    vid_rem = round2(vid_base * vid_pct * factor * factor_ingreso) if (vid_base and bool(armado_vidriera)) else 0.0
     vid_rem_os = round2(vid_base * vid_pct) if (vid_base and bool(armado_vidriera)) else 0.0
 
     faltante = _fpos(faltante_caja)
@@ -1270,12 +1295,12 @@ def calcular_payload(
                     base_num = 0.0
                     if tipo in ("monto", "importe", "fijo") and monto:
                         # prorrateo por jornada
-                        val = round2(monto * factor)
+                        val = round2(monto * factor * factor_ingreso)
                     elif pct:
                         base_num = float(bas)
                         val = round2(bas * (pct / 100.0))
                     elif monto:
-                        val = round2(monto * factor)
+                        val = round2(monto * factor * factor_ingreso)
 
                     if val:
                         fun_rows.append({"label": label, "val": float(val), "base": float(base_num)})
@@ -1300,8 +1325,8 @@ def calcular_payload(
     # -------- Feriados --------
     fer_no = max(0, int(fer_no_trab or 0))
     fer_si = max(0, int(fer_trab or 0))
-    base_fer_rem = round2(bas + zona + antig)
-    base_fer_nr = round2(nr_base_total + antig_nr)
+    base_fer_rem = round2((bas + zona + antig) / factor_ingreso) if factor_ingreso else 0.0
+    base_fer_nr = round2((nr_base_total + antig_nr) / factor_ingreso) if factor_ingreso else 0.0
     # Para mensualizados:
     # - Feriado NO trabajado: se suma la diferencia entre día feriado (1/25) y día normal incluido en el mensual (1/30).
     # - Feriado trabajado: se suma 1 día feriado (1/25).
@@ -1372,7 +1397,8 @@ def calcular_payload(
         nr_total = round2(nr_total + sac_row_nr)
 
     # -------- Ausencias injustificadas (descuento) --------
-    base_dia_aus = round2((bas + zona + antig) / 30.0) if (bas or zona or antig) else 0.0
+    base_mensual_aus = round2((bas + zona + antig) / factor_ingreso) if factor_ingreso else 0.0
+    base_dia_aus = round2(base_mensual_aus / 30.0) if base_mensual_aus else 0.0
     aus_rem = round2(aus_dias * base_dia_aus) if aus_dias else 0.0
 
     # -------- Suspensión / Licencia sin goce (descuento) --------
@@ -1756,7 +1782,7 @@ def calcular_payload(
             out["base"] = float(base_num)
         return out
 
-    dias_basico_unidad = max(0, 30 - int(aus_dias or 0) - int(susp_d or 0))
+    dias_basico_unidad = max(0, dias_ingreso - int(aus_dias or 0) - int(susp_d or 0))
     unidad_dias_basico = _fmt_unidad_num(dias_basico_unidad)
     unidad_antig = _fmt_unidad_anios(anios_antig)
     unidad_presentismo = _fmt_unidad_pct(100.0 / 12.0)
@@ -2254,6 +2280,9 @@ def calcular_payload(
         "agrup": base["agrup"],
         "categoria": base["categoria"],
         "mes": base["mes"],
+        "fecha_alta": fecha_alta_txt,
+        "dias_ingreso": int(dias_ingreso),
+        "factor_ingreso": float(factor_ingreso),
         "jornada": j,
         "anios_antig": float(anios_antig or 0),
         "osecac": bool(osecac),
