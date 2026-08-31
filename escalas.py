@@ -652,7 +652,10 @@ def _calcular_contribuciones_empleador(
         for label, pct in ss_rates:
             items.append(contrib_item(label, contrib_base_ss * (pct / 100.0), contrib_base_ss))
 
-    if aplica_costo_empleador and bool(osecac) and not bool(jubilado) and os_base_f:
+    # La contribución patronal de Obra Social corresponde aun cuando el trabajador
+    # no elija OSECAC. El selector define la base (REM+NR o solo REM), no la existencia
+    # de la contribución.
+    if aplica_costo_empleador and not bool(jubilado) and os_base_f:
         items.append(contrib_item("Obra Social empleador (6%)", os_base_f * 0.06, os_base_f))
 
     art_pct_f = _positive_float(art_pct)
@@ -1518,16 +1521,6 @@ def calcular_payload(
     susp_rem_os = round2(susp_d * base_dia_aus_os) if susp_d else 0.0
     rem_aportes_os = max(0.0, round2(rem_total_os - aus_rem_os - susp_rem_os))
 
-    # Obra social y aporte fijo: para JUBILADO se anulan, aun si está tildado OSECAC.
-    if bool(jubilado):
-        os_base = round2(rem_aportes_os + (nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
-        os_aporte = 0.0
-        osecac_100 = 0.0
-    else:
-        os_base = round2(rem_aportes_os + (nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
-        os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
-        osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
-
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
 
@@ -1535,6 +1528,19 @@ def calcular_payload(
     # Regla del sistema: Sindicato 2% y FAECYS 0,5% son obligatorios (no dependen de afiliación).
     # Base = REM aportable + NR aportable (sin viáticos NR sin aportes).
     base_fs = round2(rem_aportes + nr_aportable_real)
+
+    # Obra Social:
+    # - OSECAC Sí: exactamente la misma base que FAECYS/Sindicato (REM + NR aportable).
+    # - OSECAC No: solamente la parte remunerativa, pero el aporte del 3% continúa.
+    # Para jubilados el aporte se mantiene anulado según el criterio vigente.
+    os_base = base_fs if bool(osecac) else round2(rem_aportes)
+    os_aporte = 0.0 if bool(jubilado) else round2(os_base * 0.03)
+    osecac_100 = 100.0 if (
+        bool(osecac)
+        and not bool(jubilado)
+        and not bool(fuera_convenio)
+        and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)
+    ) else 0.0
     faecys = round2(base_fs * 0.005) if (base_fs and not bool(fuera_convenio)) else 0.0
     sind_solid = round2(base_fs * 0.02) if (base_fs and not bool(fuera_convenio)) else 0.0
     try:
@@ -1634,19 +1640,19 @@ def calcular_payload(
     if bool(jubilado):
         mensual_pami = 0.0
         sac_pami = 0.0
-        mensual_os_base = round2(mensual_rem_aportes_os + (mensual_nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
+        mensual_os_base = mensual_base_fs if bool(osecac) else round2(mensual_rem_aportes)
         mensual_os_aporte = 0.0
         mensual_osecac_100 = 0.0
-        sac_os_base = round2(sac_row_rem_os + (sac_row_nr_os if bool(obra_social_sobre_no_rem) else 0.0)) if sac_habil else 0.0
+        sac_os_base = (sac_base_fs if bool(osecac) else round2(sac_rem_aportes)) if sac_habil else 0.0
         sac_os_aporte = 0.0
     else:
         mensual_pami = round2(mensual_base_previsional * 0.03)
         sac_pami = round2(sac_base_previsional * 0.03) if sac_habil else 0.0
-        mensual_os_base = round2(mensual_rem_aportes_os + (mensual_nr_total_os if bool(obra_social_sobre_no_rem) else 0.0))
-        mensual_os_aporte = round2(mensual_os_base * 0.03) if bool(osecac) else 0.0
+        mensual_os_base = mensual_base_fs if bool(osecac) else round2(mensual_rem_aportes)
+        mensual_os_aporte = round2(mensual_os_base * 0.03)
         mensual_osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
-        sac_os_base = round2(sac_row_rem_os + (sac_row_nr_os if bool(obra_social_sobre_no_rem) else 0.0)) if sac_habil else 0.0
-        sac_os_aporte = round2(sac_os_base * 0.03) if (bool(osecac) and sac_habil) else 0.0
+        sac_os_base = (sac_base_fs if bool(osecac) else round2(sac_rem_aportes)) if sac_habil else 0.0
+        sac_os_aporte = round2(sac_os_base * 0.03) if sac_habil else 0.0
 
     mensual_faecys = round2(mensual_base_fs * 0.005) if (mensual_base_fs and not bool(fuera_convenio)) else 0.0
     mensual_sind_solid = round2(mensual_base_fs * 0.02) if (mensual_base_fs and not bool(fuera_convenio)) else 0.0
@@ -1787,12 +1793,9 @@ def calcular_payload(
         target.append(item("Jubilación 11%", d=jub_val, base_num=rem_base, unidad=_fmt_unidad_pct(11)))
         target.append(item("Ley 19.032 (PAMI) 3%", d=pami_val, base_num=rem_base, unidad=_fmt_unidad_pct(3)))
 
-        if bool(osecac):
-            target.append(item("Obra Social 3%", d=os_val, base_num=os_base_val, unidad=_fmt_unidad_pct(3)))
-            if osecac_fijo_val:
-                target.append(item("OSECAC $100", d=osecac_fijo_val))
-        else:
-            target.append(item("Obra Social 3%", d=0.0, base_num=os_base_val, unidad=_fmt_unidad_pct(3)))
+        target.append(item("Obra Social 3%", d=os_val, base_num=os_base_val, unidad=_fmt_unidad_pct(3)))
+        if osecac_fijo_val:
+            target.append(item("OSECAC $100", d=osecac_fijo_val))
 
         if not bool(fuera_convenio):
             target.append(item("FAECYS 0,5%", d=faecys_val, base_num=fs_base_val, unidad=_fmt_unidad_pct(0.5)))
@@ -2163,7 +2166,7 @@ def calcular_payload(
         for label, pct in ss_rates:
             contribuciones_empleador_items.append(contrib_item(label, contrib_base_ss * (pct / 100.0), contrib_base_ss))
 
-    if aplica_costo_empleador and bool(osecac) and not bool(jubilado) and mensual_os_base:
+    if aplica_costo_empleador and not bool(jubilado) and mensual_os_base:
         contribuciones_empleador_items.append(contrib_item("Obra Social empleador (6%)", mensual_os_base * 0.06, mensual_os_base))
 
     try:
@@ -2224,7 +2227,7 @@ def calcular_payload(
                 sac_contribuciones_empleador_items.append(
                     contrib_item(label, sac_rem_aportes * (pct / 100.0), sac_rem_aportes)
                 )
-        if bool(osecac) and not bool(jubilado) and sac_os_base:
+        if not bool(jubilado) and sac_os_base:
             sac_contribuciones_empleador_items.append(
                 contrib_item("Obra Social empleador (6%)", sac_os_base * 0.06, sac_os_base)
             )
@@ -2254,7 +2257,7 @@ def calcular_payload(
         "jornada": j,
         "anios_antig": float(anios_antig or 0),
         "osecac": bool(osecac),
-        "obra_social_sobre_no_rem": bool(obra_social_sobre_no_rem),
+            "obra_social_sobre_no_rem": bool(osecac),
         "afiliado": bool(afiliado),
         "sind_pct": float(sind_pct or 0),
         "sind_fijo": float(sind_fijo or 0),
@@ -2553,9 +2556,10 @@ def calcular_vacaciones_payload(
     rem = round2((rem_base / 25.0) * dias_f)
     nr = round2((nr_base / 25.0) * dias_f)
     base_aportes = round2(rem + nr)
+    os_base = base_aportes if bool(osecac) else rem
     jub = round2(rem * 0.11)
     pami = 0.0 if bool(jubilado) else round2(rem * 0.03)
-    obra_social = 0.0 if bool(jubilado) or not bool(osecac) else round2(base_aportes * 0.03)
+    obra_social = 0.0 if bool(jubilado) else round2(os_base * 0.03)
     faecys = 0.0 if bool(fuera_convenio) else round2(base_aportes * 0.005)
     sindicato = 0.0 if bool(fuera_convenio) else round2(base_aportes * 0.02)
     afiliacion = round2(base_aportes * (max(0.0, float(sind_pct or 0.0)) / 100.0)) if (afiliado and not bool(fuera_convenio)) else 0.0
@@ -2576,7 +2580,7 @@ def calcular_vacaciones_payload(
     for concepto, monto, base in [
         ("Jubilación 11%", jub, rem),
         ("Ley 19.032 (PAMI) 3%", pami, rem),
-        ("Obra Social 3%", obra_social, base_aportes),
+        ("Obra Social 3%", obra_social, os_base),
         ("FAECYS 0,5%", faecys, base_aportes),
         ("Sindicato 2% Art 100", sindicato, base_aportes),
         (f"Sindicato Afiliación {_fmt_pct(sind_pct)}%", afiliacion, base_aportes),
@@ -2597,7 +2601,7 @@ def calcular_vacaciones_payload(
         osecac=osecac,
         jubilado=jubilado,
         rem_aportes=rem,
-        os_base=base_aportes,
+        os_base=os_base,
         base_fs=base_aportes,
         bruto_trabajador=round2(rem + nr),
         basico_ref_fallback=rem_base,
@@ -3210,21 +3214,10 @@ def calcular_final_payload(
         jub = round2(rem_aportes * 0.11)
         pami = round2(rem_aportes * 0.03)
 
-        # Obra Social: base jornada completa (48hs) para TODAS las ramas (sin prorrateo por jornada).
-        try:
-            j_in = float(jornada or 48.0)
-        except Exception:
-            j_in = 48.0
-        if j_in <= 0:
-            j_in = 48.0
-        # Obra Social: base jornada completa (48hs) para TODAS las ramas (sin prorrateo por jornada).
-        factor_os = 1.0 if j_in >= 48.0 else (48.0 / j_in)
-        rem_aportes_os = round2(rem_aportes * factor_os)
-        nr_os = round2(
-            max(0.0, nr_total - extraordinaria_exenta_nr) * factor_os
-        )
-        os_base = round2((rem_aportes_os + nr_os) if bool(osecac) else rem_aportes_os)
-        os_aporte = round2(os_base * 0.03) if bool(osecac) else 0.0
+        # Mismo criterio que mensual: con OSECAC usa la base FAECYS/Sindicato;
+        # sin OSECAC usa solo remunerativos y conserva el descuento del 3%.
+        os_base = base_fs if bool(osecac) else round2(rem_aportes)
+        os_aporte = round2(os_base * 0.03)
         osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(rama, mes_baja)) else 0.0
 
         if bool(afiliado):
