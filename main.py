@@ -1,4 +1,4 @@
-﻿import base64
+import base64
 from datetime import datetime, timezone
 import hashlib
 import hmac
@@ -137,6 +137,25 @@ async def security_headers(request: Request, call_next):
         "https://*.google-analytics.com https://*.analytics.google.com "
         "https://*.googletagmanager.com"
     )
+    # Mantener la CSP general; permitir recursos de AdSense solo en la calculadora.
+    if request.url.path in {"/", "/admin/app"}:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+            "object-src 'none'; form-action 'self'; "
+            "img-src 'self' data: blob: https://*.google-analytics.com "
+            "https://*.googletagmanager.com https://*.googlesyndication.com "
+            "https://*.doubleclick.net https://*.google.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com "
+            "https://*.googlesyndication.com https://*.doubleclick.net "
+            "https://*.google.com; "
+            "connect-src 'self' https://calculadoradecomercio.com.ar "
+            "https://*.google-analytics.com https://*.analytics.google.com "
+            "https://*.googletagmanager.com https://*.googlesyndication.com "
+            "https://*.doubleclick.net https://*.google.com; "
+            "frame-src https://*.googlesyndication.com "
+            "https://*.doubleclick.net https://*.google.com"
+        )
     return response
 
 
