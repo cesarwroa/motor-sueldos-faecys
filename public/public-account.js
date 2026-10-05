@@ -12,6 +12,14 @@
   const isCalculator = !document.getElementById('root') && location.pathname !== '/admin/app';
   let gate = null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const socialLogos = {
+    google:'<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.17 7.09-10.32 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.17 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>',
+    facebook:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.46-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.67-.23c-2.72 0-4.5 1.65-4.5 4.64V12H7.15v3.47h3.02v8.36a12.08 12.08 0 0 0 3.7 0v-8.36z"/></svg>'
+  };
+  function socialButtonContent(provider,mode,enabled){
+    const action=mode==='register'?'Registrate':'Ingresá';
+    return socialLogos[provider]+`<span>${action} con ${provider==='google'?'Google':'Facebook'}${enabled?'':' · Próximamente'}</span>`;
+  }
   const options = selected => '<option value="">Seleccioná una opción</option>' + Object.entries(labels).map(([value,label]) => `<option value="${value}" ${value===selected?'selected':''}>${label}</option>`).join('');
   async function request(action, data, legacy=false, method=data?'POST':'GET') {
     const url = new URL(legacy?authUrl:profilesUrl); url.searchParams.set('action',action);
@@ -25,6 +33,7 @@
   style.textContent = `
   .co-account-bar{margin-top:var(--co-header-height,0px);position:relative;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;background:#eff6ff;color:#15335a;font:14px system-ui;border-bottom:1px solid #bfdbfe}
   .co-calculator-locked{display:none!important}.co-access-gate{max-width:620px;margin:40px auto;padding:28px;border:1px solid #bfdbfe;border-radius:16px;background:#fff;font:16px system-ui;color:#172033}.co-access-gate h1{font-size:26px}.co-access-gate p{line-height:1.6}.co-access-gate button{padding:12px 18px;border-radius:9px;border:1px solid #2563eb;background:#2563eb;color:white;cursor:pointer;font:inherit;margin:6px}.co-access-gate [data-open=login]{background:white;color:#2563eb}
+  button[data-social]{display:inline-flex!important;align-items:center;justify-content:center;gap:10px;min-height:42px}button[data-social] svg{flex-shrink:0}
   .co-account-bar button,.co-account-dialog button{cursor:pointer;border:1px solid #cbd5e1;border-radius:9px;padding:9px 13px;background:white;color:#15335a;font:inherit}
   .co-account-bar .co-primary,.co-account-dialog .co-primary{background:#2563eb;color:white;border-color:#2563eb}
   .co-account-dialog{width:min(620px,calc(100vw - 28px));max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:16px;padding:24px;background:white;color:#172033;font:15px system-ui;box-shadow:0 16px 70px #0003}
@@ -77,8 +86,10 @@
       }catch(error){await open('profile');feedback(error.message);}
     });
     bar.querySelector('[data-logout]')?.addEventListener('click',async()=>{
-      try{await request('logout',{},true);}catch(error){open('profile'); feedback(error.message);return;}
-      token=''; account=null; sessionStorage.removeItem(key); renderBar();
+      try{await request('logout',{},true);}catch(error){if(error.status!==401&&error.status!==403){open('profile');feedback(error.message);return;}}
+      token=''; account=null; sessionStorage.removeItem(key);
+      sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');
+      location.assign(`${apiOrigin}/#co_logout=1`);
     });
   }
   function feedback(message){dialog.querySelector('[role=status]').textContent=message;}
@@ -92,6 +103,19 @@
     select.addEventListener('change',update);update();
   }
   async function open(mode){
+    // Reutilizar la sesión vigente de esta pestaña, sin almacenarla de forma persistente.
+    if(mode==='login' && token){
+      try{
+        account=await request('me');renderBar();
+        if(!account.profile){mode='profile';}
+        else if(document.getElementById('root')){
+          const result=await request('handoff-create',{});
+          const target=new URL('/',window.CALCULADORA_URL||'https://app.calculadoradecomercio.com.ar/');
+          target.hash=new URLSearchParams({co_login:result.code}).toString();location.assign(target.href);return;
+        }else{if(dialog.open)dialog.close();return;}
+      }catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);account=null;renderBar();}}
+    }
+
     if(mode==='admin'){location.assign(document.getElementById('root')?'/admin-uso.html':'/admin/estadisticas');return;}
 
     if(!dialog.open){previousFocus=document.activeElement;dialog.showModal();}
@@ -108,7 +132,7 @@
     dialog.querySelectorAll('[data-switch]').forEach(b=>b.onclick=()=>open(b.dataset.switch));
     if(mode==='login'||mode==='register'){
       const social=document.createElement('div');social.className='co-actions';social.style.margin='16px 0';
-      social.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" ${socialProviders[provider]?'':'disabled'}>Continuar con ${provider==='google'?'Google':'Facebook'}${socialProviders[provider]?'':' · Próximamente'}</button>`).join('');
+      social.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="${mode}" ${socialProviders[provider]?'':'disabled'}>${socialButtonContent(provider,mode,!!socialProviders[provider])}</button>`).join('');
       dialog.querySelector('form').before(social);
       social.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
         const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target',isCalculator?'calculator':'landing');location.assign(url.href);
@@ -159,7 +183,7 @@
     document.querySelectorAll('[data-admin-submit]').forEach(submit=>{
       const form=submit.closest('form');if(!form||form.parentElement.querySelector('[data-admin-social]'))return;
       const group=document.createElement('div');group.className='co-actions';group.dataset.adminSocial='';group.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';
-      group.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" ${socialProviders[provider]?'':'disabled'} style="padding:10px;border:1px solid #cbd5e1;border-radius:8px">Continuar con ${provider==='google'?'Google':'Facebook'}${socialProviders[provider]?'':' · Próximamente'}</button>`).join('');
+      group.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="login" ${socialProviders[provider]?'':'disabled'} style="padding:10px;border:1px solid #cbd5e1;border-radius:8px">${socialButtonContent(provider,'login',!!socialProviders[provider])}</button>`).join('');
       form.before(group);
       group.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
         const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target','landing');location.assign(url.href);
@@ -181,6 +205,12 @@
   renderBar();enrichContactForms();syncHeader();
   async function restoreSession(){
     const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');
+    if(hash.get('co_logout')==='1'){
+      hash.delete('co_logout');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
+      // La landing puede conservar otra sesión propia tras el traslado a Render.
+      if(token){try{await request('logout',{},true);}catch(_){}}
+      token='';account=null;sessionStorage.removeItem(key);sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();return;
+    }
     const oauthError=hash.get('co_oauth_error');
     if(oauthError){
       const reference=hash.get('co_oauth_ref')||'';hash.delete('co_oauth_ref');
@@ -199,7 +229,7 @@
     catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);}renderBar();}
   }
   fetch(`${apiOrigin}/api/oauth.php?action=providers`).then(r=>r.json()).then(result=>{
-    if(result.ok && result.providers){socialProviders=result.providers;if(document.querySelector('[data-social]')){document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.textContent=`Continuar con ${b.dataset.social==='google'?'Google':'Facebook'}${enabled?'':' · Próximamente'}`;});}}
+    if(result.ok && result.providers){socialProviders=result.providers;if(document.querySelector('[data-social]')){document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.innerHTML=socialButtonContent(b.dataset.social,b.dataset.socialMode||'login',enabled);});}}
   }).catch(()=>{});
   restoreSession();
 })();
