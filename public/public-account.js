@@ -8,6 +8,8 @@
   let token = sessionStorage.getItem(key) || '';
   let account = null;
   let page = 1;
+  const isCalculator = !document.getElementById('root') && location.pathname !== '/admin/app';
+  let gate = null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const options = selected => '<option value="">Seleccioná una opción</option>' + Object.entries(labels).map(([value,label]) => `<option value="${value}" ${value===selected?'selected':''}>${label}</option>`).join('');
   async function request(action, data, legacy=false, method=data?'POST':'GET') {
@@ -20,7 +22,8 @@
   }
   const style = document.createElement('style');
   style.textContent = `
-  .co-account-bar{position:relative;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;background:#eff6ff;color:#15335a;font:14px system-ui;border-bottom:1px solid #bfdbfe}
+  .co-account-bar{margin-top:var(--co-header-height,0px);position:relative;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;background:#eff6ff;color:#15335a;font:14px system-ui;border-bottom:1px solid #bfdbfe}
+  .co-calculator-locked{display:none!important}.co-access-gate{max-width:620px;margin:40px auto;padding:28px;border:1px solid #bfdbfe;border-radius:16px;background:#fff;font:16px system-ui;color:#172033}.co-access-gate h1{font-size:26px}.co-access-gate p{line-height:1.6}.co-access-gate button{padding:12px 18px;border-radius:9px;border:1px solid #2563eb;background:#2563eb;color:white;cursor:pointer;font:inherit;margin:6px}.co-access-gate [data-open=login]{background:white;color:#2563eb}
   .co-account-bar button,.co-account-dialog button{cursor:pointer;border:1px solid #cbd5e1;border-radius:9px;padding:9px 13px;background:white;color:#15335a;font:inherit}
   .co-account-bar .co-primary,.co-account-dialog .co-primary{background:#2563eb;color:white;border-color:#2563eb}
   .co-account-dialog{width:min(620px,calc(100vw - 28px));max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:16px;padding:24px;background:white;color:#172033;font:15px system-ui;box-shadow:0 16px 70px #0003}
@@ -32,12 +35,37 @@
   document.head.append(style);
   const bar=document.createElement('div'); bar.className='co-account-bar';
   document.body.prepend(bar);
+  let observedHeader = null;
+  const headerObserver = new ResizeObserver(() => syncHeader());
+  function syncHeader(){
+    const header=document.querySelector('#root header');
+    if(header && header!==observedHeader){headerObserver.disconnect();observedHeader=header;headerObserver.observe(header);}
+    const height=header && getComputedStyle(header).position==='fixed'?header.getBoundingClientRect().height:0;
+    const value=`${Math.ceil(height)}px`;if(bar.style.getPropertyValue('--co-header-height')!==value)bar.style.setProperty('--co-header-height',value);
+  }
+  syncHeader();
+  function syncAccess(){
+    if(!isCalculator)return;
+    const content=document.querySelector('body > .container');
+    const locked=!account;
+    if(content){content.classList.toggle('co-calculator-locked',locked);content.inert=locked;}
+    if(!gate){
+      gate=document.createElement('section');gate.className='co-access-gate';
+      gate.innerHTML='<h1>Ingresá para usar la calculadora</h1><p>Creá tu cuenta o ingresá con tu email. Las liquidaciones mensuales y finales siguen siendo gratuitas y sin límites.</p><button data-open="register">Crear cuenta gratis</button><button data-open="login">Ya tengo cuenta</button>';
+      bar.after(gate);gate.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
+    }
+    gate.hidden=!locked;
+  }
+  document.addEventListener('co-auth-required',()=>{
+    token='';account=null;sessionStorage.removeItem(key);renderBar();open('login');feedback('Ingresá para continuar. El uso sigue siendo gratuito.');
+  });
   const dialog=document.createElement('dialog'); dialog.className='co-account-dialog'; dialog.setAttribute('aria-label','Cuenta de la calculadora'); document.body.append(dialog);
   let previousFocus=null;
   dialog.addEventListener('close',()=>previousFocus?.focus());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
     bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong> · El uso sigue siendo gratuito y sin límites.</span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    syncAccess();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     bar.querySelector('[data-logout]')?.addEventListener('click',async()=>{
       try{await request('logout',{},true);}catch(error){open('profile'); feedback(error.message);return;}
@@ -105,7 +133,29 @@
       form.insertBefore(group,form.firstChild);bindProfile(group);
     });
   }
-  const observer=new MutationObserver(enrichContactForms);observer.observe(document.body,{childList:true,subtree:true});
-  renderBar();enrichContactForms();
-  if(token)request('me').then(result=>{account=result;renderBar();}).catch(error=>{if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);}renderBar();});
+  const observer=new MutationObserver(()=>{enrichContactForms();syncHeader();});observer.observe(document.body,{childList:true,subtree:true});
+  // Un código de un solo uso permite pasar de la landing a Render sin volver a ingresar.
+  document.addEventListener('click',async event=>{
+    if(isCalculator || !account || event.defaultPrevented || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
+    const link=event.target.closest('a[href]');if(!link)return;
+    const target=new URL(link.href,location.href);
+    const calculator=new URL(window.CALCULADORA_URL||'https://app.calculadoradecomercio.com.ar/');
+    if(target.origin!==calculator.origin || target.pathname!=='/')return;
+    event.preventDefault();event.stopPropagation();
+    try{const result=await request('handoff-create',{});target.hash=new URLSearchParams({co_login:result.code}).toString();location.assign(target.href);}
+    catch(error){await open('login');feedback(error.message);}
+  },true);
+  renderBar();enrichContactForms();syncHeader();
+  async function restoreSession(){
+    const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');
+    if(code){
+      hash.delete('co_login');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
+      try{const result=await request('handoff-redeem',{code});token=result.token;sessionStorage.setItem(key,token);}
+      catch(error){await open('login');feedback(error.message);return;}
+    }
+    if(!token)return;
+    try{account=await request('me');renderBar();if(!account.profile)await open('profile');}
+    catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);}renderBar();}
+  }
+  restoreSession();
 })();
