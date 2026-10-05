@@ -978,7 +978,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <!--MENSUAL_EXTRAS_END-->
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-<button onclick="calcularMensual(true)" type="button">Calcular mensual</button><button type="button" onclick="coNewLiquidation('mensual')">Nueva liquidación</button>
+<button onclick="calcularMensual(true)" type="button">Calcular mensual</button>
 <button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
@@ -1146,7 +1146,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   </div>
 </div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-  <button onclick="calcularFinal(true)" type="button">Calcular liquidación final</button><button type="button" onclick="coNewLiquidation('final')">Nueva liquidación</button>
+  <button onclick="calcularFinal(true)" type="button">Calcular liquidación final</button>
   <button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button>
   <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label>
   <span id="diagFinal" style="color:#64748b"></span>
@@ -3577,20 +3577,12 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
 
-  function coUsageHeaders(type){
-    const period = type === 'mensual' ? ($('mes')?.value || '') : ($('lf_egreso')?.value || '').slice(0,7);
-    const storageKey = 'co_usage_' + type + '_' + period;
-    let id = sessionStorage.getItem(storageKey);
-    if(!id){id=crypto.randomUUID();sessionStorage.setItem(storageKey,id);}
-    return {'X-Calculation-Id':id,'X-Calculation-Event':crypto.randomUUID()};
+  function coUsageHeaders(){
+    // Cada pulsación explícita es un cálculo independiente; los reintentos usan el mismo evento.
+    const id=crypto.randomUUID();
+    return {'X-Calculation-Id':id,'X-Calculation-Event':id};
   }
   window.coUsageHeaders = coUsageHeaders;
-  window.coNewLiquidation = function(type){
-    const period = type === 'mensual' ? ($('mes')?.value || '') : ($('lf_egreso')?.value || '').slice(0,7);
-    sessionStorage.removeItem('co_usage_' + type + '_' + period);
-    const diag = $(type === 'mensual' ? 'diag' : 'diagFinal');
-    if(diag)diag.textContent='Nueva liquidación preparada. Podés cargar o ajustar los datos.';
-  };
 
   async function fetchJSON(url, options = {}){
     const target = new URL(url, location.origin);
