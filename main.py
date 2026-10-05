@@ -1590,6 +1590,25 @@ def admin_login(payload: AdminLoginRequest, request: Request):
     }
 
 
+@app.post("/admin/login-session")
+def admin_login_session(request: Request, authorization: Optional[str] = Header(default=None)):
+    _require_admin_security_config()
+    _enforce_rate_limit(request, "admin-session-login", 8, 900)
+    scheme, _, token = str(authorization or "").partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Primero ingresá a tu cuenta.")
+    try:
+        session = _company_api_request("me", token=token.strip())
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(status_code=401 if exc.code in {401, 403} else 503, detail="No se pudo verificar tu cuenta administrativa.") from exc
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="No se pudo verificar tu cuenta administrativa.") from exc
+    email = str((session.get("user") or {}).get("email") or "").strip().lower()
+    if not session.get("ok") or not session.get("is_platform_admin") or not email:
+        raise HTTPException(status_code=403, detail="Esta cuenta no tiene permisos de administrador.")
+    return {"ok": True, "token": _issue_admin_token(email), "role": "admin", "expires_in": ADMIN_TOKEN_TTL_SECONDS}
+
+
 @app.get("/admin/session")
 def admin_session(authorization: Optional[str] = Header(default=None)):
     payload = _require_admin_session(authorization)
