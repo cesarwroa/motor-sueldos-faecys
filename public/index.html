@@ -978,7 +978,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </div>
 <!--MENSUAL_EXTRAS_END-->
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-<button onclick="calcularMensual()" type="button">Calcular mensual</button>
+<button onclick="calcularMensual(true)" type="button">Calcular mensual</button><button type="button" onclick="coNewLiquidation('mensual')">Nueva liquidación</button>
 <button onclick="imprimirPDF('mensual')" type="button">Imprimir / PDF</button><label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseMensual" type="checkbox"/> Ver base</label>
 <span id="diagMensual" style="color:#64748b"></span>
 </div>
@@ -1146,7 +1146,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   </div>
 </div>
 <div class="no-print" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
-  <button onclick="calcularFinal()" type="button">Calcular liquidación final</button>
+  <button onclick="calcularFinal(true)" type="button">Calcular liquidación final</button><button type="button" onclick="coNewLiquidation('final')">Nueva liquidación</button>
   <button onclick="imprimirPDF('final')" type="button">Imprimir / PDF</button>
   <label style="display:flex;align-items:center;gap:6px;margin-left:8px"><input id="toggleBaseFinal" type="checkbox"/> Ver base</label>
   <span id="diagFinal" style="color:#64748b"></span>
@@ -3577,6 +3577,21 @@ tr.co-total-row > td:first-child { font-weight: 700; }
   }
 
 
+  function coUsageHeaders(type){
+    const period = type === 'mensual' ? ($('mes')?.value || '') : ($('lf_egreso')?.value || '').slice(0,7);
+    const storageKey = 'co_usage_' + type + '_' + period;
+    let id = sessionStorage.getItem(storageKey);
+    if(!id){id=crypto.randomUUID();sessionStorage.setItem(storageKey,id);}
+    return {'X-Calculation-Id':id,'X-Calculation-Event':crypto.randomUUID()};
+  }
+  window.coUsageHeaders = coUsageHeaders;
+  window.coNewLiquidation = function(type){
+    const period = type === 'mensual' ? ($('mes')?.value || '') : ($('lf_egreso')?.value || '').slice(0,7);
+    sessionStorage.removeItem('co_usage_' + type + '_' + period);
+    const diag = $(type === 'mensual' ? 'diag' : 'diagFinal');
+    if(diag)diag.textContent='Nueva liquidación preparada. Podés cargar o ajustar los datos.';
+  };
+
   async function fetchJSON(url, options = {}){
     const target = new URL(url, location.origin);
     const headers = new Headers(options.headers || {});
@@ -4689,7 +4704,7 @@ const p = await fetchJSON(url.toString());
       return 0;
     }
   }
-  async function calcularMensual(){
+  async function calcularMensual(trackUsage=false){
     try{
       const rama = $("rama")?.value || "";
       const mes = $("mes")?.value || "";
@@ -4806,7 +4821,7 @@ const p = await fetchJSON(url.toString());
       for (const id of fun_adics) url.searchParams.append("fun_adic", id);
       appendEmployerCostParams(url);
 
-      const data = await fetchJSON(url.toString());
+      const data = await fetchJSON(url.toString(), {headers:trackUsage?coUsageHeaders('mensual'): {}});
 
       // Guardar el último cálculo mensual para reutilizar en Liquidación Final (MEJOR SALARIO)
       window.__lastMensualCalc = data;
@@ -6192,7 +6207,7 @@ function switchTab(tab){
     return fe;
   }
 
-  window.calcularFinal = async function(){
+  window.calcularFinal = async function(trackUsage=false){
     try{
       const rama = $('rama')?.value || '';
       const agrup = $('agrup')?.value || '';
@@ -6361,7 +6376,7 @@ function switchTab(tab){
       const url = new URL('/calcular-final', API_BASE);
       url.search = qs.toString();
       const data = await fetchJSON(url.toString(), {
-        headers: getAdminAuthHeaders()
+        headers: {...getAdminAuthHeaders(), ...(trackUsage?window.coUsageHeaders('final'): {})}
       });
 
       
@@ -6556,7 +6571,7 @@ function switchTab(tab){
   });
 
 })();
-</script><script defer src="/public-account.js?v=20261005-social-admin-3"></script>
+</script><script defer src="/public-account.js?v=20261005-panel-estadisticas-5"></script>
 </body>
 </html>
 

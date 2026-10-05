@@ -65,7 +65,7 @@
   dialog.addEventListener('close',()=>previousFocus?.focus());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
-    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong> · El uso sigue siendo gratuito y sin límites.</span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong> · El uso sigue siendo gratuito y sin límites.</span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
     syncAccess();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     bar.querySelector('[data-calculator-admin]')?.addEventListener('click',async()=>{
@@ -92,14 +92,16 @@
     select.addEventListener('change',update);update();
   }
   async function open(mode){
+    if(mode==='admin'){location.assign(document.getElementById('root')?'/admin-uso.html':'/admin/estadisticas');return;}
+
     if(!dialog.open){previousFocus=document.activeElement;dialog.showModal();}
     const close='<button type="button" data-close style="float:right" aria-label="Cerrar">×</button>';
     let content='';
     if(mode==='register') content=`<h2>Crear cuenta</h2><p>Elegí tu perfil. Durante esta etapa todos los cálculos siguen siendo gratuitos.</p><form><label>Nombre y apellido<input name="name" required maxlength="120" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" autocomplete="email"></label>${profileFields()}<label>Contraseña<input name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" aria-describedby="co-password-help"></label><small id="co-password-help">Al menos 10 caracteres, con letras y números.</small><button class="co-primary">Crear cuenta</button></form><button data-switch="login">Ya tengo cuenta</button>`;
     if(mode==='login') content='<h2>Ingresar</h2><form><label>Email<input name="email" type="email" required autocomplete="email"></label><label>Contraseña<input name="password" type="password" required maxlength="128" autocomplete="current-password"></label><button class="co-primary">Ingresar</button></form><p class="co-actions"><button data-switch="register">Crear cuenta</button><button data-switch="recovery">Olvidé mi contraseña</button></p>';
     if(mode==='recovery') content='<h2>Recuperar acceso</h2><form><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="co-primary">Enviar enlace</button></form>';
-    if(mode==='profile') content=`<h2>Mi cuenta</h2><p>${esc(account?.user.email)}</p><p>Acceso gratuito y sin límites durante la implementación.${Number(account?.profile?.complimentary_unlimited)?' Tenés acceso de cortesía ilimitado asignado por el administrador.':''}</p><form>${profileFields(account?.profile||{})}<button class="co-primary">Guardar perfil</button></form>`;
-    if(mode==='admin') content='<h2>Registros de la calculadora</h2><p>Los emails son los declarados al registrarse. En esta etapa no se verifica su titularidad.</p><div data-users>Cargando…</div>';
+    if(mode==='profile') content=`<h2>Mi cuenta</h2><p>${esc(account?.user.email)}</p><p>Acceso gratuito ilimitado habilitado automáticamente durante esta etapa.</p><form>${profileFields(account?.profile||{})}<button class="co-primary">Guardar perfil</button></form>`;
+
     if(mode==='contact') content=`<h2>Enviar consulta</h2><form><label>Nombre<input name="nombre" required maxlength="160" value="${esc(account?.user.name)}" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" value="${esc(account?.user.email)}" autocomplete="email"></label><label>Tipo de usuario<select name="account_type" required>${options(account?.profile?.account_type)}</select></label><label data-org ${!account?.profile?.account_type||account?.profile?.account_type==='empleado'?'hidden':''}>Nombre de la empresa, estudio o sindicato<input name="organization_name" maxlength="190" value="${esc(account?.profile?.organization_name)}"></label><label>Motivo<select name="motivo"><option>Consulta técnica</option><option>Consulta sobre una liquidación</option><option>Sugerencia</option></select></label><label>Mensaje<textarea name="mensaje" required maxlength="5000" rows="5" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea></label><input name="website" tabindex="-1" autocomplete="off" hidden><button class="co-primary">Enviar consulta</button></form>`;
     dialog.innerHTML=close+content+'<p class="co-account-feedback" role="status" aria-live="polite"></p>';
     dialog.querySelector('[data-close]').onclick=()=>dialog.close();
@@ -133,12 +135,6 @@
         }
       }catch(error){feedback(error.message);}finally{submit.disabled=false;}
     });
-    if(mode==='admin')try{
-      const result=await request('admin-users');const host=dialog.querySelector('[data-users]');
-      host.innerHTML=`<p>${result.total} cuentas · Página ${result.page} de ${result.pages}</p>`+result.users.map(u=>`<article class="co-account-user"><strong>${esc(u.name)}</strong> · ${esc(labels[u.account_type])}<p>${esc(u.organization_name)||'Sin organización'}<br>${esc(u.email)}<br>Estado: ${esc(u.status)} · Registro: ${esc(u.created_at)} UTC<br>Novedades: ${Number(u.newsletter_opt_in)?'Aceptadas':'No aceptadas'}</p><button data-courtesy="${esc(u.id)}" data-enabled="${Number(u.complimentary_unlimited)?'false':'true'}">${Number(u.complimentary_unlimited)?'Revocar cortesía':'Otorgar acceso gratuito ilimitado'}</button></article>`).join('')+`<div class="co-actions"><button data-prev ${page<=1?'disabled':''}>Anterior</button><button data-next ${page>=result.pages?'disabled':''}>Siguiente</button></div>`;
-      host.querySelectorAll('[data-courtesy]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await request('admin-courtesy',{user_id:b.dataset.courtesy,enabled:b.dataset.enabled==='true'},false,'PUT');await open('admin');}catch(error){feedback(error.message);b.disabled=false;}});
-      host.querySelector('[data-prev]').onclick=()=>{page--;open('admin');};host.querySelector('[data-next]').onclick=()=>{page++;open('admin');};
-    }catch(error){dialog.querySelector('[data-users]').textContent='';feedback(error.message);}
     dialog.querySelector('input,select')?.focus();
   }
   // El formulario React existente construye FormData: los campos adicionales se incluyen sin tocar su bundle.
@@ -178,10 +174,11 @@
     const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');
     const oauthError=hash.get('co_oauth_error');
     if(oauthError){
+      const reference=hash.get('co_oauth_ref')||'';hash.delete('co_oauth_ref');
       hash.delete('co_oauth_error');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
       await open('login');
       const messages={cancelled:'Cancelaste el acceso. Podés volver a intentarlo.',email_required:'El proveedor no compartió tu email. Usá el registro con email.',existing_account:'Ese email ya tiene una cuenta. Ingresá con email y contraseña.',account_inactive:'Tu cuenta no está activa. Contactá al administrador.'};
-      feedback(messages[oauthError]||'No se pudo completar el acceso. Intentá nuevamente.');
+      feedback((messages[oauthError]||'No se pudo completar el acceso. Intentá nuevamente.')+(reference?` Referencia: ${reference}`:''));
     }
     if(code){
       hash.delete('co_login');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
