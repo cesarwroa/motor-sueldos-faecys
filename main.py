@@ -119,6 +119,22 @@ PILOT_SIRADIG_MAX_UNCOMPRESSED_BYTES = 40 * 1024 * 1024
 _RATE_LIMIT_BUCKETS: Dict[str, List[float]] = {}
 
 
+def _usage_api_request(action: str, token: str, payload=None, filters=None):
+    params = {"action": action, **(filters or {})}
+    url = urllib.parse.urljoin(COMPANY_API_URL, "usage.php") + "?" + urllib.parse.urlencode(params)
+    headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
+    body = None
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
+        body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST" if body else "GET")
+    with urllib.request.urlopen(req, timeout=12) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    if not isinstance(result, dict) or not result.get("ok"):
+        raise ValueError("No se pudo registrar o consultar el uso.")
+    return result
+
+
 CALCULATOR_AUTH_PATHS = {"/calcular", "/calcular-final", "/calcular-vacaciones"}
 
 
@@ -149,12 +165,34 @@ def _require_calculator_session(authorization: str) -> Dict[str, Any]:
 async def security_headers(request: Request, call_next):
     if request.method != "OPTIONS" and request.url.path.rstrip("/") in CALCULATOR_AUTH_PATHS:
         try:
-            await run_in_threadpool(_require_calculator_session, request.headers.get("authorization", ""))
+            usage_session = await run_in_threadpool(_require_calculator_session, request.headers.get("authorization", ""))
         except HTTPException as exc:
             response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers={"Cache-Control": "no-store"})
         else:
             response = await call_next(request)
             response.headers["Cache-Control"] = "no-store"
+            calculation_id = request.headers.get("x-calculation-id", "")
+            event_id = request.headers.get("x-calculation-event", "")
+            if response.status_code == 200 and calculation_id and event_id and (usage_session.get("user") or {}).get("id"):
+                try:
+                    for value in (calculation_id, event_id):
+                        parsed = uuid.UUID(value)
+                        if parsed.version != 4 or str(parsed) != value:
+                            raise ValueError("Identificador de cálculo inválido")
+                    normalized = sorted(request.query_params.multi_items())
+                    input_hash = hashlib.sha256(json.dumps(normalized, ensure_ascii=False).encode("utf-8")).hexdigest()
+                    calculation_type = "final" if request.url.path.rstrip("/") == "/calcular-final" else "mensual"
+                    period = str(request.query_params.get("mes") or request.query_params.get("fecha_egreso") or "")[:7]
+                    payload = {"calculation_id": calculation_id, "event_id": event_id, "calculation_type": calculation_type,
+                               "input_hash": input_hash, "payroll_period": period, "branch": request.query_params.get("rama", "")}
+                    token = request.headers.get("authorization", "").partition(" ")[2].strip()
+                    await run_in_threadpool(_usage_api_request, "record", token, payload)
+                    response.headers["X-Usage-Recorded"] = "yes"
+                except (OSError, ValueError):
+                    response.headers["X-Usage-Recorded"] = "no"
+                    # El seguimiento no impide el uso gratuito si su servicio está caído.
+                    import logging
+                    logging.getLogger(__name__).warning("No se pudo registrar un evento de uso")
     else:
         response = await call_next(request)
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -1607,6 +1645,31 @@ def admin_login_session(request: Request, authorization: Optional[str] = Header(
     if not session.get("ok") or not session.get("is_platform_admin") or not email:
         raise HTTPException(status_code=403, detail="Esta cuenta no tiene permisos de administrador.")
     return {"ok": True, "token": _issue_admin_token(email), "role": "admin", "expires_in": ADMIN_TOKEN_TTL_SECONDS}
+
+
+@app.get("/admin/estadisticas", include_in_schema=False)
+def usage_admin_page():
+    return FileResponse(BASE_DIR / "public" / "admin-usage.html", headers={**NOINDEX_HEADERS, "Cache-Control": "no-store"})
+
+
+@app.get("/admin/estadisticas.xlsx", include_in_schema=False)
+def usage_admin_export(request: Request, authorization: Optional[str] = Header(default=None)):
+    scheme, _, token = str(authorization or "").partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Ingresá con tu cuenta de administrador.")
+    filters = {key: request.query_params[key] for key in ("from", "to", "search", "type") if key in request.query_params}
+    try:
+        report = _usage_api_request("report", token.strip(), filters=filters)
+    except urllib.error.HTTPError as exc:
+        status = exc.code if exc.code in {400, 401, 403} else 503
+        raise HTTPException(status_code=status, detail="No se pudo autorizar la exportación o sus filtros.") from exc
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="No se pudo obtener el informe.") from exc
+    from usage_report import build_usage_xlsx
+    result = build_usage_xlsx(report)
+    filename = f"estadisticas_{report['from']}_{report['to']}.xlsx"
+    return StreamingResponse(result, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "no-store"})
 
 
 @app.get("/admin/session")
