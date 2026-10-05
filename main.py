@@ -1172,6 +1172,11 @@ def home():
     return {"ok": True, "error": "index.html no encontrado"}
 
 
+@app.get("/public-account.js", include_in_schema=False)
+def public_account_script():
+    return FileResponse(BASE_DIR / "public" / "public-account.js", media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/admin/app", include_in_schema=False)
 def admin_app(admin_token: str = Query(default="")):
     if admin_token:
