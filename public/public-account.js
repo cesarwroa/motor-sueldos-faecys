@@ -8,6 +8,7 @@
   let token = sessionStorage.getItem(key) || '';
   let account = null;
   let page = 1;
+  let socialProviders = {google:false,facebook:false};
   const isCalculator = !document.getElementById('root') && location.pathname !== '/admin/app';
   let gate = null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -47,7 +48,7 @@
   function syncAccess(){
     if(!isCalculator)return;
     const content=document.querySelector('body > .container');
-    const locked=!account;
+    const locked=!account || (!account.profile && !account.is_admin);
     if(content){content.classList.toggle('co-calculator-locked',locked);content.inert=locked;}
     if(!gate){
       gate=document.createElement('section');gate.className='co-access-gate';
@@ -64,9 +65,17 @@
   dialog.addEventListener('close',()=>previousFocus?.focus());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
-    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong> · El uso sigue siendo gratuito y sin límites.</span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong> · El uso sigue siendo gratuito y sin límites.</span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
     syncAccess();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
+    bar.querySelector('[data-calculator-admin]')?.addEventListener('click',async()=>{
+      try{
+        const calculator=new URL(window.CALCULADORA_URL||'https://app.calculadoradecomercio.com.ar/');
+        const response=await fetch(new URL('/admin/login-session',calculator),{method:'POST',headers:{Authorization:`Bearer ${token}`}});
+        const result=await response.json();if(!response.ok||!result.token)throw new Error(result.detail||'No se pudo abrir el panel.');
+        const target=new URL('/admin/app',calculator);target.hash=new URLSearchParams({admin_token:result.token}).toString();location.assign(target.href);
+      }catch(error){await open('profile');feedback(error.message);}
+    });
     bar.querySelector('[data-logout]')?.addEventListener('click',async()=>{
       try{await request('logout',{},true);}catch(error){open('profile'); feedback(error.message);return;}
       token=''; account=null; sessionStorage.removeItem(key); renderBar();
@@ -95,6 +104,14 @@
     dialog.innerHTML=close+content+'<p class="co-account-feedback" role="status" aria-live="polite"></p>';
     dialog.querySelector('[data-close]').onclick=()=>dialog.close();
     dialog.querySelectorAll('[data-switch]').forEach(b=>b.onclick=()=>open(b.dataset.switch));
+    if(mode==='login'||mode==='register'){
+      const social=document.createElement('div');social.className='co-actions';social.style.margin='16px 0';
+      social.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" ${socialProviders[provider]?'':'disabled'}>Continuar con ${provider==='google'?'Google':'Facebook'}${socialProviders[provider]?'':' · Próximamente'}</button>`).join('');
+      dialog.querySelector('form').before(social);
+      social.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
+        const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target',isCalculator?'calculator':'landing');location.assign(url.href);
+      });
+    }
     bindProfile(dialog);
     const form=dialog.querySelector('form');
     if(form)form.addEventListener('submit',async event=>{
@@ -133,7 +150,18 @@
       form.insertBefore(group,form.firstChild);bindProfile(group);
     });
   }
-  const observer=new MutationObserver(()=>{enrichContactForms();syncHeader();});observer.observe(document.body,{childList:true,subtree:true});
+  function enrichAdminModal(){
+    document.querySelectorAll('[data-admin-submit]').forEach(submit=>{
+      const form=submit.closest('form');if(!form||form.parentElement.querySelector('[data-admin-social]'))return;
+      const group=document.createElement('div');group.className='co-actions';group.dataset.adminSocial='';group.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';
+      group.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" ${socialProviders[provider]?'':'disabled'} style="padding:10px;border:1px solid #cbd5e1;border-radius:8px">Continuar con ${provider==='google'?'Google':'Facebook'}${socialProviders[provider]?'':' · Próximamente'}</button>`).join('');
+      form.before(group);
+      group.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
+        const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target','landing');location.assign(url.href);
+      });
+    });
+  }
+  const observer=new MutationObserver(()=>{enrichContactForms();enrichAdminModal();syncHeader();});observer.observe(document.body,{childList:true,subtree:true});
   // Un código de un solo uso permite pasar de la landing a Render sin volver a ingresar.
   document.addEventListener('click',async event=>{
     if(isCalculator || !account || event.defaultPrevented || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
@@ -148,6 +176,13 @@
   renderBar();enrichContactForms();syncHeader();
   async function restoreSession(){
     const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');
+    const oauthError=hash.get('co_oauth_error');
+    if(oauthError){
+      hash.delete('co_oauth_error');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
+      await open('login');
+      const messages={cancelled:'Cancelaste el acceso. Podés volver a intentarlo.',email_required:'El proveedor no compartió tu email. Usá el registro con email.',existing_account:'Ese email ya tiene una cuenta. Ingresá con email y contraseña.',account_inactive:'Tu cuenta no está activa. Contactá al administrador.'};
+      feedback(messages[oauthError]||'No se pudo completar el acceso. Intentá nuevamente.');
+    }
     if(code){
       hash.delete('co_login');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
       try{const result=await request('handoff-redeem',{code});token=result.token;sessionStorage.setItem(key,token);}
@@ -157,5 +192,8 @@
     try{account=await request('me');renderBar();if(!account.profile)await open('profile');}
     catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);}renderBar();}
   }
+  fetch(`${apiOrigin}/api/oauth.php?action=providers`).then(r=>r.json()).then(result=>{
+    if(result.ok && result.providers){socialProviders=result.providers;if(document.querySelector('[data-social]')){document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.textContent=`Continuar con ${b.dataset.social==='google'?'Google':'Facebook'}${enabled?'':' · Próximamente'}`;});}}
+  }).catch(()=>{});
   restoreSession();
 })();
