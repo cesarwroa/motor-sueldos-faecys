@@ -126,7 +126,16 @@
           try{account=await request('me');}catch(error){token='';sessionStorage.removeItem(key);throw error;}
           renderBar();if(!account.profile)await open('profile');else dialog.close();
         }
-        if(mode==='profile'){await request('profile',values,false,'PUT');account=await request('me');renderBar();feedback('Perfil guardado.');}
+        if(mode==='profile'){
+          await request('profile',values,false,'PUT');account=await request('me');renderBar();
+          if(document.getElementById('root')){
+            feedback('Perfil guardado. Abriendo la calculadora…');
+            const result=await request('handoff-create',{});
+            const target=new URL('/',window.CALCULADORA_URL||'https://app.calculadoradecomercio.com.ar/');
+            target.hash=new URLSearchParams({co_login:result.code}).toString();
+            location.assign(target.href);
+          }else{dialog.close();}
+        }
         if(mode==='recovery'){const result=await request('forgot-password',values,true);feedback(result.message);}
         if(mode==='contact'){
           const fd=new FormData(form); const response=await fetch(`${apiOrigin}/send-contact.php`,{method:'POST',body:fd});
