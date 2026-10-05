@@ -17,7 +17,8 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse, JSONResponse
+from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
@@ -118,9 +119,44 @@ PILOT_SIRADIG_MAX_UNCOMPRESSED_BYTES = 40 * 1024 * 1024
 _RATE_LIMIT_BUCKETS: Dict[str, List[float]] = {}
 
 
+CALCULATOR_AUTH_PATHS = {"/calcular", "/calcular-final", "/calcular-vacaciones"}
+
+
+def _require_calculator_session(authorization: str) -> Dict[str, Any]:
+    scheme, _, token = str(authorization or "").partition(" ")
+    token = token.strip()
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="Ingresá o registrate para usar la calculadora. El uso sigue siendo gratuito.")
+    # Conservar el acceso administrativo existente, validando su firma y vencimiento.
+    if len(ADMIN_ACCESS_SECRET.encode("utf-8")) >= 32:
+        try:
+            return _read_admin_token(token)
+        except (HTTPException, ValueError, UnicodeError):
+            pass
+    try:
+        session = _company_api_request("me", token=token)
+    except urllib.error.HTTPError as exc:
+        status = 401 if exc.code in {401, 403} else 503
+        raise HTTPException(status_code=status, detail="La sesión venció. Volvé a ingresar." if status == 401 else "No se pudo verificar tu sesión. Intentá nuevamente.") from exc
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="No se pudo verificar tu sesión. Intentá nuevamente.") from exc
+    if not session.get("ok") or not (session.get("user") or {}).get("id"):
+        raise HTTPException(status_code=401, detail="Sesión inválida. Volvé a ingresar.")
+    return session
+
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    response = await call_next(request)
+    if request.method != "OPTIONS" and request.url.path.rstrip("/") in CALCULATOR_AUTH_PATHS:
+        try:
+            await run_in_threadpool(_require_calculator_session, request.headers.get("authorization", ""))
+        except HTTPException as exc:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers={"Cache-Control": "no-store"})
+        else:
+            response = await call_next(request)
+            response.headers["Cache-Control"] = "no-store"
+    else:
+        response = await call_next(request)
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
