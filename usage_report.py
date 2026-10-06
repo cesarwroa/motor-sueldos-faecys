@@ -4,6 +4,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import PieChart, Reference
+from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.chart.label import DataLabelList, DataLabel
 from openpyxl.chart.series import DataPoint
 from openpyxl.chart.text import RichText
@@ -66,11 +67,19 @@ def add_profile_chart(summary, users):
     chart = PieChart()
     chart.title = 'Tipos de usuarios'
     chart.width = 17
-    chart.height = 10
+    chart.height = 11.5
+    # Reservar zonas separadas: título arriba, círculo central y leyenda abajo.
+    chart.layout = Layout(manualLayout=ManualLayout(x=.12, y=.16, w=.76, h=.63, xMode='factor', yMode='factor', wMode='factor', hMode='factor', layoutTarget='inner'))
+    chart.title.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1400, b=True, solidFill='15335A')), endParaRPr=CharacterProperties(lang='es-AR'))])
+    chart.title.overlay = False
+    chart.title.layout = Layout(manualLayout=ManualLayout(x=.1, y=.02, w=.8, h=.09, xMode='factor', yMode='factor', wMode='factor', hMode='factor'))
     chart.firstSliceAng = 270
     chart.add_data(Reference(summary, min_col=2, min_row=14, max_row=total_row-1), titles_from_data=True)
     chart.set_categories(Reference(summary, min_col=1, min_row=15, max_row=total_row-1))
     chart.legend.position = 'b'
+    chart.legend.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1000, solidFill='15335A')), endParaRPr=CharacterProperties(lang='es-AR'))])
+    chart.legend.overlay = False
+    chart.legend.layout = None  # Excel ubica la leyenda al pie, fuera del círculo reservado.
     chart.dataLabels = DataLabelList(showPercent=True, showVal=False, showCatName=True, showSerName=False, showLegendKey=False, numFmt='0.0%', separator='\n', dLblPos='ctr')
     chart.dataLabels.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1100, b=True, solidFill='FFFFFF')), endParaRPr=CharacterProperties(lang='es-AR'))])
     for index, (_, _, color, count) in enumerate(parts):
@@ -114,7 +123,7 @@ def build_usage_xlsx(report):
             return ''
         return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-3))).strftime('%d/%m/%Y %H:%M')
     for user in report['users']:
-        sheet.append([user['name'], user['email'], labels.get(user['account_type'], user['account_type']), user.get('organization_name', ''), user['status'], local(user['created_at']), *[int(user[k]) for k in ['monthly_count','final_count']], local(user.get('last_activity')), 'Aceptadas' if int(user['newsletter_opt_in']) else 'No aceptadas'])
+        sheet.append([user['name'], user['email'], labels.get(user['account_type'], user['account_type']), user.get('organization_name', ''), user.get('status_label') or ('Dada de baja' if user['status']=='blocked' and str(user.get('deactivated_by_user',False)).lower() in ('true','1') else {'active':'Activa','blocked':'Bloqueada','pending':'Pendiente','inactive':'Inactiva'}.get(user['status'],user['status'])), local(user['created_at']), *[int(user[k]) for k in ['monthly_count','final_count']], local(user.get('last_activity')), 'Aceptadas' if int(user['newsletter_opt_in']) else 'No aceptadas'])
     widths = [30, 40, 22, 35, 14, 23, 22, 22, 25, 20]
     for i, width in enumerate(widths, 1):
         sheet.column_dimensions[get_column_letter(i)].width = width
