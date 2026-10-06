@@ -14,7 +14,7 @@ from collections import Counter
 PROFILE_KINDS = [
     ('empleado', 'Empleados', '2563EB'),
     ('empresa', 'Empresas', '047857'),
-    ('estudio', 'Estudios contables', '7C3AED'),
+    ('estudio', 'Estudios', '7C3AED'),
     ('sindicato', 'Sindicatos', 'B45309'),
 ]
 
@@ -71,8 +71,8 @@ def add_profile_chart(summary, users):
     chart.add_data(Reference(summary, min_col=2, min_row=14, max_row=total_row-1), titles_from_data=True)
     chart.set_categories(Reference(summary, min_col=1, min_row=15, max_row=total_row-1))
     chart.legend.position = 'b'
-    chart.dataLabels = DataLabelList(showPercent=True, showVal=False, showCatName=False, showLegendKey=False, numFmt='0.0%', dLblPos='ctr')
-    chart.dataLabels.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1200, b=True, solidFill='FFFFFF')), endParaRPr=CharacterProperties(lang='es-AR'))])
+    chart.dataLabels = DataLabelList(showPercent=True, showVal=False, showCatName=True, showSerName=False, showLegendKey=False, numFmt='0.0%', separator='\n', dLblPos='ctr')
+    chart.dataLabels.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1100, b=True, solidFill='FFFFFF')), endParaRPr=CharacterProperties(lang='es-AR'))])
     for index, (_, _, color, count) in enumerate(parts):
         point = DataPoint(idx=index)
         point.graphicalProperties.solidFill = color
