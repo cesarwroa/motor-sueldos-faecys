@@ -5,10 +5,24 @@
   const authUrl = `${apiOrigin}/api/`;
   const labels = {empleado:'Empleado', empresa:'Empresa', estudio:'Estudio contable', sindicato:'Sindicato'};
   const key = 'co_public_session_v1';
-  let token = sessionStorage.getItem(key) || '';
+  let token='';
+  function rememberToken(value){
+    token=value;
+    try{if(value)localStorage.setItem(key,value);else localStorage.removeItem(key);}catch(_){}
+    try{if(value)sessionStorage.setItem(key,value);else sessionStorage.removeItem(key);}catch(_){}
+  }
+  try{token=localStorage.getItem(key)||sessionStorage.getItem(key)||'';}catch(_){}
+  if(token)rememberToken(token);
+  let accountRequest=null;
+  function fetchAccount(remember=false){
+    if(!accountRequest)accountRequest=request(remember?'remember-session':'me',remember?{}:undefined).finally(()=>{accountRequest=null;});
+    return accountRequest;
+  }
   let account = null;
   let page = 1;
   let socialProviders = {google:false,facebook:false};
+  let providersLoaded=false,providersFailed=false,providersPromise=null;
+  try{const cached=JSON.parse(localStorage.getItem('co_providers_v1')||'null');if(cached?.expires>Date.now()&&typeof cached.providers?.google==='boolean'&&typeof cached.providers?.facebook==='boolean'){socialProviders=cached.providers;providersLoaded=true;}}catch(_){}
   const isCalculator = !document.getElementById('root') && location.pathname !== '/admin/app';
   let gate = null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -17,6 +31,7 @@
     facebook:'<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.46-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.67-.23c-2.72 0-4.5 1.65-4.5 4.64V12H7.15v3.47h3.02v8.36a12.08 12.08 0 0 0 3.7 0v-8.36z"/></svg>'
   };
   function socialButtonContent(provider,mode,enabled){
+    if(!providersLoaded)return socialLogos[provider]+`<span>${providersFailed?'Reintentá la conexión':'Comprobando acceso'} con ${provider==='google'?'Google':'Facebook'}…</span>`;
     const action=mode==='register'?'Registrate':'Ingresá';
     return socialLogos[provider]+`<span>${action} con ${provider==='google'?'Google':'Facebook'}${enabled?'':' · Próximamente'}</span>`;
   }
@@ -24,7 +39,11 @@
   async function request(action, data, legacy=false, method=data?'POST':'GET') {
     const url = new URL(legacy?authUrl:profilesUrl); url.searchParams.set('action',action);
     if (action==='admin-users') url.searchParams.set('page',page);
-    const res = await fetch(url, {method, headers:{'Content-Type':'application/json', ...(token?{Authorization:`Bearer ${token}`}:{})}, ...(data?{body:JSON.stringify(data)}:{})});
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),16000);
+    let res;
+    try{res=await fetch(url,{method,signal:controller.signal,headers:{...(data?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},...(data?{body:JSON.stringify(data)}:{})});}
+    catch(error){if(error.name==='AbortError')throw new Error('La conexión está tardando. Revisá tu conexión y volvé a intentar.');throw error;}
+    finally{clearTimeout(timer);} 
     const body = await res.json().catch(()=>({}));
     if (!res.ok || !body.ok) { const error = new Error(body.message || 'No se pudo completar la operación.'); error.status=res.status; throw error; }
     return body;
@@ -36,13 +55,36 @@
   button[data-social]{display:inline-flex!important;align-items:center;justify-content:center;gap:10px;min-height:42px}button[data-social] svg{flex-shrink:0}
   .co-account-bar button,.co-account-dialog button{cursor:pointer;border:1px solid #cbd5e1;border-radius:9px;padding:9px 13px;background:white;color:#15335a;font:inherit}
   .co-account-bar .co-primary,.co-account-dialog .co-primary{background:#2563eb;color:white;border-color:#2563eb}
-  .co-account-dialog{width:min(620px,calc(100vw - 28px));max-height:90vh;overflow:auto;border:1px solid #cbd5e1;border-radius:16px;padding:24px;background:white;color:#172033;font:15px system-ui;box-shadow:0 16px 70px #0003}
+  .co-account-dialog{box-sizing:border-box;width:calc(100% - 24px);max-width:620px;max-height:calc(var(--co-viewport-height,100dvh) - 24px);overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid #cbd5e1;border-radius:16px;padding:24px;background:white;color:#172033;font:15px system-ui;box-shadow:0 16px 70px #0003}
   .co-account-dialog [data-close]{position:absolute;right:14px;top:14px;width:36px!important;height:36px;padding:4px!important;float:none!important}.co-account-dialog h2{padding-right:35px}.co-account-dialog::backdrop{background:#0f172a99}.co-account-dialog h2{font-size:23px;margin:0 0 8px}.co-account-dialog p{margin:10px 0;line-height:1.5}.co-account-dialog form{display:grid;gap:14px;margin-top:18px}
   .co-account-dialog label,.co-contact-profile label{display:grid;gap:6px;color:#334155;font:14px system-ui}.co-account-dialog input:not([type=checkbox]),.co-account-dialog select,.co-contact-profile input,.co-contact-profile select{width:100%;box-sizing:border-box;padding:11px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:#172033;font:inherit}
   .co-account-dialog .co-check{display:flex;gap:9px;align-items:flex-start}.co-account-dialog .co-check input{width:18px;height:18px;flex-shrink:0}.co-account-dialog .co-actions{display:flex;flex-wrap:wrap;gap:8px}.co-account-feedback{color:#9f1239;white-space:pre-wrap}.co-account-dialog [hidden],.co-contact-profile [hidden]{display:none!important}
   .co-contact-profile{display:grid;gap:12px;margin:12px 0;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px}.co-account-user{border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin:12px 0;overflow-wrap:anywhere}.co-account-dialog button:disabled{opacity:.6;cursor:wait}
   `;
+  style.textContent+=`
+  .co-account-dialog,.co-account-bar{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  .co-account-dialog input:not([type=checkbox]),.co-account-dialog select,.co-account-dialog textarea{font-size:16px;min-height:44px}
+  .co-account-dialog .co-social-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+  .co-account-dialog .co-social-actions button{width:100%;min-width:0;min-height:48px;font:600 15px/1.35 system-ui}
+  .co-account-dialog .co-social-actions svg{width:20px;height:20px;flex:0 0 20px}
+  .co-account-dialog button{min-height:44px}.co-account-dialog [data-close]{width:44px!important;height:44px;padding:4px!important;font-size:24px}
+  body:has(.co-account-dialog[open]){overflow:hidden}
+  @media(max-width:600px){
+    .co-account-dialog{position:fixed;inset:auto;top:calc(var(--co-viewport-top,0px) + 12px);left:12px;right:12px;margin:0 auto;width:calc(100% - 24px);max-width:none;padding:20px;border-radius:14px;font-size:15px;line-height:1.4}
+    .co-account-dialog h2{font-size:23px;line-height:1.25;padding-right:44px;margin-bottom:12px}
+    .co-account-dialog .co-social-actions{grid-template-columns:minmax(0,1fr);margin:12px 0}
+    .co-account-dialog .co-actions{gap:10px}.co-account-dialog form{gap:12px;margin-top:14px}
+    .co-account-dialog .co-actions button{flex:1 1 140px}.co-account-dialog [data-close]{flex:none}
+    .co-account-dialog label{font-size:14px}.co-account-dialog p{margin:10px 0}
+    .co-account-bar{padding:12px;gap:10px}.co-account-bar>.co-actions{display:flex;gap:8px;flex-wrap:wrap}.co-account-bar button{min-height:44px;padding:9px 12px}
+  }`;
   document.head.append(style);
+  function syncDialogViewport(){
+    const viewport=window.visualViewport;
+    const values={'--co-viewport-height':`${Math.floor(viewport?.height||window.innerHeight)}px`,'--co-viewport-top':`${Math.max(0,Math.floor(viewport?.offsetTop||0))}px`};
+    for(const [name,value] of Object.entries(values))if(document.documentElement.style.getPropertyValue(name)!==value)document.documentElement.style.setProperty(name,value);
+  }
+  syncDialogViewport();window.addEventListener('resize',syncDialogViewport,{passive:true});window.visualViewport?.addEventListener('resize',syncDialogViewport,{passive:true});window.visualViewport?.addEventListener('scroll',syncDialogViewport,{passive:true});
   const bar=document.createElement('div'); bar.className='co-account-bar';
   document.body.prepend(bar);
   let observedHeader = null;
@@ -67,11 +109,11 @@
     gate.hidden=!locked;
   }
   document.addEventListener('co-auth-required',()=>{
-    token='';account=null;sessionStorage.removeItem(key);renderBar();open('login');feedback('Ingresá para continuar.');
+    token='';account=null;rememberToken('');renderBar();open('login');feedback('Ingresá para continuar.');
   });
   const dialog=document.createElement('dialog'); dialog.className='co-account-dialog'; dialog.setAttribute('aria-label','Cuenta de la calculadora'); document.body.append(dialog);
   let previousFocus=null;
-  dialog.addEventListener('close',()=>previousFocus?.focus());
+  dialog.addEventListener('close',()=>previousFocus?.focus({preventScroll:true}));
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
     bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button> <button data-open="news">Novedades</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-open="news-admin">Administrar novedades</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
@@ -87,8 +129,8 @@
       }catch(error){await open('profile');feedback(error.message);}
     });
     bar.querySelector('[data-logout]')?.addEventListener('click',async()=>{
-      try{await request('logout',{},true);}catch(error){if(error.status!==401&&error.status!==403){open('profile');feedback(error.message);return;}}
-      token=''; account=null; sessionStorage.removeItem(key);
+      try{await request('logout',{});}catch(error){if(error.status!==401&&error.status!==403){open('profile');feedback(error.message);return;}}
+      token=''; account=null; rememberToken('');
       sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');
       location.assign(`${apiOrigin}/#co_logout=1`);
     });
@@ -117,14 +159,14 @@
     // Reutilizar la sesión vigente de esta pestaña, sin almacenarla de forma persistente.
     if(mode==='login' && token){
       try{
-        await confirmPendingLink();account=await request('me');renderBar();
+        await confirmPendingLink();if(!account)account=await fetchAccount();renderBar();
         if(!account.profile){mode='profile';}
         else if(document.getElementById('root')){
           const result=await request('handoff-create',{});
           const target=new URL('/',window.CALCULADORA_URL||'https://app.calculadoradecomercio.com.ar/');
           target.hash=new URLSearchParams({co_login:result.code}).toString();location.assign(target.href);return;
         }else{if(dialog.open)dialog.close();return;}
-      }catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);account=null;renderBar();}}
+      }catch(error){if(error.status===401||error.status===403){token='';rememberToken('');account=null;renderBar();}}
     }
 
     if(mode==='admin'){location.assign(document.getElementById('root')?'/admin-uso.html':'/admin/estadisticas');return;}
@@ -144,12 +186,10 @@
     dialog.querySelector('[data-close]').onclick=()=>dialog.close();
     dialog.querySelectorAll('[data-switch]').forEach(b=>b.onclick=()=>open(b.dataset.switch));
     if(mode==='login'||mode==='register'){
-      const social=document.createElement('div');social.className='co-actions';social.style.margin='16px 0';
-      social.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="${mode}" ${socialProviders[provider]?'':'disabled'}>${socialButtonContent(provider,mode,!!socialProviders[provider])}</button>`).join('');
+      const social=document.createElement('div');social.className='co-social-actions';
+      social.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="${mode}" ${socialProviders[provider]||(!providersLoaded&&providersFailed)?'':'disabled'}>${socialButtonContent(provider,mode,!!socialProviders[provider])}</button>`).join('');
       dialog.querySelector('form').before(social);
-      social.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
-        const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target',isCalculator?'calculator':'landing');const pending=sessionStorage.getItem('co_pending_link_v1');if(pending)url.searchParams.set('confirm',pending);location.assign(url.href);
-      });
+      social.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>startSocialLogin(button));
     }
     if(mode==='profile'){
       const section=document.createElement('section');section.innerHTML='<p>Métodos de ingreso de tu cuenta:</p><div class="co-actions" data-link-providers></div>';
@@ -158,7 +198,7 @@
     dialog.querySelector('[data-deactivate]')?.addEventListener('click',()=>{
       dialog.innerHTML='<button data-close aria-label="Cerrar">×</button><h2>Dar de baja mi cuenta</h2><p>Se deshabilitará tu acceso y dejarás de recibir emails. Para confirmar, escribí DARME DE BAJA.</p><form><label>Confirmación<input name="confirmation" required autocomplete="off"></label><button class="co-danger">Confirmar baja</button></form><button data-cancel>Conservar mi cuenta</button><p class="co-account-feedback" role="status"></p>';
       dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.querySelector('[data-cancel]').onclick=()=>open('profile');
-      dialog.querySelector('form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;try{const result=await request('deactivate',{confirmation:e.target.elements.confirmation.value});token='';account=null;sessionStorage.removeItem(key);sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();dialog.innerHTML='<h2>Cuenta dada de baja</h2><p>'+esc(result.message)+'</p><button data-close>Cerrar</button>';dialog.querySelector('[data-close]').onclick=()=>dialog.close();}catch(error){feedback(error.message);b.disabled=false;}};
+      dialog.querySelector('form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;try{const result=await request('deactivate',{confirmation:e.target.elements.confirmation.value});token='';account=null;rememberToken('');sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();dialog.innerHTML='<h2>Cuenta dada de baja</h2><p>'+esc(result.message)+'</p><button data-close>Cerrar</button>';dialog.querySelector('[data-close]').onclick=()=>dialog.close();}catch(error){feedback(error.message);b.disabled=false;}};
     });
     bindProfile(dialog);
     const form=dialog.querySelector('form');
@@ -168,12 +208,12 @@
       try{
         if(mode==='register'){await request('register',values);await open('login');feedback('Cuenta creada. Ingresá con tu email y contraseña.');}
         if(mode==='login'){
-          const result=await request('login',values,true);token=result.token;sessionStorage.setItem(key,token);
-          try{await confirmPendingLink();account=await request('me');}catch(error){token='';sessionStorage.removeItem(key);throw error;}
+          values.remember_session=true;feedback('Ingresando…');const result=await request('login',values,true);rememberToken(result.token);
+          try{await confirmPendingLink();account=await fetchAccount();}catch(error){token='';rememberToken('');throw error;}
           renderBar();if(!account.profile)await open('profile');else dialog.close();
         }
         if(mode==='profile'){
-          await request('profile',values,false,'PUT');account=await request('me');renderBar();
+          await request('profile',values,false,'PUT');account=await fetchAccount();renderBar();
           if(document.getElementById('root')){
             feedback('Perfil guardado. Abriendo la calculadora…');
             const result=await request('handoff-create',{});
@@ -190,7 +230,9 @@
         }
       }catch(error){feedback(error.message);}finally{submit.disabled=false;}
     });
-    dialog.querySelector('input,select')?.focus();
+    dialog.scrollTop=0;syncDialogViewport();
+    if(window.matchMedia('(max-width:600px)').matches)dialog.querySelector('[data-close]')?.focus({preventScroll:true});
+    else dialog.querySelector('input,select')?.focus({preventScroll:true});
   }
   // El formulario React existente construye FormData: los campos adicionales se incluyen sin tocar su bundle.
   function enrichContactForms(){
@@ -205,11 +247,9 @@
     document.querySelectorAll('[data-admin-submit]').forEach(submit=>{
       const form=submit.closest('form');if(!form||form.parentElement.querySelector('[data-admin-social]'))return;
       const group=document.createElement('div');group.className='co-actions';group.dataset.adminSocial='';group.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:12px 0';
-      group.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="login" ${socialProviders[provider]?'':'disabled'} style="padding:10px;border:1px solid #cbd5e1;border-radius:8px">${socialButtonContent(provider,'login',!!socialProviders[provider])}</button>`).join('');
+      group.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="login" ${socialProviders[provider]||(!providersLoaded&&providersFailed)?'':'disabled'} style="padding:10px;border:1px solid #cbd5e1;border-radius:8px">${socialButtonContent(provider,'login',!!socialProviders[provider])}</button>`).join('');
       form.before(group);
-      group.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
-        const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target','landing');location.assign(url.href);
-      });
+      group.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>startSocialLogin(button));
     });
   }
   const observer=new MutationObserver(()=>{enrichContactForms();enrichAdminModal();syncHeader();});observer.observe(document.body,{childList:true,subtree:true});
@@ -303,8 +343,8 @@
     if(hash.get('co_logout')==='1'){
       hash.delete('co_logout');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
       // La landing puede conservar otra sesión propia tras el traslado a Render.
-      if(token){try{await request('logout',{},true);}catch(_){}}
-      token='';account=null;sessionStorage.removeItem(key);sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();return;
+      if(token){try{await request('logout',{});}catch(_){}}
+      token='';account=null;rememberToken('');sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();return;
     }
     const oauthError=hash.get('co_oauth_error');
     if(oauthError){
@@ -316,15 +356,40 @@
     }
     if(code){
       hash.delete('co_login');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
-      try{const result=await request('handoff-redeem',{code});token=result.token;sessionStorage.setItem(key,token);}
+      try{const result=await request('handoff-redeem',{code});rememberToken(result.token);}
       catch(error){await open('login');feedback(error.message);return;}
     }
     if(!token)return;
-    try{account=await request('me');renderBar();if(!account.profile||linked)await open('profile');if(linked)feedback(`${linked==='facebook'?'Facebook':'Google'} vinculado. Ya podés ingresar con cualquiera de tus accesos vinculados.`);}
-    catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);}renderBar();}
+    try{account=await fetchAccount(true);renderBar();if(!account.profile||linked)await open('profile');if(linked)feedback(`${linked==='facebook'?'Facebook':'Google'} vinculado. Ya podés ingresar con cualquiera de tus accesos vinculados.`);}
+    catch(error){if(error.status===401||error.status===403){token='';rememberToken('');}renderBar();}
   }
-  fetch(`${apiOrigin}/api/oauth.php?action=providers`).then(r=>r.json()).then(result=>{
-    if(result.ok && result.providers){socialProviders=result.providers;renderLinkButtons();if(document.querySelector('[data-social]')){document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.innerHTML=socialButtonContent(b.dataset.social,b.dataset.socialMode||'login',enabled);});}}
-  }).catch(()=>{});
+  function startSocialLogin(button){
+    if(!providersLoaded){providersPromise=null;providersFailed=false;button.disabled=true;loadProviders();return;}
+    if(!socialProviders[button.dataset.social])return;
+    const group=button.parentElement;group.querySelectorAll('[data-social]').forEach(b=>b.disabled=true);
+    if(button.closest('.co-account-dialog'))feedback('Abriendo el acceso…');
+    const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target',isCalculator?'calculator':'landing');
+    const pending=sessionStorage.getItem('co_pending_link_v1');if(pending)url.searchParams.set('confirm',pending);location.assign(url.href);
+  }
+  function loadProviders(){
+    if(providersPromise)return providersPromise;
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
+    providersPromise=fetch(`${apiOrigin}/api/oauth.php?action=providers`,{signal:controller.signal}).then(r=>{if(!r.ok)throw new Error('Providers unavailable');return r.json();}).then(result=>{
+      if(!result.ok||!result.providers)throw new Error('Providers unavailable');
+      socialProviders=result.providers;providersLoaded=true;providersFailed=false;
+      try{localStorage.setItem('co_providers_v1',JSON.stringify({providers:socialProviders,expires:Date.now()+600000}));}catch(_){}
+      renderLinkButtons();document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.innerHTML=socialButtonContent(b.dataset.social,b.dataset.socialMode||'login',enabled);b.onclick=()=>startSocialLogin(b);});
+    }).catch(()=>{
+      providersFailed=true;
+      if(!providersLoaded)document.querySelectorAll('[data-social]').forEach(b=>{b.disabled=false;b.innerHTML=socialButtonContent(b.dataset.social,b.dataset.socialMode||'login',false);b.onclick=()=>startSocialLogin(b);});
+    }).finally(()=>clearTimeout(timer));return providersPromise;
+  }
+  window.addEventListener('storage',event=>{
+    if(event.key!==key)return;
+    token=event.newValue||'';account=null;
+    try{if(token)sessionStorage.setItem(key,token);else sessionStorage.removeItem(key);}catch(_){}
+    renderBar();if(!token&&dialog.open)dialog.close();if(token)restoreSession();
+  });
+  loadProviders();
   restoreSession();
 })();
