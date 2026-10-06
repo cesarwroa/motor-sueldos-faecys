@@ -74,8 +74,9 @@
   dialog.addEventListener('close',()=>previousFocus?.focus());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
-    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button> <button data-open="news">Novedades</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-open="news-admin">Administrar novedades</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
     syncAccess();
+    if(typeof newsPanel!=='undefined')loadNews();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     bar.querySelector('[data-calculator-admin]')?.addEventListener('click',async()=>{
       try{
@@ -104,7 +105,7 @@
   }
   function feedback(message){dialog.querySelector('[role=status]').textContent=message;}
   function profileFields(profile={}){
-    return `<label>Tipo de cuenta<select name="account_type" required>${options(profile.account_type)}</select></label><label data-org ${!profile.account_type||profile.account_type==='empleado'?'hidden':''}>Nombre de la empresa, estudio o sindicato<input name="organization_name" maxlength="190" value="${esc(profile.organization_name)}"></label><label class="co-check"><input type="checkbox" name="newsletter_opt_in" ${Number(profile.newsletter_opt_in)?'checked':''}>Quiero recibir novedades sobre funciones, acuerdos, escalas y convenios. Puedo desactivar esta opción desde mi cuenta.</label>`;
+    return `<label>Tipo de cuenta<select name="account_type" required>${options(profile.account_type)}</select></label><label data-org ${!profile.account_type||profile.account_type==='empleado'?'hidden':''}>Nombre de la empresa, estudio o sindicato<input name="organization_name" maxlength="190" value="${esc(profile.organization_name)}"></label><label class="co-check"><input type="checkbox" name="newsletter_opt_in" ${Number(profile.newsletter_opt_in)?'checked':''}>Quiero recibir novedades sobre funciones, acuerdos, escalas y convenios. Puedo desactivar los emails o dar de baja mi cuenta cuando quiera.</label>`;
   }
   function bindProfile(container){
     const select=container.querySelector('[name=account_type]'), org=container.querySelector('[data-org]');
@@ -129,12 +130,14 @@
     if(mode==='admin'){location.assign(document.getElementById('root')?'/admin-uso.html':'/admin/estadisticas');return;}
 
     if(!dialog.open){previousFocus=document.activeElement;dialog.showModal();}
+    if(mode==='news'){await showNewsInbox();return;}
+    if(mode==='news-admin'){await showNewsAdmin();return;}
     const close='<button type="button" data-close style="float:right" aria-label="Cerrar">×</button>';
     let content='';
     if(mode==='register') content=`<h2>Crear cuenta</h2><p>Elegí tu perfil para crear tu cuenta.</p><form><label>Nombre y apellido<input name="name" required maxlength="120" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" autocomplete="email"></label>${profileFields()}<label>Contraseña<input name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" aria-describedby="co-password-help"></label><small id="co-password-help">Al menos 10 caracteres, con letras y números.</small><button class="co-primary">Crear cuenta</button></form><button data-switch="login">Ya tengo cuenta</button>`;
     if(mode==='login') content='<h2>Ingresar</h2><form><label>Email<input name="email" type="email" required autocomplete="email"></label><label>Contraseña<input name="password" type="password" required maxlength="128" autocomplete="current-password"></label><button class="co-primary">Ingresar</button></form><p class="co-actions"><button data-switch="register">Crear cuenta</button><button data-switch="recovery">Olvidé mi contraseña</button></p>';
     if(mode==='recovery') content='<h2>Recuperar acceso</h2><form><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="co-primary">Enviar enlace</button></form>';
-    if(mode==='profile') content=`<h2>Mi cuenta</h2><p>${esc(account?.user.email)}</p><form>${profileFields(account?.profile||{})}<button class="co-primary">Guardar perfil</button></form>`;
+    if(mode==='profile') content=`<h2>Mi cuenta</h2><p>${esc(account?.user.email)}</p><form>${profileFields(account?.profile||{})}<button class="co-primary">Guardar perfil</button></form>${account?.is_admin?'':'<hr><p>Podés dar de baja tu cuenta cuando quieras. Se deshabilitará el acceso y se cerrarán todas tus sesiones. No recibirás más novedades por email. Esta baja no elimina los registros de liquidaciones existentes.</p><button class="co-danger" data-deactivate>Darme de baja</button>'}`;
 
     if(mode==='contact') content=`<h2>Enviar consulta</h2><form><label>Nombre<input name="nombre" required maxlength="160" value="${esc(account?.user.name)}" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" value="${esc(account?.user.email)}" autocomplete="email"></label><label>Tipo de usuario<select name="account_type" required>${options(account?.profile?.account_type)}</select></label><label data-org ${!account?.profile?.account_type||account?.profile?.account_type==='empleado'?'hidden':''}>Nombre de la empresa, estudio o sindicato<input name="organization_name" maxlength="190" value="${esc(account?.profile?.organization_name)}"></label><label>Motivo<select name="motivo"><option>Consulta técnica</option><option>Consulta sobre una liquidación</option><option>Sugerencia</option></select></label><label>Mensaje<textarea name="mensaje" required maxlength="5000" rows="5" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea></label><input name="website" tabindex="-1" autocomplete="off" hidden><button class="co-primary">Enviar consulta</button></form>`;
     dialog.innerHTML=close+content+'<p class="co-account-feedback" role="status" aria-live="polite"></p>';
@@ -152,6 +155,11 @@
       const section=document.createElement('section');section.innerHTML='<p>Métodos de ingreso de tu cuenta:</p><div class="co-actions" data-link-providers></div>';
       dialog.querySelector('form').after(section);renderLinkButtons();
     }
+    dialog.querySelector('[data-deactivate]')?.addEventListener('click',()=>{
+      dialog.innerHTML='<button data-close aria-label="Cerrar">×</button><h2>Dar de baja mi cuenta</h2><p>Se deshabilitará tu acceso y dejarás de recibir emails. Para confirmar, escribí DARME DE BAJA.</p><form><label>Confirmación<input name="confirmation" required autocomplete="off"></label><button class="co-danger">Confirmar baja</button></form><button data-cancel>Conservar mi cuenta</button><p class="co-account-feedback" role="status"></p>';
+      dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.querySelector('[data-cancel]').onclick=()=>open('profile');
+      dialog.querySelector('form').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;try{const result=await request('deactivate',{confirmation:e.target.elements.confirmation.value});token='';account=null;sessionStorage.removeItem(key);sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();dialog.innerHTML='<h2>Cuenta dada de baja</h2><p>'+esc(result.message)+'</p><button data-close>Cerrar</button>';dialog.querySelector('[data-close]').onclick=()=>dialog.close();}catch(error){feedback(error.message);b.disabled=false;}};
+    });
     bindProfile(dialog);
     const form=dialog.querySelector('form');
     if(form)form.addEventListener('submit',async event=>{
@@ -221,6 +229,66 @@
     try{const result=await request('handoff-create',{});target.hash=new URLSearchParams({co_login:result.code}).toString();location.assign(target.href);}
     catch(error){await open('login');feedback(error.message);}
   },true);
+  let newsItems=[], newsGeneration=0, newsModal=null;
+  const newsPanel=document.createElement('section');newsPanel.className='co-news-panel';bar.after(newsPanel);
+  const newsStyle=document.createElement('style');newsStyle.textContent=`.co-news-panel{font:15px system-ui;color:#172033;max-width:1000px;margin:12px auto;padding:0 18px}.co-news-card{padding:18px;margin:12px 0;border:1px solid #bfdbfe;border-radius:12px;background:#f8fbff}.co-news-card img,.co-news-card video,.co-news-preview img,.co-news-preview video{width:100%;max-height:420px;object-fit:contain;border-radius:8px}.co-news-card iframe,.co-news-preview iframe{width:100%;aspect-ratio:16/9;border:0}.co-news-text{white-space:pre-wrap;overflow-wrap:anywhere}.co-account-dialog textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.co-news-card button{padding:8px;border:1px solid #cbd5e1;border-radius:8px;background:white;cursor:pointer}.co-news-modal{width:min(760px,calc(100vw - 28px))}.co-news-preview{padding:16px;border:1px solid #bfdbfe;border-radius:10px;margin:12px 0}.co-danger{color:#be123c!important;border-color:#be123c!important}`;document.head.append(newsStyle);
+  function newsContent(n){
+    const image=/^https:\/\/calculadoradecomercio\.com\.ar\/uploads\/novedades\/[a-f0-9]{32}\.(jpg|png|gif|webp)$/.test(n.image_url||'')?`<img src="${esc(n.image_url)}" alt="Imagen de ${esc(n.title)}" loading="lazy">`:'';
+    let video='';
+    if(/^https:\/\/www\.youtube-nocookie\.com\/embed\/[A-Za-z0-9_-]{11}$/.test(n.video_url||''))video=`<iframe src="${esc(n.video_url)}" title="Video de ${esc(n.title)}" loading="lazy" allowfullscreen></iframe>`;
+    else if(/^https:\/\/calculadoradecomercio\.com\.ar\/uploads\/novedades\/[a-f0-9]{32}\.(mp4|webm)$/.test(n.video_url||''))video=`<video src="${esc(n.video_url)}" controls preload="metadata"></video>`;
+    return `<h2>${esc(n.title)}</h2><p class="co-news-text">${esc(n.body)}</p>${image}${video}`;
+  }
+  async function loadNews(auto=true){
+    const generation=++newsGeneration;if(!account){newsItems=[];newsPanel.replaceChildren();return;}
+    try{const result=await request('news-feed');if(generation!==newsGeneration||!account)return;newsItems=result.news;
+      newsPanel.innerHTML=newsItems.filter(n=>!n.read_at&&n.display_mode==='card').map(n=>`<article class="co-news-card">${newsContent(n)}<button data-read-news="${esc(n.id)}">Marcar como leída</button></article>`).join('');
+      newsPanel.querySelectorAll('[data-read-news]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await request('news-read',{id:b.dataset.readNews});await loadNews(false);}catch(e){b.disabled=false;b.textContent='No se pudo marcar. Reintentar';}});
+      const pending=newsItems.find(n=>!n.read_at&&n.display_mode==='modal');if(auto&&pending&&!dialog.open&&account.profile)showNewsModal(pending);
+    }catch(_){/* Las novedades no interrumpen la calculadora. */}
+  }
+  function showNewsModal(n){
+    if(newsModal?.open)return;
+    newsModal=document.createElement('dialog');newsModal.className='co-account-dialog co-news-modal';newsModal.setAttribute('aria-label','Novedad de la calculadora');
+    newsModal.innerHTML=newsContent(n)+'<p class="co-actions"><button data-later>Más tarde</button><button class="co-primary" data-read>Entendido, marcar como leída</button></p><p role="status"></p>';document.body.append(newsModal);const focus=document.activeElement;
+    newsModal.onclose=()=>{newsModal.remove();focus?.focus();};newsModal.querySelector('[data-later]').onclick=()=>newsModal.close();
+    newsModal.querySelector('[data-read]').onclick=async event=>{event.target.disabled=true;try{await request('news-read',{id:n.id});newsModal.close();await loadNews(false);}catch(e){event.target.disabled=false;newsModal.querySelector('[role=status]').textContent=e.message;}};newsModal.showModal();
+  }
+  async function showNewsInbox(){
+    await loadNews(false);dialog.innerHTML='<button data-close aria-label="Cerrar">×</button><h2>Novedades</h2>'+(newsItems.length?newsItems.map(n=>`<article class="co-news-card">${newsContent(n)}${n.read_at?'<small>Leída</small>':`<button data-read-news="${esc(n.id)}">Marcar como leída</button>`}</article>`).join(''):'<p>No hay novedades disponibles.</p>')+'<p class="co-account-feedback" role="status"></p>';
+    dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.querySelectorAll('[data-read-news]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await request('news-read',{id:b.dataset.readNews});await showNewsInbox();}catch(e){feedback(e.message);b.disabled=false;}});
+  }
+  async function showNewsAdmin(edit=null){
+    if(!account?.is_admin)return;
+    dialog.innerHTML='<button data-close aria-label="Cerrar">×</button><h2>Administrar novedades</h2><p>Creá un borrador, revisá la vista previa y publicalo. Los emails se envían solo a cuentas activas que aceptaron novedades.</p>'+`<form data-news-editor><input type="hidden" name="id" value="${esc(edit?.id)}"><label>Título<input name="title" maxlength="160" required value="${esc(edit?.title)}"></label><label>Texto<textarea name="body" rows="5" maxlength="10000">${esc(edit?.body)}</textarea></label><label>Imagen<input type="file" data-news-file="image_url" accept="image/jpeg,image/png,image/gif,image/webp"></label><input type="hidden" name="image_url" value="${esc(edit?.image_url)}"><button type="button" data-remove-media="image_url">Quitar imagen</button><label>Video (MP4 o WebM, hasta 20 MB)<input type="file" data-news-file="video_url" accept="video/mp4,video/webm"></label><label>O enlace de YouTube<input name="video_url" maxlength="500" value="${esc(edit?.video_url)}" placeholder="https://www.youtube.com/watch?v=..."></label><button type="button" data-remove-media="video_url">Quitar video</button><label>Destinatarios<select name="audience"><option value="all">Todos los perfiles</option>${Object.entries(labels).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select></label><label>Canal<select name="channel"><option value="system">Por sistema</option><option value="email">Por email</option><option value="both">Email y sistema</option></select></label><label>Cómo se muestra en el sistema<select name="display_mode"><option value="card">Tarjeta debajo del acceso</option><option value="modal">Ventana al ingresar hasta marcarla como leída</option></select></label><p>El video en el email aparece como enlace para abrirlo.</p><div class="co-actions"><button type="button" data-preview>Vista previa</button><button class="co-primary">Guardar borrador</button><button type="button" data-new>Nueva novedad</button></div></form><section class="co-news-preview" hidden></section><p class="co-account-feedback" role="status" aria-live="polite"></p><h3>Novedades guardadas</h3><section data-news-list>Cargando…</section>`;
+    dialog.querySelector('[data-close]').onclick=()=>dialog.close();const form=dialog.querySelector('form');
+    for(const name of ['audience','channel','display_mode'])if(edit)form.elements[name].value=edit[name];
+    let uploading=0;const values=()=>Object.fromEntries(new FormData(form));
+    function normalizedPreview(){const n=values();const m=n.video_url.match(/^https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube-nocookie\.com\/embed\/)([A-Za-z0-9_-]{11})(?:[?&].*)?$/);if(m)n.video_url=`https://www.youtube-nocookie.com/embed/${m[1]}`;return n;}
+    dialog.querySelector('[data-preview]').onclick=()=>{const preview=dialog.querySelector('.co-news-preview');preview.hidden=false;preview.innerHTML=newsContent(normalizedPreview());};
+    dialog.querySelector('[data-new]').onclick=()=>showNewsAdmin();
+    dialog.querySelectorAll('[data-remove-media]').forEach(b=>b.onclick=()=>{form.elements[b.dataset.removeMedia].value='';form.querySelector(`[data-news-file="${b.dataset.removeMedia}"]`).value='';});
+    form.querySelectorAll('[data-news-file]').forEach(input=>input.onchange=async()=>{
+      const file=input.files[0];if(!file)return;if(file.size>20*1024*1024){feedback('El archivo debe pesar hasta 20 MB.');input.value='';return;}
+      uploading++;feedback('Subiendo archivo…');const fd=new FormData();fd.append('file',file);
+      try{const response=await fetch(`${profilesUrl}?action=news-upload`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd});const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||'No se pudo subir.');form.elements[input.dataset.newsFile].value=result.url;feedback('Archivo subido. Podés revisar la vista previa.');}catch(e){feedback(e.message);}finally{uploading--;}
+    });
+    form.onsubmit=async event=>{event.preventDefault();if(uploading){feedback('Esperá a que termine la subida.');return;}const submit=form.querySelector('button.co-primary');submit.disabled=true;try{const result=await request('news-save',values());form.elements.id.value=result.id;feedback('Borrador guardado. Revisá la vista previa antes de publicar.');await listNews();}catch(e){feedback(e.message);}finally{submit.disabled=false;}};
+    async function listNews(){
+      const result=await request('news-list');const list=dialog.querySelector('[data-news-list]');if(!list)return;
+      list.innerHTML=result.news.map(n=>`<article class="co-account-user"><strong>${esc(n.title)}</strong><p>${esc(({draft:'Borrador',published:'Publicada',archived:'Archivada'})[n.status])} · ${esc(({system:'Sistema',email:'Email',both:'Email y sistema'})[n.channel])}</p>${n.channel!=='system'?`<p>Emails: ${Number(n.sent)} aceptados por el servidor, ${Number(n.pending)} pendientes, ${Number(n.failed)} fallidos, ${Number(n.uncertain)} sin confirmación, ${Number(n.skipped)} omitidos.</p>`:''}<div class="co-actions"><button data-review="${esc(n.id)}">Ver</button>${n.status==='draft'?`<button data-edit="${esc(n.id)}">Editar</button><button data-publish="${esc(n.id)}">Publicar${n.channel!=='system'?' y enviar emails':''}</button>`:''}${n.status==='published'&&Number(n.pending)>0?`<button data-send="${esc(n.id)}">Continuar envío de emails</button>`:''}${n.status==='published'&&Number(n.failed)>0?`<button data-retry="${esc(n.id)}">Reintentar emails fallidos</button>`:''}${n.status!=='archived'?`<button data-archive="${esc(n.id)}">Archivar</button>`:''}</div></article>`).join('')||'<p>Todavía no hay novedades.</p>';
+      const find=id=>result.news.find(n=>n.id===id);
+      list.querySelectorAll('[data-review]').forEach(b=>b.onclick=()=>{const p=dialog.querySelector('.co-news-preview');p.hidden=false;p.innerHTML=newsContent(find(b.dataset.review));p.scrollIntoView({block:'nearest'});});
+      list.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>showNewsAdmin(find(b.dataset.edit)));
+      async function send(id){let result;do{feedback('Enviando emails por lotes. Mantené abierta esta ventana…');result=await request('news-send',{id});}while(result.pending>0&&result.processed>0);feedback('Proceso de envío terminado. Revisá los contadores: aceptado por el servidor no confirma la llegada a la bandeja.');}
+      list.querySelectorAll('[data-publish]').forEach(b=>b.onclick=async()=>{const n=find(b.dataset.publish);if(!confirm(`¿Publicar "${n.title}"${n.channel!=='system'?' y enviar emails a quienes aceptaron novedades':''}?`))return;b.disabled=true;try{await request('news-publish',{id:n.id});if(n.channel!=='system')await send(n.id);else feedback('Novedad publicada.');await listNews();await loadNews(false);}catch(e){feedback(e.message+' Si el envío quedó pendiente, usá Continuar envío.');b.disabled=false;}});
+      list.querySelectorAll('[data-send]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await send(b.dataset.send);await listNews();}catch(e){feedback(e.message);b.disabled=false;}});
+      list.querySelectorAll('[data-retry]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await request('news-retry-failed',{id:b.dataset.retry});await send(b.dataset.retry);await listNews();}catch(e){feedback(e.message);b.disabled=false;}});
+      list.querySelectorAll('[data-archive]').forEach(b=>b.onclick=async()=>{if(!confirm('¿Archivar la novedad y cancelar los emails pendientes?'))return;b.disabled=true;try{await request('news-archive',{id:b.dataset.archive});await listNews();await loadNews(false);}catch(e){feedback(e.message);b.disabled=false;}});
+    }
+    try{await listNews();}catch(e){feedback(e.message);}
+  }
+
   renderBar();enrichContactForms();syncHeader();
   async function restoreSession(){
     const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');const linked=hash.get('co_linked');
