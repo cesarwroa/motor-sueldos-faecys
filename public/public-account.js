@@ -169,7 +169,7 @@
       }catch(error){if(error.status===401||error.status===403){token='';rememberToken('');account=null;renderBar();}}
     }
 
-    if(mode==='admin'){location.assign(document.getElementById('root')?'/admin-uso.html?v=20261006-perfiles-2':'/admin/estadisticas?v=20261006-perfiles-2');return;}
+    if(mode==='admin'){location.assign(document.getElementById('root')?'/admin-uso.html?v=20261006-perfiles-3':'/admin/estadisticas?v=20261006-perfiles-3');return;}
 
     if(!dialog.open){previousFocus=document.activeElement;dialog.showModal();}
     if(mode==='news'){await showNewsInbox();return;}
