@@ -61,20 +61,20 @@
     if(content){content.classList.toggle('co-calculator-locked',locked);content.inert=locked;}
     if(!gate){
       gate=document.createElement('section');gate.className='co-access-gate';
-      gate.innerHTML='<h1>Ingresá para usar la calculadora</h1><p>Creá tu cuenta o ingresá con tu email. Las liquidaciones mensuales y finales siguen siendo gratuitas y sin límites.</p><button data-open="register">Crear cuenta gratis</button><button data-open="login">Ya tengo cuenta</button>';
+      gate.innerHTML='<h1>Ingresá para usar la calculadora</h1><p>Creá tu cuenta o ingresá con tu email.</p><button data-open="register">Crear cuenta</button><button data-open="login">Ya tengo cuenta</button>';
       bar.after(gate);gate.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     }
     gate.hidden=!locked;
   }
   document.addEventListener('co-auth-required',()=>{
-    token='';account=null;sessionStorage.removeItem(key);renderBar();open('login');feedback('Ingresá para continuar. El uso sigue siendo gratuito.');
+    token='';account=null;sessionStorage.removeItem(key);renderBar();open('login');feedback('Ingresá para continuar.');
   });
   const dialog=document.createElement('dialog'); dialog.className='co-account-dialog'; dialog.setAttribute('aria-label','Cuenta de la calculadora'); document.body.append(dialog);
   let previousFocus=null;
   dialog.addEventListener('close',()=>previousFocus?.focus());
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
-    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong> · El uso sigue siendo gratuito y sin límites.</span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
     syncAccess();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     bar.querySelector('[data-calculator-admin]')?.addEventListener('click',async()=>{
@@ -121,10 +121,10 @@
     if(!dialog.open){previousFocus=document.activeElement;dialog.showModal();}
     const close='<button type="button" data-close style="float:right" aria-label="Cerrar">×</button>';
     let content='';
-    if(mode==='register') content=`<h2>Crear cuenta</h2><p>Elegí tu perfil. Durante esta etapa todos los cálculos siguen siendo gratuitos.</p><form><label>Nombre y apellido<input name="name" required maxlength="120" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" autocomplete="email"></label>${profileFields()}<label>Contraseña<input name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" aria-describedby="co-password-help"></label><small id="co-password-help">Al menos 10 caracteres, con letras y números.</small><button class="co-primary">Crear cuenta</button></form><button data-switch="login">Ya tengo cuenta</button>`;
+    if(mode==='register') content=`<h2>Crear cuenta</h2><p>Elegí tu perfil para crear tu cuenta.</p><form><label>Nombre y apellido<input name="name" required maxlength="120" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" autocomplete="email"></label>${profileFields()}<label>Contraseña<input name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" aria-describedby="co-password-help"></label><small id="co-password-help">Al menos 10 caracteres, con letras y números.</small><button class="co-primary">Crear cuenta</button></form><button data-switch="login">Ya tengo cuenta</button>`;
     if(mode==='login') content='<h2>Ingresar</h2><form><label>Email<input name="email" type="email" required autocomplete="email"></label><label>Contraseña<input name="password" type="password" required maxlength="128" autocomplete="current-password"></label><button class="co-primary">Ingresar</button></form><p class="co-actions"><button data-switch="register">Crear cuenta</button><button data-switch="recovery">Olvidé mi contraseña</button></p>';
     if(mode==='recovery') content='<h2>Recuperar acceso</h2><form><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="co-primary">Enviar enlace</button></form>';
-    if(mode==='profile') content=`<h2>Mi cuenta</h2><p>${esc(account?.user.email)}</p><p>Acceso gratuito ilimitado habilitado automáticamente durante esta etapa.</p><form>${profileFields(account?.profile||{})}<button class="co-primary">Guardar perfil</button></form>`;
+    if(mode==='profile') content=`<h2>Mi cuenta</h2><p>${esc(account?.user.email)}</p><form>${profileFields(account?.profile||{})}<button class="co-primary">Guardar perfil</button></form>`;
 
     if(mode==='contact') content=`<h2>Enviar consulta</h2><form><label>Nombre<input name="nombre" required maxlength="160" value="${esc(account?.user.name)}" autocomplete="name"></label><label>Email<input name="email" type="email" required maxlength="220" value="${esc(account?.user.email)}" autocomplete="email"></label><label>Tipo de usuario<select name="account_type" required>${options(account?.profile?.account_type)}</select></label><label data-org ${!account?.profile?.account_type||account?.profile?.account_type==='empleado'?'hidden':''}>Nombre de la empresa, estudio o sindicato<input name="organization_name" maxlength="190" value="${esc(account?.profile?.organization_name)}"></label><label>Motivo<select name="motivo"><option>Consulta técnica</option><option>Consulta sobre una liquidación</option><option>Sugerencia</option></select></label><label>Mensaje<textarea name="mensaje" required maxlength="5000" rows="5" style="padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea></label><input name="website" tabindex="-1" autocomplete="off" hidden><button class="co-primary">Enviar consulta</button></form>`;
     dialog.innerHTML=close+content+'<p class="co-account-feedback" role="status" aria-live="polite"></p>';
@@ -191,13 +191,18 @@
     });
   }
   const observer=new MutationObserver(()=>{enrichContactForms();enrichAdminModal();syncHeader();});observer.observe(document.body,{childList:true,subtree:true});
-  // Un código de un solo uso permite pasar de la landing a Render sin volver a ingresar.
+  // Trasladar la sesión entre landing y calculadora en ambos sentidos.
   document.addEventListener('click',async event=>{
-    if(isCalculator || !account || event.defaultPrevented || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
+    if(!token || event.defaultPrevented || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;
     const link=event.target.closest('a[href]');if(!link)return;
-    const target=new URL(link.href,location.href);
+    let target=new URL(link.href,location.href);
     const calculator=new URL(window.CALCULADORA_URL||'https://app.calculadoradecomercio.com.ar/');
-    if(target.origin!==calculator.origin || target.pathname!=='/')return;
+    if(document.getElementById('root')){
+      if(target.origin!==calculator.origin || target.pathname!=='/')return;
+    }else{
+      if(![apiOrigin,'https://www.calculadoradecomercio.com.ar'].includes(target.origin) || target.pathname!=='/')return;
+      target=new URL(apiOrigin+'/'+target.search);
+    }
     event.preventDefault();event.stopPropagation();
     try{const result=await request('handoff-create',{});target.hash=new URLSearchParams({co_login:result.code}).toString();location.assign(target.href);}
     catch(error){await open('login');feedback(error.message);}
