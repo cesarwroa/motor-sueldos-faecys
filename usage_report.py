@@ -4,12 +4,14 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import PieChart, Reference
-from openpyxl.chart.layout import Layout, ManualLayout
+from math import ceil
 from openpyxl.chart.label import DataLabelList, DataLabel
 from openpyxl.chart.series import DataPoint
 from openpyxl.chart.text import RichText
 from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties
 from collections import Counter
+from zipfile import ZipFile, ZIP_DEFLATED
+import xml.etree.ElementTree as ET
 
 
 PROFILE_KINDS = [
@@ -64,22 +66,23 @@ def add_profile_chart(summary, users):
     if not users:
         summary.cell(chart_row, 1, 'No hay cuentas para estos filtros.')
         return
+    # El título y la leyenda están en celdas, fuera del objeto gráfico.
+    # Así Excel no puede moverlos sobre el círculo al recalcular su diseño.
+    summary.merge_cells(start_row=chart_row, start_column=1, end_row=chart_row, end_column=4)
+    heading = summary.cell(chart_row, 1, 'Tipos de usuarios')
+    heading.font = Font(bold=True, size=14, color='15335A')
+    heading.alignment = Alignment(horizontal='center', vertical='center')
+    summary.row_dimensions[chart_row].height = 28
+    pie_row = chart_row + 2
     chart = PieChart()
-    chart.title = 'Tipos de usuarios'
-    chart.width = 17
-    chart.height = 11.5
-    # Reservar zonas separadas: título arriba, círculo central y leyenda abajo.
-    chart.layout = Layout(manualLayout=ManualLayout(x=.12, y=.16, w=.76, h=.63, xMode='factor', yMode='factor', wMode='factor', hMode='factor', layoutTarget='inner'))
-    chart.title.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1400, b=True, solidFill='15335A')), endParaRPr=CharacterProperties(lang='es-AR'))])
-    chart.title.overlay = False
-    chart.title.layout = Layout(manualLayout=ManualLayout(x=.1, y=.02, w=.8, h=.09, xMode='factor', yMode='factor', wMode='factor', hMode='factor'))
+    chart.title = None
+    chart.legend = None
+    chart.layout = None
+    chart.width = 20
+    chart.height = 10
     chart.firstSliceAng = 270
     chart.add_data(Reference(summary, min_col=2, min_row=14, max_row=total_row-1), titles_from_data=True)
     chart.set_categories(Reference(summary, min_col=1, min_row=15, max_row=total_row-1))
-    chart.legend.position = 'b'
-    chart.legend.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1000, solidFill='15335A')), endParaRPr=CharacterProperties(lang='es-AR'))])
-    chart.legend.overlay = False
-    chart.legend.layout = None  # Excel ubica la leyenda al pie, fuera del círculo reservado.
     chart.dataLabels = DataLabelList(showPercent=True, showVal=False, showCatName=True, showSerName=False, showLegendKey=False, numFmt='0.0%', separator='\n', dLblPos='ctr')
     chart.dataLabels.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties(sz=1100, b=True, solidFill='FFFFFF')), endParaRPr=CharacterProperties(lang='es-AR'))])
     for index, (_, _, color, count) in enumerate(parts):
@@ -89,7 +92,18 @@ def add_profile_chart(summary, users):
         chart.series[0].data_points.append(point)
         if count == 0:
             chart.dataLabels.dLbl.append(DataLabel(idx=index, showPercent=False, showVal=False, showCatName=False))
-    summary.add_chart(chart, f'A{chart_row}')
+    summary.add_chart(chart, f'A{pie_row}')
+    chart_rows = ceil(chart.height / 2.54 * 72 / 24)
+    for row in range(pie_row, pie_row + chart_rows + 1):
+        summary.row_dimensions[row].height = 24
+    legend_row = pie_row + chart_rows + 1
+    for index, (_, label, color, _) in enumerate(parts):
+        # Cuatro columnas; un eventual perfil antiguo usa una segunda fila.
+        row, column = legend_row + index // 4, index % 4 + 1
+        cell = summary.cell(row, column, '■ ' + label)
+        cell.font = Font(bold=True, size=11, color=color)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        summary.row_dimensions[row].height = 26
     wb = summary.parent
     wb.calculation.fullCalcOnLoad = True
     wb.calculation.forceFullCalc = True
@@ -143,5 +157,19 @@ def build_usage_xlsx(report):
     add_profile_chart(summary, report['users'])
     result = BytesIO()
     wb.save(result)
+    # Excel puede heredar el formato entero de la serie si sourceLinked se omite.
+    # Esta versión de openpyxl no expone ese atributo en las etiquetas de torta.
+    if summary._charts:
+        fixed = BytesIO()
+        with ZipFile(BytesIO(result.getvalue()), 'r') as source, ZipFile(fixed, 'w', ZIP_DEFLATED) as output:
+            for entry in source.infolist():
+                data = source.read(entry.filename)
+                if entry.filename.startswith('xl/charts/chart') and entry.filename.endswith('.xml'):
+                    tree = ET.fromstring(data)
+                    for number_format in tree.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/chart}numFmt'):
+                        number_format.set('sourceLinked', '0')
+                    data = ET.tostring(tree, encoding='utf-8')
+                output.writestr(entry, data)
+        result = fixed
     result.seek(0)
     return result
