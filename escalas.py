@@ -761,6 +761,11 @@ def _tope_indemnizatorio_art245(rama: str, mes: str) -> Dict[str, Any]:
         "incluye_no_remunerativos": True,
     }
 
+def _obra_social_base(result: Dict[str, Any]) -> float:
+    return next((float(x.get("base", 0.0)) for x in result.get("items", [])
+                 if x.get("concepto") == "Obra Social 3%"), 0.0)
+
+
 def calcular_payload(
     rama: str,
     agrup: str,
@@ -836,6 +841,7 @@ def calcular_payload(
     osecac_adicional_patronal: bool = True,
     la_estrella: bool = True,
     instituto_capacitacion: bool = True,
+    _os_48_simulation: bool = False,
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
 
@@ -844,6 +850,7 @@ def calcular_payload(
 
     Versión núcleo (GENERAL): Básico, Antigüedad, Presentismo, NR base y descuentos principales.
     """
+    os_original_params = locals().copy()
     base = get_payload(rama=rama, mes=mes, agrup=agrup, categoria=categoria)
     if not base.get("ok"):
         return base
@@ -876,8 +883,10 @@ def calcular_payload(
 
     if is_call and hs_cat:
         j = float(hs_cat)
-        factor = 1.0
+        factor = (48.0 / j) if _os_48_simulation else 1.0
         call_to_48 = (48.0 / j) if j else 1.0
+        if _os_48_simulation:
+            j = 48.0
     else:
         j = float(jornada or 48)
         factor = (j / 48.0) if 48.0 else 1.0
@@ -1428,124 +1437,24 @@ def calcular_payload(
     base_aportes_previsional = min(rem_aportes, tope_mensual_f) if tope_mensual_f > 0 else rem_aportes
     jub = round2(base_aportes_previsional * 0.11)
     pami = 0.0 if bool(jubilado) else round2(base_aportes_previsional * 0.03)
-    # Obra Social (OSECAC): BASE JORNADA COMPLETA (48hs), sin prorrateo por jornada.
-    # Importante: no "desprorrateamos" totales, porque eso infla importes fijos (p.ej. a-cuenta).
-    # Recalculamos una simulación a 48hs manteniendo el resto de parámetros (antig., zona, feriados, ausencias, etc.).
-    bas_os = float(bas_base) * call_to_48  # 48hs (CALL: simula a 48). Agua: ya incluye conexiones en bas_base.
-    nr_os = float(nr_base) * call_to_48
-    sf_os = float(sf_base) * call_to_48
-
-    zona_os = round2(bas_os * (zona_pct_f / 100.0)) if zona_pct_f else 0.0
-    base_ant_os = round2(bas_os + zona_os)
-    antig_os = round2(base_ant_os * pct_ant)
-    # Horas (48hs) – mismo input de horas, con valor hora simulado a 48hs
-    hora_rem_os = (float(bas_os) / DIV_HORA) if bas_os else 0.0
-    # OJO: para NR, la base hora es (nr_os + sf_os)
-    nr_base_total_os = round2(nr_os + sf_os)
-    hora_nr_os = (float(nr_base_total_os) / DIV_HORA) if nr_base_total_os else 0.0
-    hex50_rem_os = round2(hora_rem_os * 1.5 * hex50_h) if (hora_rem_os and hex50_h) else 0.0
-    hex50_nr_os = round2(hora_nr_os * 1.5 * hex50_h) if (hora_nr_os and hex50_h) else 0.0
-    hex100_rem_os = round2(hora_rem_os * 2.0 * hex100_h) if (hora_rem_os and hex100_h) else 0.0
-    hex100_nr_os = round2(hora_nr_os * 2.0 * hex100_h) if (hora_nr_os and hex100_h) else 0.0
-    noct_rem_os = round2(hora_rem_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_rem_os and hs_noct_h) else 0.0
-    noct_nr_os = round2(hora_nr_os * NOCT_ADIC_PCT * hs_noct_h) if (hora_nr_os and hs_noct_h) else 0.0
-
-    # Incluye A cuenta (REM) como monto fijo (no se prorratea por la simulación a 48hs).
-    base_pres_os = round2(bas_os + zona_os + antig_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta)
-    presentismo_os = round2(base_pres_os / 12.0) if presentismo_habil else 0.0
-    rem_total_os = round2(bas_os + zona_os + antig_os + presentismo_os + hex50_rem_os + hex100_rem_os + noct_rem_os + km_rem_total + caja_rem_os + vid_rem_os + a_cuenta + extras_rem_sin_adicionales)
-
-    antig_nr_os = round2(nr_base_total_os * pct_ant) if nr_base_total_os else 0.0
-    presentismo_nr_os = (
-        round2((nr_base_total_os + hex50_nr_os + hex100_nr_os + noct_nr_os) * 0.0833)
-        if (nr_base_total_os and presentismo_habil)
-        else 0.0
-    )
-    nr_total_os = round2(nr_base_total_os + antig_nr_os + presentismo_nr_os + hex50_nr_os + hex100_nr_os + noct_nr_os)
-
-    # FUNEBRES: adicionales (48hs)
-    if norm_rama(base["rama"]) in ("FUNEBRES", "FÚNEBRES"):
-        sel_raw = (fun_adic or "").strip()
-        if sel_raw:
-            sel_ids = [s.strip() for s in sel_raw.split(";") if s.strip()]
-            if sel_ids:
-                defs = get_adicionales_funebres(mes)
-                by_id = {str(d.get("id")): d for d in defs}
-                for sid in sel_ids:
-                    d = by_id.get(str(sid))
-                    if not d:
-                        continue
-                    tipo = str(d.get("tipo") or "").strip().lower()
-                    monto = float(d.get("monto") or 0.0)
-                    pct = float(d.get("pct") or 0.0)
-                    val = 0.0
-                    if tipo in ("monto", "importe", "fijo") and monto:
-                        val = round2(monto)  # 48hs
-                    elif pct:
-                        val = round2(bas_os * (pct / 100.0))
-                    elif monto:
-                        val = round2(monto)
-                    if val:
-                        rem_total_os = round2(rem_total_os + val)
-
-    # TURISMO: adicional por título (48hs)
-    if base["rama"] == "TURISMO" and titulo_pct_f > 0:
-        titulo_rem_os = round2(bas_os * (titulo_pct_f / 100.0)) if bas_os else 0.0
-        titulo_nr_os = round2(nr_base_total_os * (titulo_pct_f / 100.0)) if nr_base_total_os else 0.0
-        rem_total_os = round2(rem_total_os + titulo_rem_os)
-        nr_total_os = round2(nr_total_os + titulo_nr_os)
-
-    # Feriados (48hs)
-    base_fer_rem_os = round2(bas_os + zona_os + antig_os)
-    base_fer_nr_os = round2(nr_base_total_os + antig_nr_os)
-    vdia25_rem_os = round2(base_fer_rem_os / 25.0) if base_fer_rem_os else 0.0
-    vdia30_rem_os = round2(base_fer_rem_os / 30.0) if base_fer_rem_os else 0.0
-    vdia25_nr_os = round2(base_fer_nr_os / 25.0) if base_fer_nr_os else 0.0
-    vdia30_nr_os = round2(base_fer_nr_os / 30.0) if base_fer_nr_os else 0.0
-
-    fer_no_rem_os = round2(fer_no * (vdia25_rem_os - vdia30_rem_os)) if fer_no else 0.0
-    fer_si_rem_os = round2(fer_si * vdia25_rem_os) if fer_si else 0.0
-    fer_no_nr_os = round2(fer_no * (vdia25_nr_os - vdia30_nr_os)) if fer_no else 0.0
-    fer_si_nr_os = round2(fer_si * vdia25_nr_os) if fer_si else 0.0
-
-    rem_total_os = round2(rem_total_os + fer_no_rem_os + fer_si_rem_os)
-    nr_total_os = round2(nr_total_os + fer_no_nr_os + fer_si_nr_os)
-
-    # Vacaciones gozadas: plus divisor... (mismo criterio, pero sobre base OS)
-    if vac_goz_dias:
-        vac_goz_rem_os = round2(vac_goz_dias * (vdia25_rem_os - vdia30_rem_os))
-        vac_goz_nr_os = round2(vac_goz_dias * (vdia25_nr_os - vdia30_nr_os))
-        rem_total_os = round2(rem_total_os + vac_goz_rem_os)
-        nr_total_os = round2(nr_total_os + vac_goz_nr_os)
-
-    # SAC (48hs para base de Obra Social)
-    if mes_num in (6, 12):
-        if sac_historical_override:
-            base_sac_rem_os = base_sac_rem
-            base_sac_nr_os = base_sac_nr
-        else:
-            base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
-            base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
-        sac_proration = max(0.0, min(1.0, float(sac_factor or 0.0)))
-        sac_row_rem_os = round2(base_sac_rem_os * 0.5 * sac_proration)
-        sac_row_nr_os = round2(base_sac_nr_os * 0.5 * sac_proration)
-        rem_total_os = round2(rem_total_os + sac_row_rem_os)
-        nr_total_os = round2(nr_total_os + sac_row_nr_os)
-    elif bool(sac_prop_mes) and (1 <= mes_num <= 12):
-        meses_sem = mes_num if mes_num <= 6 else (mes_num - 6)
-        factor_sac = float(meses_sem) / 12.0
-        base_sac_rem_os = round2((bas_os + zona_os + antig_os) + (presentismo_os if presentismo_habil else 0.0))
-        base_sac_nr_os = round2((nr_base_total_os + antig_nr_os) + (presentismo_nr_os if presentismo_habil else 0.0))
-        sac_row_rem_os = round2(base_sac_rem_os * factor_sac)
-        sac_row_nr_os = round2(base_sac_nr_os * factor_sac)
-        rem_total_os = round2(rem_total_os + sac_row_rem_os)
-        nr_total_os = round2(nr_total_os + sac_row_nr_os)
-
-    # Ausencias (48hs)
-    base_dia_aus_os = round2((bas_os + zona_os + antig_os) / 30.0) if (bas_os or zona_os or antig_os) else 0.0
-    aus_rem_os = round2(aus_dias * base_dia_aus_os) if aus_dias else 0.0
-    susp_rem_os = round2(susp_d * base_dia_aus_os) if susp_d else 0.0
-    rem_aportes_os = max(0.0, round2(rem_total_os - aus_rem_os - susp_rem_os))
+    # Obra social: simular la jornada completa conservando días, novedades y
+    # montos fijos. Multiplicar todos los totales inflaría comisiones y a cuenta.
+    os_full = None
+    if 0 < j < 48 and not _os_48_simulation:
+        full_params = dict(os_original_params)
+        full_params.update(jornada=48, _os_48_simulation=True)
+        if is_call and hs_cat:
+            full_category = re.sub(r"\b\d+\s*hs\b", "48hs", categoria, flags=re.I)
+            if get_payload(rama=rama, mes=mes, agrup=agrup, categoria=full_category).get("ok"):
+                full_params["categoria"] = full_category
+        for historical in ("sac_base_rem", "sac_base_nr"):
+            if float(full_params[historical]) >= 0:
+                full_params[historical] = round2(float(full_params[historical]) * 48.0 / j)
+        if bool(fuera_convenio) and float(basico_manual or 0) > 0:
+            full_params["basico_manual"] = float(basico_manual) * 48.0 / j
+        os_full = calcular_payload(**full_params)
+        if not os_full.get("ok"):
+            raise ValueError("No se pudo calcular la base de obra social de 48 horas")
 
     # Base para aportes porcentuales (Sindicato/FAECYS, etc.): excluye viáticos NR sin aportes.
     nr_aportable_real = max(0.0, round2(nr_total - (viaticos or 0.0) - (caja_exento or 0.0)))
@@ -1555,11 +1464,10 @@ def calcular_payload(
     # Base = REM aportable + NR aportable (sin viáticos NR sin aportes).
     base_fs = round2(rem_aportes + nr_aportable_real)
 
-    # Obra Social:
-    # - OSECAC Sí: exactamente la misma base que FAECYS/Sindicato (REM + NR aportable).
-    # - OSECAC No: solamente la parte remunerativa, pero el aporte del 3% continúa.
-    # Para jubilados el aporte se mantiene anulado según el criterio vigente.
-    os_base = base_fs if bool(osecac) else round2(rem_aportes)
+    # Aporte personal 3% y contribución patronal 6% comparten la base de 48hs.
+    # OSECAC determina la inclusión de NR, nunca la proporcionalidad por jornada.
+    os_base = (round2(_obra_social_base(os_full) + _obra_social_base(os_full.get("recibo_sac") or {}))
+               if os_full else (base_fs if bool(osecac) else round2(rem_aportes)))
     os_aporte = 0.0 if bool(jubilado) else round2(os_base * 0.03)
     osecac_100 = 100.0 if (
         bool(osecac)
@@ -1648,10 +1556,6 @@ def calcular_payload(
     mensual_nr_total = round2(mensual_nr_total_aportable + extraordinaria)
     mensual_base_fs = round2(mensual_rem_aportes + mensual_nr_aportable)
 
-    mensual_rem_total_os = round2(rem_total_os - sac_row_rem_os) if sac_habil else round2(rem_total_os)
-    mensual_nr_total_os = round2(nr_total_os - sac_row_nr_os) if sac_habil else round2(nr_total_os)
-    mensual_rem_aportes_os = max(0.0, round2(mensual_rem_total_os - aus_rem_os - susp_rem_os))
-
     sac_rem_total = round2(sac_row_rem if sac_habil else 0.0)
     sac_nr_total = round2(sac_row_nr if sac_habil else 0.0)
     sac_rem_aportes = sac_rem_total
@@ -1666,18 +1570,18 @@ def calcular_payload(
     if bool(jubilado):
         mensual_pami = 0.0
         sac_pami = 0.0
-        mensual_os_base = mensual_base_fs if bool(osecac) else round2(mensual_rem_aportes)
+        mensual_os_base = _obra_social_base(os_full) if os_full else (mensual_base_fs if bool(osecac) else round2(mensual_rem_aportes))
         mensual_os_aporte = 0.0
         mensual_osecac_100 = 0.0
-        sac_os_base = (sac_base_fs if bool(osecac) else round2(sac_rem_aportes)) if sac_habil else 0.0
+        sac_os_base = (_obra_social_base(os_full.get("recibo_sac") or {}) if os_full else (sac_base_fs if bool(osecac) else round2(sac_rem_aportes))) if sac_habil else 0.0
         sac_os_aporte = 0.0
     else:
         mensual_pami = round2(mensual_base_previsional * 0.03)
         sac_pami = round2(sac_base_previsional * 0.03) if sac_habil else 0.0
-        mensual_os_base = mensual_base_fs if bool(osecac) else round2(mensual_rem_aportes)
+        mensual_os_base = _obra_social_base(os_full) if os_full else (mensual_base_fs if bool(osecac) else round2(mensual_rem_aportes))
         mensual_os_aporte = round2(mensual_os_base * 0.03)
         mensual_osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(base.get("rama"), base.get("mes") or mes)) else 0.0
-        sac_os_base = (sac_base_fs if bool(osecac) else round2(sac_rem_aportes)) if sac_habil else 0.0
+        sac_os_base = (_obra_social_base(os_full.get("recibo_sac") or {}) if os_full else (sac_base_fs if bool(osecac) else round2(sac_rem_aportes))) if sac_habil else 0.0
         sac_os_aporte = round2(sac_os_base * 0.03) if sac_habil else 0.0
 
     mensual_faecys = round2(mensual_base_fs * 0.005) if (mensual_base_fs and not bool(fuera_convenio)) else 0.0
@@ -2276,6 +2180,7 @@ def calcular_payload(
 
     return {
         "ok": True,
+        "obra_social_jornada_base": max(48.0, j),
         "rama": base["rama"],
         "agrup": base["agrup"],
         "categoria": base["categoria"],
@@ -2336,6 +2241,7 @@ def calcular_payload(
         "recibo_sac": (
             {
                 "concepto": sac_concepto,
+                "obra_social_jornada_base": max(48.0, j),
                 "items": sac_items,
                 "totales": {
                     "rem": float(sac_rem_total),
@@ -2558,6 +2464,7 @@ def calcular_vacaciones_payload(
     categoria: str,
     mes: str,
     dias: float,
+    jornada: float = 48.0,
     base_rem: float,
     base_nr: float = 0.0,
     osecac: bool = True,
@@ -2585,7 +2492,9 @@ def calcular_vacaciones_payload(
     rem = round2((rem_base / 25.0) * dias_f)
     nr = round2((nr_base / 25.0) * dias_f)
     base_aportes = round2(rem + nr)
-    os_base = base_aportes if bool(osecac) else rem
+    os_hours = (_extract_hs_from_categoria(categoria) if norm_rama(rama) in ("CALL CENTER", "CALLCENTER", "CALL") else None) or float(jornada or 48)
+    os_factor = max(1.0, 48.0 / os_hours) if os_hours > 0 else 1.0
+    os_base = round2((base_aportes if bool(osecac) else rem) * os_factor)
     jub = round2(rem * 0.11)
     pami = 0.0 if bool(jubilado) else round2(rem * 0.03)
     obra_social = 0.0 if bool(jubilado) else round2(os_base * 0.03)
@@ -2638,6 +2547,7 @@ def calcular_vacaciones_payload(
     )
     return {
         "ok": True,
+        "obra_social_jornada_base": max(48.0, os_hours),
         "tipo": "VACACIONES",
         "rama": _norm(rama),
         "agrup": _norm(agrup),
@@ -2726,6 +2636,7 @@ def calcular_final_payload(
     instituto_capacitacion: bool = True,
     basico_manual: float = 0.0,
     fuera_convenio: bool = False,
+    _os_48_simulation: bool = False,
 ) -> Dict[str, Any]:
     """Liquidación final básica (MVP Etapa 9).
 
@@ -2736,6 +2647,7 @@ def calcular_final_payload(
 
     Devuelve items con columnas: r (rem), n (no rem), i (indemnizatorio), d (descuentos).
     """
+    os_original_params = locals().copy()
     import calendar as _cal
 
     fi = _parse_date_yyyy_mm_dd(fecha_ingreso)
@@ -3113,6 +3025,7 @@ def calcular_final_payload(
             categoria=categoria,
             mes=mes_baja,
             jornada=jornada,
+            _os_48_simulation=_os_48_simulation,
             basico_manual=basico_manual,
             fuera_convenio=fuera_convenio,
             anios_antig=anios_antig,
@@ -3192,6 +3105,7 @@ def calcular_final_payload(
     # -----------------
     rem_aportes = rem_total
 
+    os_hours = (_extract_hs_from_categoria(categoria) if norm_rama(rama) in ("CALL CENTER", "CALLCENTER", "CALL") else None) or float(jornada or 48)
     os_base = rem_aportes  # base mostrada para Obra Social
 
     jub = 0.0
@@ -3243,9 +3157,21 @@ def calcular_final_payload(
         jub = round2(rem_aportes * 0.11)
         pami = round2(rem_aportes * 0.03)
 
-        # Mismo criterio que mensual: con OSECAC usa la base FAECYS/Sindicato;
-        # sin OSECAC usa solo remunerativos y conserva el descuento del 3%.
         os_base = base_fs if bool(osecac) else round2(rem_aportes)
+        os_hours = (_extract_hs_from_categoria(categoria) if norm_rama(rama) in ("CALL CENTER", "CALLCENTER", "CALL") else None) or float(jornada or 48)
+        if 0 < os_hours < 48 and not _os_48_simulation:
+            full_params = dict(os_original_params)
+            full_params.update(jornada=48, _os_48_simulation=True)
+            if norm_rama(rama) in ("CALL CENTER", "CALLCENTER", "CALL"):
+                full_category = re.sub(r"\b\d+\s*hs\b", "48hs", categoria, flags=re.I)
+                if get_payload(rama=rama, mes=mes_baja, agrup=agrup, categoria=full_category).get("ok"):
+                    full_params["categoria"] = full_category
+            for historical in ("mejor_rem", "mejor_nr", "mejor_total", "sac_devengado_rem", "sac_devengado_nr"):
+                if float(full_params[historical]) >= 0:
+                    full_params[historical] = round2(float(full_params[historical]) * 48.0 / os_hours)
+            if bool(fuera_convenio) and float(basico_manual or 0) > 0:
+                full_params["basico_manual"] = float(basico_manual) * 48.0 / os_hours
+            os_base = _obra_social_base(calcular_final_payload(**full_params))
         os_aporte = round2(os_base * 0.03)
         osecac_100 = 100.0 if (bool(osecac) and not bool(fuera_convenio) and aplica_osecac_fijo(rama, mes_baja)) else 0.0
 
@@ -3338,6 +3264,7 @@ def calcular_final_payload(
 
     return {
         "ok": True,
+        "obra_social_jornada_base": max(48.0, os_hours),
         "rama": _norm(rama),
         "agrup": _norm(agrup),
         "categoria": _norm(categoria),

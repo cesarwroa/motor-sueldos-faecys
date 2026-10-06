@@ -202,9 +202,10 @@ async def security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
-        "object-src 'none'; form-action 'self'; "
-        "img-src 'self' data: blob: "
+        "object-src 'none'; form-action 'self'; frame-src https://www.youtube-nocookie.com; "
+        "img-src 'self' data: blob: https://calculadoradecomercio.com.ar "
         "https://*.google-analytics.com https://*.googletagmanager.com; "
+        "media-src 'self' https://calculadoradecomercio.com.ar; "
         "style-src 'self' 'unsafe-inline'; "
         "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; "
         "connect-src 'self' https://calculadoradecomercio.com.ar "
@@ -216,10 +217,11 @@ async def security_headers(request: Request, call_next):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
             "object-src 'none'; form-action 'self'; "
-            "img-src 'self' data: blob: https://*.google-analytics.com "
+            "img-src 'self' data: blob: https://calculadoradecomercio.com.ar https://*.google-analytics.com "
             "https://*.googletagmanager.com https://*.googlesyndication.com "
             "https://*.doubleclick.net https://*.google.com; "
-            "style-src 'self' 'unsafe-inline'; "
+            "media-src 'self' https://calculadoradecomercio.com.ar; "
+        "style-src 'self' 'unsafe-inline'; "
             "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com "
             "https://*.googlesyndication.com https://*.doubleclick.net "
             "https://*.google.com; "
@@ -227,7 +229,7 @@ async def security_headers(request: Request, call_next):
             "https://*.google-analytics.com https://*.analytics.google.com "
             "https://*.googletagmanager.com https://*.googlesyndication.com "
             "https://*.doubleclick.net https://*.google.com; "
-            "frame-src https://*.googlesyndication.com "
+            "frame-src https://www.youtube-nocookie.com https://*.googlesyndication.com "
             "https://*.doubleclick.net https://*.google.com"
         )
     return response
@@ -2352,6 +2354,7 @@ def calcular_vacaciones(
     mes: str,
     dias: float,
     base_rem: float,
+    jornada: float = 48.0,
     base_nr: float = 0,
     osecac: bool = True,
     afiliado: bool = False,
@@ -2368,6 +2371,7 @@ def calcular_vacaciones(
         categoria=categoria,
         mes=mes,
         dias=dias,
+        jornada=jornada,
         base_rem=base_rem,
         base_nr=base_nr,
         osecac=osecac,
