@@ -88,9 +88,19 @@
     bar.querySelector('[data-logout]')?.addEventListener('click',async()=>{
       try{await request('logout',{},true);}catch(error){if(error.status!==401&&error.status!==403){open('profile');feedback(error.message);return;}}
       token=''; account=null; sessionStorage.removeItem(key);
-      sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');
+      sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');
       location.assign(`${apiOrigin}/#co_logout=1`);
     });
+  }
+  function renderLinkButtons(){
+    const group=dialog.querySelector('[data-link-providers]');if(!group)return;
+    group.innerHTML=(account?.identities||[]).map(provider=>`<span style="display:inline-flex;align-items:center;gap:10px;padding:8px">${socialLogos[provider]||''}${provider==='google'?'Google':'Facebook'}</span>`).join('')||'<span>Email y contraseña</span>';
+  }
+  async function confirmPendingLink(){
+    const pending=sessionStorage.getItem('co_pending_link_v1');if(!pending)return;
+    const response=await fetch(`${apiOrigin}/api/oauth.php?action=confirm-link`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({ticket:pending})});
+    const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||'No se pudo confirmar la cuenta.');
+    sessionStorage.removeItem('co_pending_link_v1');
   }
   function feedback(message){dialog.querySelector('[role=status]').textContent=message;}
   function profileFields(profile={}){
@@ -106,7 +116,7 @@
     // Reutilizar la sesión vigente de esta pestaña, sin almacenarla de forma persistente.
     if(mode==='login' && token){
       try{
-        account=await request('me');renderBar();
+        await confirmPendingLink();account=await request('me');renderBar();
         if(!account.profile){mode='profile';}
         else if(document.getElementById('root')){
           const result=await request('handoff-create',{});
@@ -135,8 +145,12 @@
       social.innerHTML=['google','facebook'].map(provider=>`<button type="button" data-social="${provider}" data-social-mode="${mode}" ${socialProviders[provider]?'':'disabled'}>${socialButtonContent(provider,mode,!!socialProviders[provider])}</button>`).join('');
       dialog.querySelector('form').before(social);
       social.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>{
-        const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target',isCalculator?'calculator':'landing');location.assign(url.href);
+        const url=new URL(`${apiOrigin}/api/oauth.php`);url.searchParams.set('action','start');url.searchParams.set('provider',button.dataset.social);url.searchParams.set('target',isCalculator?'calculator':'landing');const pending=sessionStorage.getItem('co_pending_link_v1');if(pending)url.searchParams.set('confirm',pending);location.assign(url.href);
       });
+    }
+    if(mode==='profile'){
+      const section=document.createElement('section');section.innerHTML='<p>Métodos de ingreso de tu cuenta:</p><div class="co-actions" data-link-providers></div>';
+      dialog.querySelector('form').after(section);renderLinkButtons();
     }
     bindProfile(dialog);
     const form=dialog.querySelector('form');
@@ -147,7 +161,7 @@
         if(mode==='register'){await request('register',values);await open('login');feedback('Cuenta creada. Ingresá con tu email y contraseña.');}
         if(mode==='login'){
           const result=await request('login',values,true);token=result.token;sessionStorage.setItem(key,token);
-          try{account=await request('me');}catch(error){token='';sessionStorage.removeItem(key);throw error;}
+          try{await confirmPendingLink();account=await request('me');}catch(error){token='';sessionStorage.removeItem(key);throw error;}
           renderBar();if(!account.profile)await open('profile');else dialog.close();
         }
         if(mode==='profile'){
@@ -209,19 +223,27 @@
   },true);
   renderBar();enrichContactForms();syncHeader();
   async function restoreSession(){
-    const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');
+    const hash=new URLSearchParams(location.hash.slice(1));const code=hash.get('co_login');const linked=hash.get('co_linked');
+    const pending=hash.get('co_link_pending');
+    if(pending){
+      hash.delete('co_link_pending');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
+      sessionStorage.setItem('co_pending_link_v1',pending);
+      await open('login');feedback('Ya tenés una cuenta con este email. Confirmá con Google o tu contraseña una sola vez; después podrás entrar directamente con Facebook.');return;
+    }
+    if(linked)sessionStorage.removeItem('co_pending_link_v1');
+    if(linked){hash.delete('co_linked');}
     if(hash.get('co_logout')==='1'){
       hash.delete('co_logout');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
       // La landing puede conservar otra sesión propia tras el traslado a Render.
       if(token){try{await request('logout',{},true);}catch(_){}}
-      token='';account=null;sessionStorage.removeItem(key);sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();return;
+      token='';account=null;sessionStorage.removeItem(key);sessionStorage.removeItem('co_pending_link_v1');sessionStorage.removeItem('co_admin_token');localStorage.removeItem('co_admin_token');renderBar();return;
     }
     const oauthError=hash.get('co_oauth_error');
     if(oauthError){
       const reference=hash.get('co_oauth_ref')||'';hash.delete('co_oauth_ref');
       hash.delete('co_oauth_error');history.replaceState(null,'',location.pathname+location.search+(hash.toString()?'#'+hash.toString():''));
       await open('login');
-      const messages={cancelled:'Cancelaste el acceso. Podés volver a intentarlo.',email_required:'El proveedor no compartió tu email. Usá el registro con email.',existing_account:'Ese email ya tiene una cuenta. Ingresá con email y contraseña.',account_inactive:'Tu cuenta no está activa. Contactá al administrador.'};
+      const messages={cancelled:'Cancelaste el acceso. Podés volver a intentarlo.',email_required:'El proveedor no compartió tu email. Usá el registro con email.',existing_account:'Ese email ya tiene una cuenta. Confirmá con Google o tu contraseña para habilitar también el ingreso con Facebook.',account_inactive:'Tu cuenta no está activa. Contactá al administrador.',email_mismatch:'Elegí la cuenta del proveedor que tiene el mismo email que tu cuenta de la calculadora.',identity_in_use:'Ese acceso ya está vinculado a otra cuenta. No se realizó ningún cambio.',link_expired:'La confirmación venció. Iniciá nuevamente con Facebook.'};
       feedback((messages[oauthError]||'No se pudo completar el acceso. Intentá nuevamente.')+(reference?` Referencia: ${reference}`:''));
     }
     if(code){
@@ -230,11 +252,11 @@
       catch(error){await open('login');feedback(error.message);return;}
     }
     if(!token)return;
-    try{account=await request('me');renderBar();if(!account.profile)await open('profile');}
+    try{account=await request('me');renderBar();if(!account.profile||linked)await open('profile');if(linked)feedback(`${linked==='facebook'?'Facebook':'Google'} vinculado. Ya podés ingresar con cualquiera de tus accesos vinculados.`);}
     catch(error){if(error.status===401||error.status===403){token='';sessionStorage.removeItem(key);}renderBar();}
   }
   fetch(`${apiOrigin}/api/oauth.php?action=providers`).then(r=>r.json()).then(result=>{
-    if(result.ok && result.providers){socialProviders=result.providers;if(document.querySelector('[data-social]')){document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.innerHTML=socialButtonContent(b.dataset.social,b.dataset.socialMode||'login',enabled);});}}
+    if(result.ok && result.providers){socialProviders=result.providers;renderLinkButtons();if(document.querySelector('[data-social]')){document.querySelectorAll('[data-social]').forEach(b=>{const enabled=!!socialProviders[b.dataset.social];b.disabled=!enabled;b.innerHTML=socialButtonContent(b.dataset.social,b.dataset.socialMode||'login',enabled);});}}
   }).catch(()=>{});
   restoreSession();
 })();
