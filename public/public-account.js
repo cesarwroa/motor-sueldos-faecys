@@ -23,6 +23,7 @@
   let socialProviders = {google:false,facebook:false};
   let providersLoaded=false,providersFailed=false,providersPromise=null;
   try{const cached=JSON.parse(localStorage.getItem('co_providers_v1')||'null');if(cached?.expires>Date.now()&&typeof cached.providers?.google==='boolean'&&typeof cached.providers?.facebook==='boolean'){socialProviders=cached.providers;providersLoaded=true;}}catch(_){}
+  const adminOnly = document.body.hasAttribute('data-estrella-admin-only');
   const isCalculator = !document.getElementById('root') && location.pathname !== '/admin/app';
   let gate = null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -99,13 +100,14 @@
   function syncAccess(){
     if(!isCalculator)return;
     const content=document.querySelector('body > .container');
-    const locked=!account || (!account.profile && !account.is_admin);
+    const locked=adminOnly ? !account?.is_admin : !account || (!account.profile && !account.is_admin);
     if(content){content.classList.toggle('co-calculator-locked',locked);content.inert=locked;}
     if(!gate){
       gate=document.createElement('section');gate.className='co-access-gate';
       gate.innerHTML='<h1>Ingresá para usar la calculadora</h1><p>Creá tu cuenta o ingresá con tu email.</p><button data-open="register">Crear cuenta</button><button data-open="login">Ya tengo cuenta</button>';
       bar.after(gate);gate.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     }
+    if(adminOnly){gate.querySelector('h1').textContent='La Estrella · Administración';gate.querySelector('p').textContent=account?'Este módulo está habilitado únicamente para el administrador.':'Ingresá con una cuenta administradora para usar este módulo.';gate.querySelector('[data-open=register]').hidden=true;gate.querySelector('[data-open=login]').hidden=!!account;}
     gate.hidden=!locked;
   }
   document.addEventListener('co-auth-required',()=>{
@@ -116,8 +118,9 @@
   dialog.addEventListener('close',()=>previousFocus?.focus({preventScroll:true}));
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
   function renderBar(){
-    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button> <button data-open="news">Novedades</button>':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-open="news-admin">Administrar novedades</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button> <button data-open="news">Novedades</button>'+(account?.is_admin?' <button data-open="estrella">La Estrella</button>':'')+'':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-open="news-admin">Administrar novedades</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
     syncAccess();
+    document.dispatchEvent(new CustomEvent('co-account-updated',{detail:{isAdmin:account?.is_admin===true}}));
     if(typeof newsPanel!=='undefined')loadNews();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
     bar.querySelector('[data-calculator-admin]')?.addEventListener('click',async()=>{
@@ -156,6 +159,16 @@
     select.addEventListener('change',update);update();
   }
   async function open(mode){
+    if(mode==='estrella'){
+      if(!account?.is_admin)return;
+      const target=new URL('/estrella.html',apiOrigin);
+      if(location.origin!==apiOrigin){
+        try{const result=await request('handoff-create',{});target.hash=new URLSearchParams({co_login:result.code}).toString();}
+        catch(error){await open('profile');feedback(error.message);return;}
+      }
+      location.assign(target.href);return;
+    }
+
     // Reutilizar la sesión vigente de esta pestaña, sin almacenarla de forma persistente.
     if(mode==='login' && token){
       try{
