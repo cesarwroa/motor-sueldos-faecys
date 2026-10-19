@@ -118,9 +118,21 @@
   let previousFocus=null;
   dialog.addEventListener('close',()=>previousFocus?.focus({preventScroll:true}));
   dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
+  function syncEstrellaTab(){
+    const finalTab=document.getElementById('tabFinal');
+    let estrellaTab=document.getElementById('tabEstrella');
+    if(!finalTab||!canUseEstrella()){estrellaTab?.remove();return;}
+    if(!estrellaTab){
+      estrellaTab=document.createElement('button');estrellaTab.id='tabEstrella';estrellaTab.type='button';
+      estrellaTab.className='tab';estrellaTab.textContent='La Estrella';
+      estrellaTab.style.cssText='font:inherit;color:inherit;line-height:inherit';
+      estrellaTab.onclick=()=>open('estrella');
+    }
+    finalTab.after(estrellaTab);finalTab.parentElement.style.flexWrap='wrap';
+  }
   function renderBar(){
-    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button> <button data-open="news">Novedades</button>'+(canUseEstrella()?' <button data-open="estrella">La Estrella</button>':'')+'':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-open="news-admin">Administrar novedades</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
-    syncAccess();
+    bar.innerHTML=`<span><strong>${account?`Hola, ${esc(account.user.name)}`:'Creá tu cuenta en la calculadora'}</strong></span><span class="co-actions">${account?'<button data-open="profile">Mi cuenta</button> <button data-open="news">Novedades</button>'+(canUseEstrella()&&!document.getElementById('tabFinal')?' <button data-open="estrella">La Estrella</button>':'')+'':'<button data-open="login">Ingresar</button> <button class="co-primary" data-open="register">Registrarme</button>'}${account?.is_admin?' <button data-open="admin">Registros y estadísticas</button> <button data-open="news-admin">Administrar novedades</button> <button data-calculator-admin>Administrar calculadora</button>':''} <button data-open="contact">Enviar consulta</button>${account?' <button data-logout>Salir</button>':''}</span>`;
+    syncAccess();syncEstrellaTab();
     document.dispatchEvent(new CustomEvent('co-account-updated',{detail:{isAdmin:account?.is_admin===true,canUseEstrella:canUseEstrella()}}));
     if(typeof newsPanel!=='undefined')loadNews();
     bar.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open));
