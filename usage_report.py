@@ -123,22 +123,22 @@ def build_usage_xlsx(report):
     summary.append(['Perfil', report.get('type') or 'Todos', 'Búsqueda', report.get('search') or ''])
     summary.append([])
     totals = report['totals']
-    for title, key in [('Cuentas registradas', 'users'), ('Usuarios con actividad', 'active_users'), ('Cálculos mensuales', 'monthly_count'), ('Cálculos finales', 'final_count')]:
-        summary.append([title, int(totals[key])])
+    for title, key in [('Cuentas registradas', 'users'), ('Usuarios con actividad', 'active_users'), ('Cálculos mensuales', 'monthly_count'), ('Cálculos finales', 'final_count'), ('Cálculos La Estrella', 'estrella_count')]:
+        summary.append([title, int(totals.get(key, 0))])
     summary.column_dimensions['A'].width = 38
     summary.column_dimensions['B'].width = 65
     summary.column_dimensions['C'].width = 20
     summary.column_dimensions['D'].width = 35
     sheet = wb.create_sheet('Usuarios')
-    sheet.append(['Nombre', 'Email', 'Perfil', 'Organización', 'Estado', 'Registro (Argentina)', 'Cálculos mensuales', 'Cálculos finales', 'Último cálculo (Argentina)', 'Novedades'])
+    sheet.append(['Nombre', 'Email', 'Perfil', 'Organización', 'Estado', 'Registro (Argentina)', 'Cálculos mensuales', 'Cálculos finales', 'Cálculos La Estrella', 'Último cálculo La Estrella (Argentina)', 'Último cálculo (Argentina)', 'Novedades'])
     labels = {'empleado': 'Empleado', 'empresa': 'Empresa', 'estudio': 'Estudio contable', 'sindicato': 'Sindicato'}
     def local(value):
         if not value:
             return ''
         return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=-3))).strftime('%d/%m/%Y %H:%M')
     for user in report['users']:
-        sheet.append([user['name'], user['email'], labels.get(user['account_type'], user['account_type']), user.get('organization_name', ''), user.get('status_label') or ('Dada de baja' if user['status']=='blocked' and str(user.get('deactivated_by_user',False)).lower() in ('true','1') else {'active':'Activa','blocked':'Bloqueada','pending':'Pendiente','inactive':'Inactiva'}.get(user['status'],user['status'])), local(user['created_at']), *[int(user[k]) for k in ['monthly_count','final_count']], local(user.get('last_activity')), 'Aceptadas' if int(user['newsletter_opt_in']) else 'No aceptadas'])
-    widths = [30, 40, 22, 35, 14, 23, 22, 22, 25, 20]
+        sheet.append([user['name'], user['email'], labels.get(user['account_type'], user['account_type']), user.get('organization_name', ''), user.get('status_label') or ('Dada de baja' if user['status']=='blocked' and str(user.get('deactivated_by_user',False)).lower() in ('true','1') else {'active':'Activa','blocked':'Bloqueada','pending':'Pendiente','inactive':'Inactiva'}.get(user['status'],user['status'])), local(user['created_at']), *[int(user.get(k, 0)) for k in ['monthly_count','final_count','estrella_count']], local(user.get('last_estrella_activity')), local(user.get('last_activity')), 'Aceptadas' if int(user['newsletter_opt_in']) else 'No aceptadas'])
+    widths = [30, 40, 22, 35, 14, 23, 22, 22, 22, 36, 25, 20]
     for i, width in enumerate(widths, 1):
         sheet.column_dimensions[get_column_letter(i)].width = width
     sheet.freeze_panes = 'C2'
