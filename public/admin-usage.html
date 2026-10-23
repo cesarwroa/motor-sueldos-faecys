@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="co-admin-version" content="20261022-barras-diarias-2"><title>Registros y estadísticas | Administración</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="co-admin-version" content="20261022-periodos-sin-vacios-3"><title>Registros y estadísticas | Administración</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#172033;font:15px system-ui}header{background:#15335a;color:white;padding:24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}h1{font-size:27px;margin:0 0 5px}header p{margin:0;color:#dbeafe}header a{color:white}main{width:100%;max-width:none;margin:0;padding:24px}.filters,.card{background:white;border:1px solid #dbe4ee;border-radius:14px;padding:20px;margin-bottom:20px}.filters{display:flex;align-items:end;gap:14px;flex-wrap:wrap}label{display:grid;gap:7px;font-size:13px;color:#475569}input,select,button{font:inherit;border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:white;color:#172033}button{cursor:pointer}button.primary{background:#2563eb;color:white;border-color:#2563eb}button:disabled{opacity:.55;cursor:wait}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:20px 0}.kpi{background:white;border:1px solid #dbe4ee;border-radius:12px;padding:18px}.kpi strong{display:block;font-size:30px;color:#15335a;margin-top:8px}.scroll{overflow:auto}table{border-collapse:collapse;min-width:1120px;width:100%;table-layout:fixed;font-size:13px}th,td{padding:13px 10px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}th{background:#edf3fb;white-space:normal;overflow-wrap:break-word}td{overflow-wrap:anywhere}td.num,th.num{text-align:right}td small{color:#64748b}.topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.muted{color:#64748b;line-height:1.6}.status{color:#9f1239}.pager{display:flex;gap:12px;align-items:center;margin-top:18px}h2{margin:0;font-size:20px}[hidden]{display:none!important}@media(max-width:700px){main{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:23px}.filters label{flex:1;min-width:140px}}
 
@@ -19,8 +19,14 @@ th:nth-child(1){width:20%}th:nth-child(2){width:7%}th:nth-child(3){width:11%}th:
 <h2 id="timeline-title">Crecimiento diario de usuarios</h2>
 <p class="muted">Una barra por día: el total acumulado y, en verde dentro de la misma barra, los nuevos registros del día. Se aplican el perfil y la búsqueda del panel.</p>
 <div class="timeline-controls">
-<label>Ver período<select id="timeline-period"><option value="range">Fechas del panel</option><option value="day">Día</option><option value="week">Semana · 7 días</option><option value="month">Mes · todos sus días</option><option value="year">Año · todos sus días</option></select></label>
-<label id="timeline-reference-label" hidden>Fecha de referencia<input type="date" id="timeline-reference" required></label>
+<label>Ver período<select id="timeline-period">
+<option value="custom">Personalizado</option><option value="today">Hoy</option><option value="yesterday">Ayer</option>
+<option value="week">Esta semana (domingo a hoy)</option><option value="last7">Últimos 7 días</option><option value="lastweek">La semana pasada (domingo a sábado)</option>
+<option value="last28">Últimos 28 días</option><option value="last30" selected>Últimos 30 días</option>
+<option value="month">Este mes</option><option value="lastmonth">El mes pasado</option><option value="last90">Últimos 90 días</option>
+<option value="quarter">Trimestre hasta la fecha</option><option value="year">Este año (enero a hoy)</option><option value="lastyear">Último año natural</option>
+</select></label>
+<div id="timeline-custom" class="timeline-controls" style="margin:0" hidden><label>Desde (gráfico)<input type="date" id="timeline-from"></label><label>Hasta (gráfico)<input type="date" id="timeline-to"></label></div>
 </div>
 <p id="timeline-summary" class="muted" role="status"></p>
 <div class="timeline-legend"><span><i aria-hidden="true"></i>Usuarios anteriores</span><span><i class="new-users" aria-hidden="true"></i>Nuevos del día (incluidos en el total)</span></div>
@@ -52,35 +58,50 @@ function registrationDay(value){
 }
 function dailyWindow(mode,reference,from,to){
  const d=calendarDate(reference);let start=reference,end=reference;
- if(mode==='range')return {start:from,end:to};
- if(mode==='week'){d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7);start=dayKey(d);d.setUTCDate(d.getUTCDate()+6);end=dayKey(d);}
- if(mode==='month'){d.setUTCDate(1);start=dayKey(d);d.setUTCMonth(d.getUTCMonth()+1,0);end=dayKey(d);}
- if(mode==='year'){start=reference.slice(0,4)+'-01-01';end=reference.slice(0,4)+'-12-31';}
+ const offset=days=>{const date=calendarDate(reference);date.setUTCDate(date.getUTCDate()+days);return dayKey(date);};
+ if(mode==='custom'){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||Number.isNaN(calendarDate(from).getTime())||Number.isNaN(calendarDate(to).getTime())||dayKey(calendarDate(from))!==from||dayKey(calendarDate(to))!==to)throw new Error('Elegí fechas válidas para el período personalizado.');
+  if(from>to)throw new Error('La fecha final es anterior a la inicial.');return {start:from,end:to};
+ }
+ if(mode==='yesterday')start=end=offset(-1);
+ if(mode==='week')start=offset(-d.getUTCDay());
+ if(mode==='lastweek'){start=offset(-d.getUTCDay()-7);end=offset(-d.getUTCDay()-1);}
+ if(['last7','last28','last30','last90'].includes(mode))start=offset(1-Number(mode.slice(4)));
+ if(mode==='month'){d.setUTCDate(1);start=dayKey(d);}
+ if(mode==='lastmonth'){d.setUTCDate(0);end=dayKey(d);d.setUTCDate(1);start=dayKey(d);}
+ if(mode==='quarter'){d.setUTCMonth(Math.floor(d.getUTCMonth()/3)*3,1);start=dayKey(d);}
+ if(mode==='year')start=reference.slice(0,4)+'-01-01';
+ if(mode==='lastyear'){const year=d.getUTCFullYear()-1;start=year+'-01-01';end=year+'-12-31';}
  return {start,end};
 }
 function dailyPoints(users,start,end,currentDay){
  const counts=new Map();for(const user of users){const day=registrationDay(user.created_at);if(day)counts.set(day,(counts.get(day)||0)+1);}
+ const knownDays=[...counts.keys()].filter(day=>day<=currentDay).sort();
+ if(!knownDays.length)return [];
+ start=start<knownDays[0]?knownDays[0]:start;
+ end=end>currentDay?currentDay:end;
  let total=0;for(const [day,count] of counts)if(day<start&&day<=currentDay)total+=count;
  const points=[];
  for(let d=calendarDate(start);dayKey(d)<=end;d.setUTCDate(d.getUTCDate()+1)){
   if(points.length>=3660)throw new Error('Elegí un período de hasta 10 años para ver el detalle diario.');
-  const day=dayKey(d),future=day>currentDay,newUsers=future?0:counts.get(day)||0;
-  total+=newUsers;points.push({day,newUsers,total:future?null:total,previous:future?null:total-newUsers});
+  const day=dayKey(d),newUsers=counts.get(day)||0;
+  total+=newUsers;points.push({day,newUsers,total,previous:total-newUsers});
  }
  return points;
 }
 function loadTimeline(){
  if(!report)return;
  const box=$('timeline-chart'),summary=$('timeline-summary'),mode=$('timeline-period').value;
- $('timeline-reference-label').hidden=mode==='range';
- const reference=$('timeline-reference').value||report.to;
- if(!$('timeline-reference').value)$('timeline-reference').value=reference;
- box.innerHTML='';$('timeline-details').hidden=true;
+ $('timeline-custom').hidden=mode!=='custom';
+ if(!$('timeline-from').value)$('timeline-from').value=report.from;
+ if(!$('timeline-to').value)$('timeline-to').value=report.to;
+ box.innerHTML='';$('timeline-data').innerHTML='';$('timeline-details').hidden=true;
  try{
-  const {start,end}=dailyWindow(mode,reference,report.from,report.to);
+  const {start,end}=dailyWindow(mode,today,$('timeline-from').value,$('timeline-to').value);
   const points=dailyPoints(report.users,start,end,today),available=points.filter(p=>p.total!==null),last=available.at(-1);
+  if(!points.length){summary.textContent=`${shortDay(start)} al ${shortDay(end)} · Sin datos para este período.`;box.innerHTML='<p class="profile-empty">No hay registros disponibles para el período seleccionado.</p>';$('timeline-note').textContent='No se dibujan barras antes del primer registro ni para días futuros.';return;}
   const newUsers=available.reduce((n,p)=>n+p.newUsers,0);
-  summary.textContent=`${shortDay(start)} al ${shortDay(end)} · Total al cierre: ${last?last.total.toLocaleString('es-AR'):'—'} usuarios · Nuevos en el período: ${newUsers.toLocaleString('es-AR')}`;
+  summary.textContent=`${shortDay(start)} al ${shortDay(end)} · Total al cierre: ${last.total.toLocaleString('es-AR')} usuarios · Nuevos en el período: ${newUsers.toLocaleString('es-AR')}`;
   const count=points.length,width=Math.max(340,60+count*32),height=350,left=48,top=32,plotHeight=245,plotBottom=top+plotHeight,step=(width-left-12)/count,barWidth=step*.88;
   const max=Math.max(1,...available.map(p=>p.total)),tick=Math.max(1,Math.ceil(max/4)),axisMax=tick*4,scale=plotHeight/axisMax;
   let svg='';for(let i=0;i<=4;i++){const y=plotBottom-plotHeight*i/4;svg+=`<path d="M ${left} ${y} H ${width-10}" stroke="#e2e8f0"/><text x="${left-8}" y="${y+4}" text-anchor="end" fill="#64748b" font-size="12">${tick*i}</text>`;}
@@ -96,11 +117,12 @@ function loadTimeline(){
   });
   box.innerHTML=`<svg viewBox="0 0 ${width} ${height}" style="width:${width}px;max-width:none;display:block" role="img" aria-label="Una barra diaria: total acumulado, con los nuevos usuarios en verde dentro del total. Detalle en Ver datos del gráfico."><title>Crecimiento diario de usuarios</title>${svg}</svg>`;
   $('timeline-data').innerHTML=rows.join('');$('timeline-details').hidden=false;
-  $('timeline-note').textContent='Cada barra representa un día. Su altura es el total acumulado: azul para usuarios anteriores y verde para los nuevos de ese día. Los nuevos ya están incluidos en el total. Hora de Argentina; los días futuros se muestran con un guion.';
+  $('timeline-note').textContent=`Días mostrados: ${shortDay(points[0].day)} al ${shortDay(last.day)}. Se omiten las fechas anteriores al primer registro disponible y los días futuros. Azul: usuarios anteriores; verde: nuevos del día, incluidos en el total. Un día sin nuevos registros conserva su total acumulado. Semanas de domingo a sábado. Hora de Argentina.`;
  }catch(error){summary.textContent=error.message;$('timeline-note').textContent='Revisá las fechas del período.';}
 }
-$('timeline-period').onchange=()=>{$('timeline-reference').value=report?.to||today;loadTimeline();};
-$('timeline-reference').onchange=loadTimeline;
+$('timeline-period').onchange=loadTimeline;
+$('timeline-from').onchange=loadTimeline;
+$('timeline-to').onchange=loadTimeline;
 
 function renderProfiles(){
  const total=report.users.length;
@@ -141,7 +163,7 @@ function renderNewsletter(){
 
 function render(){renderProfiles();renderNewsletter();const t=report.totals;const cards=[['Cuentas registradas',t.users],['Usuarios con actividad',t.active_users],['Cálculos mensuales',t.monthly_count],['Cálculos finales',t.final_count],['Cálculos La Estrella',t.estrella_count||0]];$('kpis').innerHTML=cards.map(([label,n])=>`<div class="kpi">${label}<strong>${n.toLocaleString('es-AR')}</strong></div>`).join('');$('coverage').textContent=report.tracking_started_at?`Primer cálculo registrado: ${date(report.tracking_started_at)} (hora de Argentina). No incluye actividad anterior al seguimiento.`:'Todavía no hay cálculos registrados. El seguimiento comienza con esta actualización.';
 const pages=Math.max(1,Math.ceil(report.users.length/50));page=Math.min(page,pages);$('count').textContent=`${report.users.length} cuentas · ${report.from} a ${report.to}`;$('rows').innerHTML=report.users.slice((page-1)*50,page*50).map(u=>`<tr><td><strong>${esc(u.name)}</strong><br>${esc(u.email)}<br><small>${esc(u.status_label||({active:'Activa',blocked:'Bloqueada',pending:'Pendiente',inactive:'Inactiva'}[u.status]||u.status))}</small></td><td>${esc(labels[u.account_type]||u.account_type)}</td><td>${esc(u.organization_name)||'—'}</td><td>${date(u.created_at)}</td><td class="num">${u.monthly_count}</td><td class="num">${u.final_count}</td><td class="num">${u.estrella_count||0}</td><td>${date(u.last_estrella_activity)}</td><td>${date(u.last_activity)}</td><td>${Number(u.newsletter_opt_in)?'Aceptadas':'No aceptadas'}</td></tr>`).join('')||'<tr><td colspan="10">No hay usuarios para estos filtros.</td></tr>';$('page').textContent=`Página ${page} de ${pages}`;$('prev').disabled=page<=1;$('next').disabled=page>=pages;}
-async function load(){if(!token){$('status').textContent='Ingresá con tu cuenta de administrador para ver este panel.';return;}$('status').textContent='Cargando…';try{const response=await fetch(api+'?'+query(),{headers:{Authorization:`Bearer ${token}`}});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.message||'Acceso no autorizado.');report=data;page=1;render();$('timeline-reference').value=report.to;loadTimeline();$('dashboard').hidden=false;$('status').textContent='';}catch(error){$('dashboard').hidden=true;$('status').textContent=error.message;}}
+async function load(){if(!token){$('status').textContent='Ingresá con tu cuenta de administrador para ver este panel.';return;}$('status').textContent='Cargando…';try{const response=await fetch(api+'?'+query(),{headers:{Authorization:`Bearer ${token}`}});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.message||'Acceso no autorizado.');report=data;page=1;render();loadTimeline();$('dashboard').hidden=false;$('status').textContent='';}catch(error){$('dashboard').hidden=true;$('status').textContent=error.message;}}
 $('filters').onsubmit=e=>{e.preventDefault();load();};$('history').onclick=()=>{$('filters').elements.from.value='2026-10-05';$('filters').elements.to.value=today;load();};$('prev').onclick=()=>{page--;render();};$('next').onclick=()=>{page++;render();};
 $('export').onclick=async()=>{const button=$('export');button.disabled=true;$('status').textContent='Preparando Excel…';try{const url=new URL('https://app.calculadoradecomercio.com.ar/admin/estadisticas.xlsx');url.search=new URLSearchParams({action:'report',from:report.from,to:report.to,search:report.search||'',type:report.type||''}).toString();const response=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){const error=await response.json().catch(()=>({}));throw new Error(error.detail||'No se pudo exportar.');}const blob=await response.blob();const object=URL.createObjectURL(blob);const a=document.createElement('a');a.href=object;a.download=`estadisticas_${report.from}_${report.to}.xlsx`;a.click();setTimeout(()=>URL.revokeObjectURL(object),1000);$('status').textContent='Excel descargado.';}catch(error){$('status').textContent=error.message;}finally{button.disabled=false;}};load();})();
 </script></body></html>
