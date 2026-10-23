@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="co-admin-version" content="20261022-periodos-sin-vacios-3"><title>Registros y estadísticas | Administración</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="co-admin-version" content="20261022-selector-actividad-4"><title>Registros y estadísticas | Administración</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#172033;font:15px system-ui}header{background:#15335a;color:white;padding:24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}h1{font-size:27px;margin:0 0 5px}header p{margin:0;color:#dbeafe}header a{color:white}main{width:100%;max-width:none;margin:0;padding:24px}.filters,.card{background:white;border:1px solid #dbe4ee;border-radius:14px;padding:20px;margin-bottom:20px}.filters{display:flex;align-items:end;gap:14px;flex-wrap:wrap}label{display:grid;gap:7px;font-size:13px;color:#475569}input,select,button{font:inherit;border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:white;color:#172033}button{cursor:pointer}button.primary{background:#2563eb;color:white;border-color:#2563eb}button:disabled{opacity:.55;cursor:wait}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:20px 0}.kpi{background:white;border:1px solid #dbe4ee;border-radius:12px;padding:18px}.kpi strong{display:block;font-size:30px;color:#15335a;margin-top:8px}.scroll{overflow:auto}table{border-collapse:collapse;min-width:1120px;width:100%;table-layout:fixed;font-size:13px}th,td{padding:13px 10px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}th{background:#edf3fb;white-space:normal;overflow-wrap:break-word}td{overflow-wrap:anywhere}td.num,th.num{text-align:right}td small{color:#64748b}.topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.muted{color:#64748b;line-height:1.6}.status{color:#9f1239}.pager{display:flex;gap:12px;align-items:center;margin-top:18px}h2{margin:0;font-size:20px}[hidden]{display:none!important}@media(max-width:700px){main{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:23px}.filters label{flex:1;min-width:140px}}
 
@@ -17,9 +17,9 @@ th:nth-child(1){width:20%}th:nth-child(2){width:7%}th:nth-child(3){width:11%}th:
 <p class="muted" id="coverage">Se cuentan solo los cálculos registrados desde la implementación del seguimiento.</p><div class="kpis" id="kpis"></div>
 <section class="card" id="user-timeline" aria-labelledby="timeline-title">
 <h2 id="timeline-title">Crecimiento diario de usuarios</h2>
-<p class="muted">Una barra por día: el total acumulado y, en verde dentro de la misma barra, los nuevos registros del día. Se aplican el perfil y la búsqueda del panel.</p>
+<p class="muted" id="timeline-description">Una barra por día: el total acumulado y, en verde dentro de la misma barra, los nuevos registros del día. Se aplican el perfil y la búsqueda del panel.</p>
 <div class="timeline-controls">
-<label>Ver período<select id="timeline-period">
+<label>Mostrar<select id="timeline-metric"><option value="registered">Total y nuevos usuarios</option><option value="active">Usuarios con actividad</option></select></label><label>Ver período<select id="timeline-period">
 <option value="custom">Personalizado</option><option value="today">Hoy</option><option value="yesterday">Ayer</option>
 <option value="week">Esta semana (domingo a hoy)</option><option value="last7">Últimos 7 días</option><option value="lastweek">La semana pasada (domingo a sábado)</option>
 <option value="last28">Últimos 28 días</option><option value="last30" selected>Últimos 30 días</option>
@@ -28,11 +28,11 @@ th:nth-child(1){width:20%}th:nth-child(2){width:7%}th:nth-child(3){width:11%}th:
 </select></label>
 <div id="timeline-custom" class="timeline-controls" style="margin:0" hidden><label>Desde (gráfico)<input type="date" id="timeline-from"></label><label>Hasta (gráfico)<input type="date" id="timeline-to"></label></div>
 </div>
-<p id="timeline-summary" class="muted" role="status"></p>
-<div class="timeline-legend"><span><i aria-hidden="true"></i>Usuarios anteriores</span><span><i class="new-users" aria-hidden="true"></i>Nuevos del día (incluidos en el total)</span></div>
+<button type="button" id="timeline-retry">Actualizar gráfico</button><p id="timeline-summary" class="muted" role="status"></p>
+<div class="timeline-legend"><span><i aria-hidden="true"></i><span id="timeline-existing-label">Usuarios anteriores</span></span><span><i class="new-users" aria-hidden="true"></i><span id="timeline-new-label">Nuevos del día (incluidos en el total)</span></span></div>
 <div id="timeline-chart" tabindex="0" role="region" aria-label="Barras diarias de usuarios; desplazable horizontalmente"></div>
 <p id="timeline-note" class="muted profile-note"></p>
-<details id="timeline-details" hidden><summary>Ver datos del gráfico</summary><div class="scroll"><table><thead><tr><th>Día</th><th>Total acumulado</th><th>Nuevos del día</th></tr></thead><tbody id="timeline-data"></tbody></table></div></details>
+<details id="timeline-details" hidden><summary>Ver datos del gráfico</summary><div class="scroll"><table><thead><tr><th>Día</th><th id="timeline-total-heading">Total acumulado</th><th id="timeline-new-heading">Nuevos del día</th></tr></thead><tbody id="timeline-data"></tbody></table></div></details>
 </section>
 <section class="card" id="newsletter-acceptance" aria-labelledby="newsletter-title"><div class="topline"><h2 id="newsletter-title">Aceptación de novedades</h2><span class="muted" id="newsletter-total"></span></div><p class="muted">Cuentas que aceptaron recibir novedades por email sobre el total de cuentas del reporte, incluidas las que no tuvieron actividad. Los filtros de perfil y búsqueda se aplican a las cuentas; las fechas solo filtran los cálculos.</p><div id="newsletter-summary" class="newsletter-summary"><div><strong class="newsletter-rate" id="newsletter-rate"></strong><p>Aceptaron novedades</p></div><div><p id="newsletter-accepted"></p><p class="muted" id="newsletter-declined"></p></div></div><div class="newsletter-bar" id="newsletter-bar" role="progressbar" aria-label="Porcentaje de cuentas que aceptaron novedades" aria-valuemin="0" aria-valuemax="100"><span id="newsletter-fill"></span></div><p class="newsletter-empty" id="newsletter-empty" hidden>No hay cuentas para estos filtros.</p><p class="muted profile-note">Porcentaje redondeado a un decimal. Los emails se envían solo a cuentas activas que aceptaron novedades.</p></section>
 <section class="card" id="profile-distribution" aria-labelledby="profile-title"><div class="topline"><h2 id="profile-title">Tipos de usuarios</h2><span class="muted" id="profile-total"></span></div><p class="muted">Distribución de las cuentas que coinciden con los filtros de perfil y búsqueda, incluidas las que no tuvieron actividad. Las fechas seleccionadas filtran los cálculos.</p><div class="profile-layout"><div class="profile-chart" id="profile-chart"></div><ul class="profile-legend" id="profile-legend" aria-label="Cantidades y porcentajes por perfil"></ul></div><p class="muted profile-note">Porcentajes redondeados a un decimal.</p></section>
@@ -89,19 +89,57 @@ function dailyPoints(users,start,end,currentDay){
  }
  return points;
 }
-function loadTimeline(){
+function activePoints(users,events,start,end,currentDay){
+ const registrations=new Map(users.map(user=>[String(user.id),registrationDay(user.created_at)]));
+ const days=new Map();
+ for(const event of events){
+  const id=String(event.user_id);
+  if(!registrations.has(id)||event.day<start||event.day>end||event.day>currentDay)continue;
+  if(!days.has(event.day))days.set(event.day,new Set());days.get(event.day).add(id);
+ }
+ const knownDays=[...days.keys()].sort();if(!knownDays.length)return {points:[],unique:0};
+ const points=[],unique=new Set();end=end>currentDay?currentDay:end;
+ for(let d=calendarDate(knownDays[0]);dayKey(d)<=end;d.setUTCDate(d.getUTCDate()+1)){
+  if(points.length>=3660)throw new Error('Elegí un período de hasta 10 años para ver el detalle diario.');
+  const day=dayKey(d),ids=days.get(day)||new Set();let newUsers=0;
+  for(const id of ids){unique.add(id);if(registrations.get(id)===day)newUsers++;}
+  points.push({day,total:ids.size,newUsers,previous:ids.size-newUsers});
+ }
+ return {points,unique:unique.size};
+}
+let timelineRequest=0,timelineController=null;
+async function loadTimeline(){
  if(!report)return;
+ const request=++timelineRequest,currentReport=report;
+ if(timelineController)timelineController.abort();timelineController=new AbortController();
  const box=$('timeline-chart'),summary=$('timeline-summary'),mode=$('timeline-period').value;
+ const active=$('timeline-metric').value==='active';
+ $('timeline-title').textContent=active?'Usuarios con actividad por día':'Crecimiento diario de usuarios';
+ $('timeline-description').textContent=active?'Una barra por día con usuarios que completaron al menos un cálculo. En verde, los que además se registraron ese mismo día.':'Una barra por día: el total acumulado y, en verde dentro de la misma barra, los nuevos registros del día. Se aplican el perfil y la búsqueda del panel.';
+ $('timeline-existing-label').textContent=active?'Usuarios anteriores con actividad':'Usuarios anteriores';
+ $('timeline-new-label').textContent=active?'Nuevos del día con actividad (incluidos en el total)':'Nuevos del día (incluidos en el total)';
+ $('timeline-total-heading').textContent=active?'Usuarios con actividad':'Total acumulado';
+ $('timeline-new-heading').textContent=active?'Nuevos con actividad':'Nuevos del día';
  $('timeline-custom').hidden=mode!=='custom';
  if(!$('timeline-from').value)$('timeline-from').value=report.from;
  if(!$('timeline-to').value)$('timeline-to').value=report.to;
  box.innerHTML='';$('timeline-data').innerHTML='';$('timeline-details').hidden=true;
  try{
   const {start,end}=dailyWindow(mode,today,$('timeline-from').value,$('timeline-to').value);
-  const points=dailyPoints(report.users,start,end,today),available=points.filter(p=>p.total!==null),last=available.at(-1);
-  if(!points.length){summary.textContent=`${shortDay(start)} al ${shortDay(end)} · Sin datos para este período.`;box.innerHTML='<p class="profile-empty">No hay registros disponibles para el período seleccionado.</p>';$('timeline-note').textContent='No se dibujan barras antes del primer registro ni para días futuros.';return;}
+  let points,unique=0;
+  if(active){
+   summary.textContent='Cargando actividad…';box.setAttribute('aria-busy','true');
+   const params=new URLSearchParams({action:'report',timeline:'1',from:start,to:end,type:currentReport.type||'',search:currentReport.search||''});
+   const response=await fetch(api+'?'+params,{headers:{Authorization:`Bearer ${token}`},signal:timelineController.signal});
+   const data=await response.json();if(request!==timelineRequest||currentReport!==report)return;
+   if(!response.ok||!data.ok)throw new Error(data.message||'No se pudo cargar la actividad.');
+   if(!Array.isArray(data.activity_days))throw new Error('Actualizá api/usage.php en Hostinger para consultar la actividad diaria.');
+   ({points,unique}=activePoints(currentReport.users,data.activity_days,start,end,today));
+  }else points=dailyPoints(currentReport.users,start,end,today);
+  const available=points,last=available.at(-1);
+  if(!points.length){summary.textContent=`${shortDay(start)} al ${shortDay(end)} · ${active?'Sin actividad registrada':'Sin datos'} para este período.`;box.innerHTML=`<p class="profile-empty">${active?'No hay cálculos registrados':'No hay registros disponibles'} para el período seleccionado.</p>`;$('timeline-note').textContent=active?'La actividad se cuenta cuando un usuario completa un cálculo mensual, final o La Estrella. No se dibujan fechas sin historial ni días futuros.':'No se dibujan barras antes del primer registro ni para días futuros.';return;}
   const newUsers=available.reduce((n,p)=>n+p.newUsers,0);
-  summary.textContent=`${shortDay(start)} al ${shortDay(end)} · Total al cierre: ${last.total.toLocaleString('es-AR')} usuarios · Nuevos en el período: ${newUsers.toLocaleString('es-AR')}`;
+  summary.textContent=active?`${shortDay(start)} al ${shortDay(end)} · Usuarios únicos con actividad: ${unique.toLocaleString('es-AR')} · Nuevos del día con actividad: ${newUsers.toLocaleString('es-AR')}`:`${shortDay(start)} al ${shortDay(end)} · Total al cierre: ${last.total.toLocaleString('es-AR')} usuarios · Nuevos en el período: ${newUsers.toLocaleString('es-AR')}`;
   const count=points.length,width=Math.max(340,60+count*32),height=350,left=48,top=32,plotHeight=245,plotBottom=top+plotHeight,step=(width-left-12)/count,barWidth=step*.88;
   const max=Math.max(1,...available.map(p=>p.total)),tick=Math.max(1,Math.ceil(max/4)),axisMax=tick*4,scale=plotHeight/axisMax;
   let svg='';for(let i=0;i<=4;i++){const y=plotBottom-plotHeight*i/4;svg+=`<path d="M ${left} ${y} H ${width-10}" stroke="#e2e8f0"/><text x="${left-8}" y="${y+4}" text-anchor="end" fill="#64748b" font-size="12">${tick*i}</text>`;}
@@ -115,14 +153,18 @@ function loadTimeline(){
    svg+=`<text x="${center}" y="${plotBottom+18}" text-anchor="end" transform="rotate(-55 ${center} ${plotBottom+18})" fill="#475569" font-size="10">${p.day.slice(8)}/${p.day.slice(5,7)}</text>`;
    rows.push(`<tr><td>${shortDay(p.day)}</td><td>${p.total??'Todavía no transcurrió'}</td><td>${p.total===null?'—':p.newUsers}</td></tr>`);
   });
-  box.innerHTML=`<svg viewBox="0 0 ${width} ${height}" style="width:${width}px;max-width:none;display:block" role="img" aria-label="Una barra diaria: total acumulado, con los nuevos usuarios en verde dentro del total. Detalle en Ver datos del gráfico."><title>Crecimiento diario de usuarios</title>${svg}</svg>`;
+  const chartTitle=active?'Usuarios con actividad por día':'Crecimiento diario de usuarios';
+  box.innerHTML=`<svg viewBox="0 0 ${width} ${height}" style="width:${width}px;max-width:none;display:block" role="img" aria-label="${chartTitle}. Nuevos del día en verde dentro del total. Detalle en Ver datos del gráfico."><title>${chartTitle}</title>${svg}</svg>`;
   $('timeline-data').innerHTML=rows.join('');$('timeline-details').hidden=false;
-  $('timeline-note').textContent=`Días mostrados: ${shortDay(points[0].day)} al ${shortDay(last.day)}. Se omiten las fechas anteriores al primer registro disponible y los días futuros. Azul: usuarios anteriores; verde: nuevos del día, incluidos en el total. Un día sin nuevos registros conserva su total acumulado. Semanas de domingo a sábado. Hora de Argentina.`;
- }catch(error){summary.textContent=error.message;$('timeline-note').textContent='Revisá las fechas del período.';}
+  $('timeline-note').textContent=`Días mostrados: ${shortDay(points[0].day)} al ${shortDay(last.day)}. ${active?'Cada usuario cuenta una vez por día aunque complete varios cálculos; el resumen cuenta usuarios únicos del período, no suma las barras. Verde: usuarios registrados ese mismo día que completaron un cálculo. No incluye simples ingresos al sitio. Se omiten los días anteriores a la primera actividad disponible del período y los futuros.':'Se omiten las fechas anteriores al primer registro disponible y los días futuros. Azul: usuarios anteriores; verde: nuevos del día, incluidos en el total. Un día sin nuevos registros conserva su total acumulado.'} Semanas de domingo a sábado. Hora de Argentina.`;
+ }catch(error){if(request!==timelineRequest||error.name==='AbortError')return;summary.textContent=error.message;$('timeline-note').textContent='Revisá las fechas o volvé a intentar con Actualizar gráfico.';}
+ finally{if(request===timelineRequest)box.setAttribute('aria-busy','false');}
 }
 $('timeline-period').onchange=loadTimeline;
 $('timeline-from').onchange=loadTimeline;
 $('timeline-to').onchange=loadTimeline;
+$('timeline-metric').onchange=loadTimeline;
+$('timeline-retry').onclick=loadTimeline;
 
 function renderProfiles(){
  const total=report.users.length;
