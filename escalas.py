@@ -173,6 +173,24 @@ def _extract_hs_from_categoria(cat: Any) -> Optional[float]:
         return None
     return v
 
+EXTRAORDINARIA_REVISION_2026 = "Asignación Extraordinaria por Única Vez - Revisión 2026"
+SUMA_UNICA_OCTUBRE_2026 = "Suma No Remunerativa Única - Revisión octubre 2026"
+
+
+def _es_revision_octubre_2026(rama: Any, mes: Any) -> bool:
+    return (
+        _norm_fold(rama) in ("GENERAL", "FUNEBRES", "AGUA POTABLE", "AGUA", "AGUAPOTABLE")
+        and _mes_to_key(mes) in ("2026-10", "2026-11")
+    )
+
+
+def _es_suma_unica(concepto: Any) -> bool:
+    return _norm_fold(concepto) in (
+        _norm_fold(EXTRAORDINARIA_REVISION_2026),
+        _norm_fold(SUMA_UNICA_OCTUBRE_2026),
+    )
+
+
 def _nr_labels(rama: str, mes: Any = "") -> dict:
     """Nombres oficiales de los NR según rama (criterio César)."""
     r = _norm(rama).upper()
@@ -519,7 +537,8 @@ def get_payload(
             out["basico"] = round2(out.get("basico", 0.0) * f)
             out["no_rem"] = round2(out.get("no_rem", 0.0) * f)
             out["suma_fija"] = round2(out.get("suma_fija", 0.0) * f)
-            out["extraordinaria"] = round2(out.get("extraordinaria", 0.0) * f)
+            if not _es_revision_octubre_2026(rama, mes):
+                out["extraordinaria"] = round2(out.get("extraordinaria", 0.0) * f)
             out["conex_cat"] = _norm(conex_cat).upper() if conex_cat else ""
             out["conexiones"] = int(conexiones or 0)
 
@@ -915,7 +934,8 @@ def calcular_payload(
             bas_base *= fac
             nr_base *= fac
             sf_base *= fac
-            extraordinaria_base *= fac
+            if not _es_revision_octubre_2026(rama, mes):
+                extraordinaria_base *= fac
 
     basico_manual_val = _positive_float(basico_manual)
     if basico_manual_val > 0:
@@ -928,7 +948,7 @@ def calcular_payload(
     nr = nr_mes_completo * factor_ingreso
     sf = sf_mes_completo * factor_ingreso
 
-    # Asignación Extraordinaria por Única Vez - Revisión 2026:
+    # Sumas por única vez de las revisiones de julio y octubre de 2026:
     # - proporcional a la jornada y a los días efectivamente cumplidos;
     # - no integra antigüedad, presentismo, SAC, aportes, contribuciones ni descuentos.
     aus_dias_extra = max(0, min(30, int(aus_inj or 0)))
@@ -1890,7 +1910,7 @@ def calcular_payload(
     if extraordinaria:
         items.append(
             item(
-                "Asignación Extraordinaria por Única Vez - Revisión 2026",
+                (SUMA_UNICA_OCTUBRE_2026 if _es_revision_octubre_2026(rama, mes) else EXTRAORDINARIA_REVISION_2026),
                 n=extraordinaria,
                 unidad=unidad_dias_basico,
             )
@@ -3079,7 +3099,7 @@ def calcular_final_payload(
             r = float(it.get("r", 0.0) or 0.0)
             n = float(it.get("n", 0.0) or 0.0)
             d = float(it.get("d", 0.0) or 0.0)
-            if con.strip().lower() == "asignación extraordinaria por única vez - revisión 2026":
+            if _es_suma_unica(con):
                 n = round2(n * (float(dm_prorr) / 30.0))
             if abs(r) + abs(n) + abs(d) <= 0:
                 continue
@@ -3128,7 +3148,7 @@ def calcular_final_payload(
                 viaticos_nr += float(x.get("n", 0.0) or 0.0)
             except Exception:
                 pass
-        if con.strip() == "asignación extraordinaria por única vez - revisión 2026":
+        if _es_suma_unica(con):
             try:
                 extraordinaria_exenta_nr += float(x.get("n", 0.0) or 0.0)
             except Exception:

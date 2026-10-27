@@ -566,7 +566,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </head>
 <body>
 <div class="container">
-<div class="co-update-stamp no-print" id="coUpdateStamp" role="status">ACTUALIZADAS: RAMA GENERAL, FUNEBRES, AGUA POTABLE, CALL CENTER Y CEREALES - PARITARIA JUL 26</div>
+<div class="co-update-stamp no-print" id="coUpdateStamp" role="status">RAMA GENERAL, FÚNEBRES Y AGUA POTABLE ACTUALIZADAS - REVISIÓN OCTUBRE 2026</div>
 <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h1 style="margin:0">Calculadora de Comercio</h1>
   <nav aria-label="Guías y novedades" style="display:flex;gap:14px;flex-wrap:wrap;font-size:14px"><a href="https://calculadoradecomercio.com.ar/contenidos.html" target="_blank" rel="noopener">Guías y escalas</a><a href="https://calculadoradecomercio.com.ar/novedades.php" target="_blank" rel="noopener">Novedades públicas</a></nav>
@@ -6534,7 +6534,7 @@ function switchTab(tab){
   document.addEventListener('DOMContentLoaded', async () => {
     try{
       const updateStamp = $("coUpdateStamp");
-      if(updateStamp && Date.now() < Date.parse("2026-08-20T03:00:00Z")){
+      if(updateStamp && Date.now() < Date.parse("2027-02-01T03:00:00Z")){
         updateStamp.style.display = "block";
       }
       syncAdminUI();
