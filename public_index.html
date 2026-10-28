@@ -862,6 +862,16 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 <div><label>Horas nocturnas (cant.)</label><input id="hsNoct" min="0" step="0.25" type="number" value="0"/></div>
 <div><label>Adelanto de sueldo (desc.)</label><input id="adelantoSueldo" min="0" step="0.01" type="number" value="0"/></div>
 </div>
+<div class="note" style="margin-top:8px">
+<label for="modoDiasMensual">Período a liquidar</label>
+<select id="modoDiasMensual" onchange="document.getElementById('diasLiquidarMensual').disabled=this.value!=='dias'">
+<option value="mes">Mes completo / automático por fecha de alta</option>
+<option value="dias">Por días del mes</option>
+</select>
+<label for="diasLiquidarMensual">Días a liquidar (1 a 30)</label>
+<input id="diasLiquidarMensual" type="number" min="1" max="30" step="1" value="30" disabled/>
+<div class="small">Incluí los días remunerados del período, con descansos y feriados. Ejemplo: del 1 al 27, indicá 27 días y cargá aparte el feriado trabajado. El mes completo usa divisor 30. Las comisiones, importes manuales y horas extra deben corresponder al período indicado.</div>
+</div>
 <div class="grid cols-4" style="margin-top:8px">
 <div><label>Feriados no trabajados (días)</label><input id="ferNoTrab" min="0" step="1" type="number" value="0"/></div>
 <div><label>Feriados trabajados (días)</label><input id="ferTrab" min="0" step="1" type="number" value="0"/></div>
@@ -4060,7 +4070,7 @@ const p = await fetchJSON(url.toString());
     }
     const aplicado = t.aplicado ? "Tope aplicado" : "No supera el tope";
     setText("lfTopeIndemnizatorio",
-      `Promedio básico + NR + presentismo: ${money(t.promedio_base || 0)} · Tope mensual: ${money(t.tope_mensual || 0)} · Base informada: ${money(t.base_original || 0)} · Base usada art. 245: ${money(t.base_aplicada || 0)} · ${aplicado}.`);
+      `Estimación con escalas ${t.mes || ""} (sin resolución de tope homologado cargada). Promedio básico + NR + presentismo: ${money(t.promedio_base || 0)} · Tope mensual: ${money(t.tope_mensual || 0)} · Base informada: ${money(t.base_original || 0)} · Base usada art. 245: ${money(t.base_aplicada || 0)} · ${aplicado}.`);
   }
 
   function resetSacReceipt(){
@@ -4073,6 +4083,12 @@ const p = await fetchJSON(url.toString());
 
   // Arma la URL del cálculo mensual con los valores actuales del formulario.
   // Se usa también para completar el MEJOR SALARIO en Liquidación Final.
+  function mensualDiasParams(url){
+    if(document.getElementById('modoDiasMensual')?.value !== 'dias') return;
+    const dias = Number(document.getElementById('diasLiquidarMensual')?.value);
+    if(!Number.isInteger(dias) || dias < 1 || dias > 30) throw new Error('Indicá entre 1 y 30 días a liquidar.');
+    url.searchParams.set('dias_liquidar', String(dias));
+  }
   function buildMensualURL(){
     const rama = $("rama")?.value || "";
     const mes = $("mes")?.value || "";
@@ -4119,6 +4135,7 @@ const p = await fetchJSON(url.toString());
     const fun_adics = getFunebresAdics();
 
     const url = new URL("/calcular", location.origin);
+    mensualDiasParams(url);
     url.searchParams.set("rama", rama);
     url.searchParams.set("mes", mes);
     url.searchParams.set("agrup", agrup);
@@ -4240,6 +4257,7 @@ const p = await fetchJSON(url.toString());
         : [];
 
       const url = new URL(`${API_BASE}/calcular`);
+      mensualDiasParams(url);
       url.searchParams.set("rama", rama);
       url.searchParams.set("agrup", agrup);
       url.searchParams.set("categoria", categoria);

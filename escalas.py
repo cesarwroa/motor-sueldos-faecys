@@ -776,6 +776,8 @@ def _tope_indemnizatorio_art245(rama: str, mes: str) -> Dict[str, Any]:
         "cantidad": len(valores),
         "promedio_base": float(promedio),
         "tope_mensual": float(round2(promedio * 3.0)),
+        "origen": "estimacion_escalas",
+        "homologado": False,
         "incluye_presentismo": True,
         "incluye_no_remunerativos": True,
     }
@@ -860,6 +862,7 @@ def calcular_payload(
     osecac_adicional_patronal: bool = True,
     la_estrella: bool = True,
     instituto_capacitacion: bool = True,
+    dias_liquidar: int = 0,
     _os_48_simulation: bool = False,
 ) -> Dict[str, Any]:
     """Cálculo del endpoint /calcular (servidor).
@@ -892,6 +895,23 @@ def calcular_payload(
                 dias_ingreso = max(1, 30 - min(alta_dt.day, 30) + 1)
         except Exception:
             dias_ingreso = 30
+    # Cero mantiene el modo automático por fecha de alta; 1..30 son días
+    # remunerados indicados por el usuario, sin volver a descontar el ingreso.
+    try:
+        dias_manual = int(dias_liquidar)
+        if float(dias_liquidar) != dias_manual or not 0 <= dias_manual <= 30:
+            raise ValueError()
+    except (ValueError, TypeError, OverflowError):
+        return {"ok": False, "error": "Los días a liquidar deben ser enteros entre 1 y 30 (0 = mes automático)."}
+    if dias_manual:
+        if dias_manual > dias_ingreso:
+            return {"ok": False, "error": "Los días a liquidar superan los disponibles desde la fecha de alta."}
+        dias_ingreso = dias_manual
+    for novedad in (fer_trab, fer_no_trab, vac_goz, aus_inj, susp_dias):
+        if dias_manual and int(novedad or 0) > dias_ingreso:
+            return {"ok": False, "error": "Una novedad supera los días a liquidar."}
+    if dias_manual and int(fer_trab or 0) + int(fer_no_trab or 0) > dias_ingreso:
+        return {"ok": False, "error": "Los feriados superan los días a liquidar."}
     factor_ingreso = float(dias_ingreso) / 30.0
 
     # -------- Bases prorrateadas (48hs) --------
@@ -2189,7 +2209,7 @@ def calcular_payload(
             sac_contribuciones_empleador_items.append(
                 contrib_item("INCATUR (1%)", (sac_rem_total + sac_nr_total) * 0.01, sac_rem_total + sac_nr_total)
             )
-        if rama_norm != "CEREALES" and sac_rem_aportes:
+        if bool(la_estrella) and not bool(fuera_convenio) and rama_norm != "CEREALES" and sac_rem_aportes:
             sac_contribuciones_empleador_items.append(
                 contrib_item("La Estrella (1,60%)", sac_rem_aportes * 0.016, sac_rem_aportes)
             )
@@ -2207,6 +2227,8 @@ def calcular_payload(
         "mes": base["mes"],
         "fecha_alta": fecha_alta_txt,
         "dias_ingreso": int(dias_ingreso),
+        "dias_liquidar": int(dias_ingreso),
+        "modo_dias": bool(dias_manual),
         "factor_ingreso": float(factor_ingreso),
         "jornada": j,
         "anios_antig": float(anios_antig or 0),
