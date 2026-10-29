@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="co-admin-version" content="20261025-programacion-youtube-1"><title>Registros y estadísticas | Administración</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="co-admin-version" content="20261029-youtube-cartel-1"><title>Registros y estadísticas | Administración</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#172033;font:15px system-ui}header{background:#15335a;color:white;padding:24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}h1{font-size:27px;margin:0 0 5px}header p{margin:0;color:#dbeafe}header a{color:white}main{width:100%;max-width:none;margin:0;padding:24px}.filters,.card{background:white;border:1px solid #dbe4ee;border-radius:14px;padding:20px;margin-bottom:20px}.filters{display:flex;align-items:end;gap:14px;flex-wrap:wrap}label{display:grid;gap:7px;font-size:13px;color:#475569}input,select,button{font:inherit;border:1px solid #cbd5e1;border-radius:8px;padding:10px;background:white;color:#172033}button{cursor:pointer}button.primary{background:#2563eb;color:white;border-color:#2563eb}button:disabled{opacity:.55;cursor:wait}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:20px 0}.kpi{background:white;border:1px solid #dbe4ee;border-radius:12px;padding:18px}.kpi strong{display:block;font-size:30px;color:#15335a;margin-top:8px}.scroll{overflow:auto}table{border-collapse:collapse;min-width:1120px;width:100%;table-layout:fixed;font-size:13px}th,td{padding:13px 10px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}th{background:#edf3fb;white-space:normal;overflow-wrap:break-word}td{overflow-wrap:anywhere}td.num,th.num{text-align:right}td small{color:#64748b}.topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.muted{color:#64748b;line-height:1.6}.status{color:#9f1239}.pager{display:flex;gap:12px;align-items:center;margin-top:18px}h2{margin:0;font-size:20px}[hidden]{display:none!important}@media(max-width:700px){main{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}h1{font-size:23px}.filters label{flex:1;min-width:140px}}
 
@@ -40,7 +40,11 @@ th:nth-child(1){width:20%}th:nth-child(2){width:7%}th:nth-child(3){width:11%}th:
 <div class="timeline-controls"><label>Desde<input id="youtube-from" type="date" min="2019-01-01"></label><label>Hasta<input id="youtube-to" type="date" min="2019-01-01"></label><button type="button" id="youtube-update">Consultar YouTube</button><button type="button" id="youtube-connect">Conectar canal con Google</button><button type="button" id="youtube-disconnect" hidden>Desconectar canal</button></div>
 <p role="status" id="youtube-status" class="muted"></p><div id="youtube-results" hidden>
 <div class="kpis" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))" id="youtube-kpis"></div>
-<h3>Contenido más visto en el período</h3><p class="muted">Hasta 50 resultados combinados. Los totales incluyen todo el contenido; esta lista muestra el contenido más visto.</p>
+<h3>Publicaciones recientes · contadores actuales</h3>
+<p class="muted">Últimas publicaciones públicas entre las 50 cargas más recientes del canal, incluidos los Shorts nuevos que todavía no figuran en Analytics. Estos contadores son acumulados desde la publicación: no corresponden a las fechas seleccionadas ni se suman a los totales del período. Pueden diferir de las estimaciones en tiempo real de YouTube Studio.</p>
+<p id="youtube-recent-status" class="muted" role="status"></p>
+<div class="scroll"><table style="min-width:650px;table-layout:auto"><thead><tr><th style="width:auto">Publicación</th><th style="width:auto">Fecha de publicación</th><th style="width:auto" class="num">Vistas acumuladas</th><th style="width:auto" class="num">Me gusta acumulados</th><th style="width:auto" class="num">Comentarios acumulados</th></tr></thead><tbody id="youtube-recent"></tbody></table></div>
+<h3>Contenido más visto en el período · Analytics</h3><p class="muted">Hasta 50 resultados combinados. Los totales incluyen todo el contenido; esta lista muestra el contenido más visto.</p>
 <div class="scroll"><table style="min-width:650px;table-layout:auto"><thead><tr><th style="width:auto">Título</th><th style="width:auto">Tipo</th><th style="width:auto" class="num">Reproducciones</th><th style="width:auto" class="num">Me gusta</th><th style="width:auto" class="num">Comentarios</th></tr></thead><tbody id="youtube-top"></tbody></table></div>
 <details><summary style="cursor:pointer;margin:16px 0">Ver estadísticas por tipo de contenido</summary><div class="scroll"><table style="min-width:480px;table-layout:auto"><thead><tr><th style="width:auto">Tipo</th><th style="width:auto" class="num">Reproducciones</th><th style="width:auto" class="num">Me gusta</th><th style="width:auto" class="num">Comentarios</th></tr></thead><tbody id="youtube-types"></tbody></table></div></details>
 <details><summary style="cursor:pointer;margin:16px 0">Ver estadísticas diarias</summary><div class="scroll"><table style="min-width:650px;table-layout:auto"><thead><tr><th style="width:auto">Fecha</th><th style="width:auto" class="num">Videos</th><th style="width:auto" class="num">Shorts</th><th style="width:auto" class="num">Otros</th><th style="width:auto" class="num">Me gusta</th><th style="width:auto" class="num">Comentarios</th></tr></thead><tbody id="youtube-daily"></tbody></table></div></details>
@@ -62,9 +66,10 @@ $('youtube-from').max=youtubeToday;$('youtube-to').max=youtubeToday;
 let youtubeController=null,youtubeSequence=0;
 const youtubeKinds={VIDEO_ON_DEMAND:'Video',SHORTS:'Short',LIVE_STREAM:'Transmisión en vivo',STORY:'Historia',UNSPECIFIED:'Sin clasificar'};
 const youtubeNumber=value=>new Intl.NumberFormat('es-AR').format(Number(value)||0);
-async function youtubeRequest(action,data,signal){
+async function youtubeRequest(action,data,signal,refresh=false){
  const url=new URL(youtubeApi);url.searchParams.set('action',action);
  if(!data&&action==='report'){url.searchParams.set('from',$('youtube-from').value);url.searchParams.set('to',$('youtube-to').value);}
+ if(refresh&&action==='report')url.searchParams.set('refresh','1');
  const response=await fetch(url,{method:data?'POST':'GET',headers:{Authorization:`Bearer ${token}`,...(data?{'Content-Type':'application/json'}:{})},body:data?JSON.stringify(data):undefined,signal});
  const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.message||'No se pudo consultar YouTube.');return result;
 }
@@ -77,23 +82,26 @@ function renderYouTube(report){
  $('youtube-types').innerHTML=report.summary.map(row=>`<tr><td>${esc(youtubeKinds[row.creatorContentType]||row.creatorContentType)}</td><td class="num">${youtubeNumber(row.views)}</td><td class="num">${youtubeNumber(row.likes)}</td><td class="num">${youtubeNumber(row.comments)}</td></tr>`).join('')||'<tr><td colspan="4">Sin datos disponibles.</td></tr>';
  const days=new Map();for(const row of report.daily){if(!days.has(row.day))days.set(row.day,{video:0,short:0,other:0,likes:0,comments:0});const key=row.creatorContentType==='SHORTS'?'short':row.creatorContentType==='VIDEO_ON_DEMAND'?'video':'other';days.get(row.day)[key]+=Number(row.views)||0;days.get(row.day).likes+=Number(row.likes)||0;days.get(row.day).comments+=Number(row.comments)||0;}
  $('youtube-daily').innerHTML=[...days].map(([day,values])=>`<tr><td>${esc(day.split('-').reverse().join('/'))}</td><td class="num">${youtubeNumber(values.video)}</td><td class="num">${youtubeNumber(values.short)}</td><td class="num">${youtubeNumber(values.other)}</td><td class="num">${youtubeNumber(values.likes)}</td><td class="num">${youtubeNumber(values.comments)}</td></tr>`).join('')||'<tr><td colspan="6">Sin datos diarios disponibles.</td></tr>';
+ const recentMetric=value=>value===null||value===undefined?'—':youtubeNumber(value);
+ $('youtube-recent').innerHTML=(report.recent||[]).map(row=>`<tr><td>${/^[A-Za-z0-9_-]{11}$/.test(row.video)?`<a href="https://www.youtube.com/watch?v=${encodeURIComponent(row.video)}" target="_blank" rel="noopener noreferrer">${esc(row.title)}</a>`:esc(row.title)}</td><td>${row.published_at&&!Number.isNaN(Date.parse(row.published_at))?esc(new Intl.DateTimeFormat('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(row.published_at))):'—'}</td><td class="num">${recentMetric(row.views)}</td><td class="num">${recentMetric(row.likes)}</td><td class="num">${recentMetric(row.comments)}</td></tr>`).join('')||'<tr><td colspan="5">Sin publicaciones disponibles.</td></tr>';
+ $('youtube-recent-status').textContent=report.recent_warning||`Contadores consultados: ${date(report.fetched_at)} (Argentina).`;
  $('youtube-results').hidden=false;
 }
-async function loadYouTube(){
+async function loadYouTube(refresh=false){
  if(!token)return;
  const sequence=++youtubeSequence;youtubeController?.abort();const controller=new AbortController();youtubeController=controller;
  const timeout=setTimeout(()=>controller.abort(),75000);
  $('youtube-update').disabled=true;$('youtube-results').hidden=true;$('youtube-status').textContent='Consultando estadísticas de YouTube…';
  try{
-  const data=await youtubeRequest('report',null,controller.signal);if(sequence!==youtubeSequence)return;
+  const data=await youtubeRequest('report',null,controller.signal,refresh);if(sequence!==youtubeSequence)return;
   $('youtube-connect').textContent=data.connected?'Volver a conectar canal':'Conectar canal con Google';$('youtube-disconnect').hidden=!data.connected;
   if(!data.connected){$('youtube-status').textContent=data.configured?'Conectá la cuenta propietaria de @calculadoradecomercio para ver las estadísticas.':'Primero configurá las APIs de YouTube y el cliente OAuth en Google Cloud. Consultá el instructivo incluido en la actualización.';return;}
   renderYouTube(data.report);
-  $('youtube-status').textContent=`${data.channel_title}. Actualizado: ${date(data.report.fetched_at)} (Argentina). Caché de hasta 10 minutos. Los días sin datos se omiten; los datos de YouTube pueden tener demora.`;
+  $('youtube-status').textContent=`${data.channel_title}. Actualizado: ${date(data.report.fetched_at)} (Argentina). ${data.report.last_activity_day?'Último día con actividad informado por Analytics: '+data.report.last_activity_day.split('-').reverse().join('/')+'. ':''}Analytics puede demorar varios días; su ranking puede omitir un Short reciente. Los contadores actuales se muestran en «Publicaciones recientes». «Consultar YouTube» actualiza sin usar la caché local.`;
  }catch(error){if(sequence===youtubeSequence)$('youtube-status').textContent=error.name==='AbortError'?'La consulta demoró demasiado. Volvé a intentar.':error.message;}
  finally{clearTimeout(timeout);if(sequence===youtubeSequence)$('youtube-update').disabled=false;}
 }
-$('youtube-update').onclick=loadYouTube;
+$('youtube-update').onclick=()=>loadYouTube(true);
 $('youtube-connect').onclick=async()=>{
  const button=$('youtube-connect');button.disabled=true;
  try{const data=await youtubeRequest('connect',{return_url:location.origin+location.pathname});location.assign(data.url);}
