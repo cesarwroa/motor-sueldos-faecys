@@ -5142,7 +5142,7 @@ const p = await fetchJSON(url.toString());
               <div>
                 ${block('Total costo INSSJP:', m.groups.pami)}
                 ${block('Total costo ART:', m.groups.art, {showTrabajador:false})}
-                ${block('Total Costo SCVO:', m.groups.scvo, {showTrabajador:num(m.groups.scvo.trabajador)!==0})}
+                ${block(num(m.groups.scvo.trabajador)===0 ? 'Total Costo SVO:' : 'Total Costo SCVO:', m.groups.scvo, {showTrabajador:num(m.groups.scvo.trabajador)!==0})}
               </div>
             </div>
             <div class="anexo-note">Nota: Seguridad social del empleador incluye SIPA, Fondo Nacional de Empleo y Asignaciones Familiares</div>
