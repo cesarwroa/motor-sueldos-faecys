@@ -237,7 +237,7 @@
         if(mode==='login'){
           values.remember_session=true;feedback('Ingresando…');const result=await request('login',values,true);rememberToken(result.token);
           try{await confirmPendingLink();account=await fetchAccount();}catch(error){token='';rememberToken('');throw error;}
-          renderBar();if(!account.profile)await open('profile');else dialog.close();
+          renderBar();if(!account.profile)await open('profile');else{dialog.close();loadNews();}
         }
         if(mode==='profile'){
           await request('profile',values,false,'PUT');account=await fetchAccount();renderBar();
@@ -299,12 +299,35 @@
   let newsItems=[], newsGeneration=0, newsModal=null;
   const newsPanel=document.createElement('section');newsPanel.className='co-news-panel';bar.after(newsPanel);
   const newsStyle=document.createElement('style');newsStyle.textContent=`.co-news-panel{font:15px system-ui;color:#172033;max-width:1000px;margin:12px auto;padding:0 18px}.co-news-card{padding:18px;margin:12px 0;border:1px solid #bfdbfe;border-radius:12px;background:#f8fbff}.co-news-card img,.co-news-card video,.co-news-preview img,.co-news-preview video{width:100%;max-height:420px;object-fit:contain;border-radius:8px}.co-news-card iframe,.co-news-preview iframe{width:100%;aspect-ratio:16/9;border:0}.co-news-text{white-space:pre-wrap;overflow-wrap:anywhere}.co-account-dialog textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.co-news-card button{padding:8px;border:1px solid #cbd5e1;border-radius:8px;background:white;cursor:pointer}.co-news-modal{width:min(760px,calc(100vw - 28px))}.co-news-preview{padding:16px;border:1px solid #bfdbfe;border-radius:10px;margin:12px 0}.co-danger{color:#be123c!important;border-color:#be123c!important}`;document.head.append(newsStyle);
+  newsStyle.textContent+=`
+    .co-news-panel,.co-news-card,.co-news-preview,.co-news-content{box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere}
+    .co-news-panel{width:100%;max-width:1000px}
+    .co-news-content h2{font-size:clamp(18px,2vw,22px);line-height:1.3;margin:0 0 12px;padding:0;overflow-wrap:anywhere}
+    .co-news-content .co-news-text{font-size:15px;line-height:1.55;margin:0 0 12px}
+    .co-news-content>img,.co-news-content>video{display:block;box-sizing:border-box;width:auto;height:auto;max-width:100%;max-height:min(42dvh,320px);object-fit:contain;margin:12px auto;border-radius:8px}
+    .co-news-content>iframe{display:block;box-sizing:border-box;width:100%;height:auto;max-width:100%;max-height:min(42dvh,320px);aspect-ratio:16/9;border:0;margin:12px auto;border-radius:8px}
+    .co-news-modal{position:fixed;inset:0;margin:auto;box-sizing:border-box;width:calc(100% - 24px);max-width:620px;max-height:min(720px,calc(var(--co-viewport-height,100dvh) - 24px));padding:20px;overflow:hidden}
+    .co-news-modal[open]{display:flex;flex-direction:column;gap:12px}
+    .co-news-modal>.co-news-content{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:4px}
+    .co-news-modal-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;color:#475569;font-size:13px;font-weight:700}
+    .co-news-modal-heading button{flex:none;width:40px;min-height:40px;padding:4px;font-size:24px;line-height:1}
+    .co-news-modal>.co-actions{flex:none;margin:0;gap:8px;display:flex;justify-content:flex-end}
+    .co-news-modal>.co-actions button{white-space:normal;max-width:100%;min-width:0;min-height:44px;font-size:14px;line-height:1.35}
+    .co-news-modal>[role=status]{flex:none;margin:0;max-height:60px;overflow:auto;font-size:14px;overflow-wrap:anywhere}
+    .co-news-modal>[role=status]:empty{display:none}
+    @media(max-width:600px){
+      .co-news-modal{inset:auto;top:calc(var(--co-viewport-top,0px) + 12px);left:12px;right:12px;margin:0 auto;padding:16px;width:calc(100% - 24px)}
+      .co-news-modal>.co-actions{display:grid;grid-template-columns:1fr}
+      .co-news-modal>.co-actions button{width:100%}
+      .co-news-content>img,.co-news-content>video{max-height:min(36dvh,280px)}
+    }
+  `;
   function newsContent(n){
     const image=/^https:\/\/calculadoradecomercio\.com\.ar\/uploads\/novedades\/[a-f0-9]{32}\.(jpg|png|gif|webp)$/.test(n.image_url||'')?`<img src="${esc(n.image_url)}" alt="Imagen de ${esc(n.title)}" loading="lazy">`:'';
     let video='';
     if(/^https:\/\/www\.youtube-nocookie\.com\/embed\/[A-Za-z0-9_-]{11}$/.test(n.video_url||''))video=`<iframe src="${esc(n.video_url)}" title="Video de ${esc(n.title)}" loading="lazy" allowfullscreen></iframe>`;
     else if(/^https:\/\/calculadoradecomercio\.com\.ar\/uploads\/novedades\/[a-f0-9]{32}\.(mp4|webm)$/.test(n.video_url||''))video=`<video src="${esc(n.video_url)}" controls preload="metadata"></video>`;
-    return `<h2>${esc(n.title)}</h2><p class="co-news-text">${esc(n.body)}</p>${image}${video}`;
+    return `<div class="co-news-content"><h2>${esc(n.title)}</h2><p class="co-news-text">${esc(n.body)}</p>${image}${video}</div>`;
   }
   async function loadNews(auto=true){
     const generation=++newsGeneration;if(!account){newsItems=[];newsPanel.replaceChildren();return;}
@@ -317,9 +340,11 @@
   function showNewsModal(n){
     if(newsModal?.open)return;
     newsModal=document.createElement('dialog');newsModal.className='co-account-dialog co-news-modal';newsModal.setAttribute('aria-label','Novedad de la calculadora');
-    newsModal.innerHTML=newsContent(n)+'<p class="co-actions"><button data-later>Más tarde</button><button class="co-primary" data-read>Entendido, marcar como leída</button></p><p role="status"></p>';document.body.append(newsModal);const focus=document.activeElement;
-    newsModal.onclose=()=>{newsModal.remove();focus?.focus();};newsModal.querySelector('[data-later]').onclick=()=>newsModal.close();
-    newsModal.querySelector('[data-read]').onclick=async event=>{event.target.disabled=true;try{await request('news-read',{id:n.id});newsModal.close();await loadNews(false);}catch(e){event.target.disabled=false;newsModal.querySelector('[role=status]').textContent=e.message;}};newsModal.showModal();
+    newsModal.innerHTML='<div class="co-news-modal-heading"><span>Novedad de la calculadora</span><button type="button" data-dismiss-news aria-label="Cerrar novedad">×</button></div>'+newsContent(n)+'<p class="co-actions"><button type="button" data-later>Más tarde</button><button type="button" class="co-primary" data-read>Entendido, marcar como leída</button></p><p role="status" aria-live="polite"></p>';document.body.append(newsModal);const focus=document.activeElement;
+    newsModal.querySelector('h2').id='coNewsModalTitle';newsModal.setAttribute('aria-labelledby','coNewsModalTitle');
+    newsModal.querySelector('[data-dismiss-news]').onclick=()=>newsModal.close();
+    newsModal.onclose=()=>{newsModal.remove();focus?.focus({preventScroll:true});};newsModal.querySelector('[data-later]').onclick=()=>newsModal.close();
+    newsModal.querySelector('[data-read]').onclick=async event=>{event.target.disabled=true;try{await request('news-read',{id:n.id});newsModal.close();await loadNews(false);}catch(e){event.target.disabled=false;newsModal.querySelector('[role=status]').textContent=e.message;}};newsModal.showModal();newsModal.querySelector('[data-dismiss-news]').focus({preventScroll:true});
   }
   async function showNewsInbox(){
     await loadNews(false);dialog.innerHTML='<button data-close aria-label="Cerrar">×</button><h2>Novedades</h2>'+(newsItems.length?newsItems.map(n=>`<article class="co-news-card">${newsContent(n)}${n.read_at?'<small>Leída</small>':`<button data-read-news="${esc(n.id)}">Marcar como leída</button>`}</article>`).join(''):'<p>No hay novedades disponibles.</p>')+'<p class="co-account-feedback" role="status"></p>';
