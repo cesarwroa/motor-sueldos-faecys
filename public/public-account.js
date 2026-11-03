@@ -81,6 +81,46 @@
     .co-account-bar{padding:12px;gap:10px}.co-account-bar>.co-actions{display:flex;gap:8px;flex-wrap:wrap}.co-account-bar button{min-height:44px;padding:9px 12px}
   }`;
   document.head.append(style);
+  // Portada y calculadora consultan el mismo aviso persistido en Hostinger.
+  style.textContent+=`
+    #coUpdateStamp.co-update-stamp{box-sizing:border-box;width:calc(100% - 32px);max-width:1152px;margin:10px auto 12px;padding:9px 12px;border:2px solid #c81e1e;border-radius:8px;color:#b91c1c;background:#fff7f7;font:800 14px/1.4 system-ui,sans-serif;letter-spacing:normal;text-align:center;text-transform:uppercase;transform:none;box-shadow:none;overflow-wrap:anywhere}
+    #coUpdateStamp[hidden]{display:none!important}
+    @media(max-width:600px){#coUpdateStamp.co-update-stamp{width:calc(100% - 24px);padding:8px 10px;font-size:12px}}
+    @media print{#coUpdateStamp.co-update-stamp{display:none!important}}
+  `;
+  let siteNotice=null, siteNoticeRequest=null, siteNoticeGeneration=0;
+  function validSiteNotice(value){return value&&typeof value.enabled==='boolean'&&typeof value.message==='string';}
+  function paintSiteNotice(){
+    const stamp=document.getElementById('coUpdateStamp');if(!stamp)return;
+    const enabled=siteNotice?.enabled===true&&siteNotice.message.trim()!=='';
+    const text=siteNotice?.message||'';if(stamp.textContent!==text)stamp.textContent=text;
+    stamp.hidden=!enabled;stamp.style.display=enabled?'block':'none';
+  }
+  function loadSiteNotice(){
+    if(!document.getElementById('coUpdateStamp'))return Promise.resolve();
+    if(siteNoticeRequest)return siteNoticeRequest.promise;
+    const generation=siteNoticeGeneration,controller=new AbortController();
+    const request={controller,promise:null};siteNoticeRequest=request;
+    const timeout=setTimeout(()=>controller.abort(),15000);
+    request.promise=fetch(apiOrigin+'/api/aviso.php',{cache:'no-store',credentials:'omit',signal:controller.signal})
+      .then(async response=>{const data=await response.json();if(!response.ok||!data.ok||!validSiteNotice(data.notice))throw new Error('Aviso no disponible');if(generation!==siteNoticeGeneration)return;siteNotice=data.notice;paintSiteNotice();})
+      .catch(()=>{if(generation!==siteNoticeGeneration)return;siteNotice=null;paintSiteNotice();})
+      .finally(()=>{clearTimeout(timeout);if(siteNoticeRequest===request)siteNoticeRequest=null;});
+    return request.promise;
+  }
+  window.addEventListener('co-notice-changed',event=>{
+    if(!validSiteNotice(event.detail))return;
+    siteNoticeGeneration++;siteNoticeRequest?.controller.abort();siteNoticeRequest=null;
+    siteNotice=event.detail;paintSiteNotice();
+    try{localStorage.setItem('co_site_notice_changed',String(Date.now()));}catch(_){}
+  });
+  window.addEventListener('storage',event=>{if(event.key==='co_site_notice_changed')loadSiteNotice();});
+  window.addEventListener('focus',()=>loadSiteNotice());
+  window.addEventListener('pageshow',()=>loadSiteNotice());
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadSiteNotice();});
+  setInterval(()=>{if(document.visibilityState!=='hidden')loadSiteNotice();},15000);
+  paintSiteNotice();loadSiteNotice();
+
   function syncDialogViewport(){
     const viewport=window.visualViewport;
     const values={'--co-viewport-height':`${Math.floor(viewport?.height||window.innerHeight)}px`,'--co-viewport-top':`${Math.max(0,Math.floor(viewport?.offsetTop||0))}px`};
@@ -279,7 +319,7 @@
       group.querySelectorAll('[data-social]').forEach(button=>button.onclick=()=>startSocialLogin(button));
     });
   }
-  const observer=new MutationObserver(()=>{enrichContactForms();enrichAdminModal();syncHeader();});observer.observe(document.body,{childList:true,subtree:true});
+  const observer=new MutationObserver(()=>{enrichContactForms();enrichAdminModal();syncHeader();paintSiteNotice();});observer.observe(document.body,{childList:true,subtree:true});
   // Trasladar la sesión entre landing y calculadora en ambos sentidos.
   document.addEventListener('click',async event=>{
     if(!token || event.defaultPrevented || event.button!==0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)return;

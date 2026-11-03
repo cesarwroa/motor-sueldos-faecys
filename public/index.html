@@ -575,7 +575,7 @@ tr.co-total-row > td:first-child { font-weight: 700; }
 </head>
 <body>
 <div class="container">
-<div class="co-update-stamp no-print" id="coUpdateStamp" role="status">RAMA GENERAL, FÚNEBRES Y AGUA POTABLE ACTUALIZADAS - REVISIÓN OCTUBRE 2026</div>
+<div class="co-update-stamp no-print" id="coUpdateStamp" role="status" hidden></div>
 <div class="no-print" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <h1 style="margin:0">Calculadora de Comercio</h1>
   <a class="co-home-btn" href="https://calculadoradecomercio.com.ar/" title="Volver a la web principal">
@@ -6566,11 +6566,7 @@ function switchTab(tab){
 
   document.addEventListener('DOMContentLoaded', async () => {
     try{
-      const updateStamp = $("coUpdateStamp");
-      if(updateStamp && Date.now() < Date.parse("2027-02-01T03:00:00Z")){
-        updateStamp.style.display = "block";
-      }
-      syncAdminUI();
+syncAdminUI();
       $("adminLogoutBtn")?.addEventListener("click", () => {
         clearAdminSession();
       });
@@ -6590,7 +6586,7 @@ function switchTab(tab){
   });
 
 })();
-</script><script defer src="/public-account.js?v=20261025-programacion-youtube-1"></script>
+</script><script defer src="/public-account.js?v=20261103-cartel-compartido-1"></script>
 </body>
 </html>
 
