@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 escalas.py (sin pandas)
 Lee el maestro Excel con openpyxl y expone helpers para:
@@ -179,7 +179,7 @@ SUMA_UNICA_OCTUBRE_2026 = "Suma No Remunerativa Única - Revisión octubre 2026"
 
 def _es_revision_octubre_2026(rama: Any, mes: Any) -> bool:
     return (
-        _norm_fold(rama) in ("GENERAL", "FUNEBRES", "AGUA POTABLE", "AGUA", "AGUAPOTABLE")
+        _norm_fold(rama) in ("GENERAL", "FUNEBRES", "AGUA POTABLE", "AGUA", "AGUAPOTABLE", "CALL CENTER")
         and _mes_to_key(mes) in ("2026-10", "2026-11")
     )
 
@@ -973,9 +973,15 @@ def calcular_payload(
     # - no integra antigüedad, presentismo, SAC, aportes, contribuciones ni descuentos.
     aus_dias_extra = max(0, min(30, int(aus_inj or 0)))
     factor_asistencia_extra = max(0.0, (30.0 - aus_dias_extra) / 30.0)
-    extraordinaria = round2(
-        extraordinaria_base * factor * factor_ingreso * factor_asistencia_extra
-    )
+    if is_call and _es_revision_octubre_2026(rama, mes):
+        # Los importes del PDF ya contemplan la jornada de cada categoría.
+        # Para un período parcial, las ausencias se descuentan de sus días,
+        # sin aplicar un segundo prorrateo sobre el mes completo.
+        extraordinaria = round2(extraordinaria_base * factor * max(0, dias_ingreso - aus_dias_extra) / 30.0)
+    else:
+        extraordinaria = round2(
+            extraordinaria_base * factor * factor_ingreso * factor_asistencia_extra
+        )
 
     # NR base total (sin derivados). Se usa también para valor-hora NR.
     nr_base_total = round2(nr + sf)
